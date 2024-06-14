@@ -15,6 +15,7 @@ readme = "README.md"
 [dependencies]
 # For no-std, remember to enable the bitcoin/no-std feature
 bitcoin = { version = "0.31.0", default-features = false }
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", default-features = false, subdirectory = "tapyrus" }
 serde_crate = { package = "serde", version = "1", optional = true, features = ["derive", "rc"] }
 
 # Use hashbrown as a feature flag to have HashSet and HashMap from it.
@@ -27,5 +28,5 @@ proptest = "1.2.0"
 
 [features]
 default = ["std", "miniscript"]
-std = ["bitcoin/std", "miniscript?/std"]
+std = ["bitcoin/std", "tapyrus/std", "miniscript?/std"]
 serde = ["serde_crate", "bitcoin/serde", "miniscript?/serde"]
