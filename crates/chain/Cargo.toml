@@ -20,7 +20,7 @@ serde_crate = { package = "serde", version = "1", optional = true, features = ["
 
 # Use hashbrown as a feature flag to have HashSet and HashMap from it.
 hashbrown = { version = "0.9.1", optional = true, features = ["serde"] }
-miniscript = { version = "11.0.0", optional = true, default-features = false }
+miniscript = { git = "https://github.com/chaintope/rust-miniscript", branch = "master", optional = true, default-features = false }
 
 [dev-dependencies]
 rand = "0.8"
