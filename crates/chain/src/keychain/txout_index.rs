@@ -5,7 +5,7 @@ use crate::{
     spk_iter::BIP32_MAX_INDEX,
     DescriptorExt, DescriptorId, SpkIterator, SpkTxOutIndex,
 };
-use bitcoin::{hashes::Hash, Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{hashes::Hash, Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 use core::{
     fmt::Debug,
     ops::{Bound, RangeBounds},
@@ -149,10 +149,10 @@ const DEFAULT_LOOKAHEAD: u32 = 25;
 ///
 /// let mut txout_index = KeychainTxOutIndex::<MyKeychain>::default();
 ///
-/// # let secp = bdk_chain::bitcoin::secp256k1::Secp256k1::signing_only();
-/// # let (external_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "tr([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/0/*)").unwrap();
-/// # let (internal_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "tr([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/*)").unwrap();
-/// # let (descriptor_42, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "tr([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/2/*)").unwrap();
+/// # let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
+/// # let (external_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/0/*)").unwrap();
+/// # let (internal_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/*)").unwrap();
+/// # let (descriptor_42, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/2/*)").unwrap();
 /// let _ = txout_index.insert_descriptor(MyKeychain::External, external_descriptor);
 /// let _ = txout_index.insert_descriptor(MyKeychain::Internal, internal_descriptor);
 /// let _ = txout_index.insert_descriptor(MyKeychain::MyAppUser { user_id: 42 }, descriptor_42);
@@ -248,7 +248,7 @@ impl<K: Clone + Ord + Debug> Indexer for KeychainTxOutIndex<K> {
         }
     }
 
-    fn index_tx(&mut self, tx: &bitcoin::Transaction) -> Self::ChangeSet {
+    fn index_tx(&mut self, tx: &tapyrus::Transaction) -> Self::ChangeSet {
         let mut changeset = super::ChangeSet::<K>::default();
         for (op, txout) in tx.output.iter().enumerate() {
             changeset.append(self.index_txout(OutPoint::new(tx.txid(), op as u32), txout));
@@ -270,7 +270,7 @@ impl<K: Clone + Ord + Debug> Indexer for KeychainTxOutIndex<K> {
         self.apply_changeset(changeset)
     }
 
-    fn is_tx_relevant(&self, tx: &bitcoin::Transaction) -> bool {
+    fn is_tx_relevant(&self, tx: &tapyrus::Transaction) -> bool {
         self.inner.is_relevant(tx)
     }
 }

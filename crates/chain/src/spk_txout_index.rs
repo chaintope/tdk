@@ -4,7 +4,7 @@ use crate::{
     collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap},
     indexed_tx_graph::Indexer,
 };
-use bitcoin::{Amount, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{Amount, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, TxOut, Txid};
 
 /// An index storing [`TxOut`]s that have a script pubkey that matches those in a list.
 ///
@@ -22,7 +22,7 @@ use bitcoin::{Amount, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, Tx
 /// modify txouts that have been indexed. To find out which txouts from the index are actually in the
 /// chain or unspent, you must use other sources of information like a [`TxGraph`].
 ///
-/// [`TxOut`]: bitcoin::TxOut
+/// [`TxOut`]: tapyrus::TxOut
 /// [`insert_spk`]: Self::insert_spk
 /// [`Ord`]: core::cmp::Ord
 /// [`TxGraph`]: crate::tx_graph::TxGraph
@@ -138,7 +138,7 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         &self,
         range: impl RangeBounds<I>,
     ) -> impl DoubleEndedIterator<Item = (&I, OutPoint)> {
-        use bitcoin::hashes::Hash;
+        use tapyrus::hashes::Hash;
         use core::ops::Bound::*;
         let min_op = OutPoint {
             txid: Txid::all_zeros(),

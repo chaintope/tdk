@@ -2,7 +2,7 @@ use crate::{
     alloc::{string::ToString, vec::Vec},
     miniscript::{Descriptor, DescriptorPublicKey},
 };
-use bitcoin::hashes::{hash_newtype, sha256, Hash};
+use tapyrus::hashes::{hash_newtype, sha256, Hash};
 
 hash_newtype! {
     /// Represents the ID of a descriptor, defined as the sha256 hash of
@@ -32,7 +32,7 @@ impl DescriptorExt for Descriptor<DescriptorPublicKey> {
             .expect("descriptor can't have hardened derivation")
             .script_pubkey()
             .dust_value()
-            .to_sat()
+            .to_tap()
     }
 
     fn descriptor_id(&self) -> DescriptorId {

@@ -4,7 +4,7 @@ use crate::{
     collections::BTreeMap, local_chain::CheckPoint, ConfirmationTimeHeightAnchor, TxGraph,
 };
 use alloc::{boxed::Box, vec::Vec};
-use bitcoin::{OutPoint, Script, ScriptBuf, Txid};
+use tapyrus::{OutPoint, Script, ScriptBuf, Txid};
 use core::{fmt::Debug, marker::PhantomData, ops::RangeBounds};
 
 /// Data required to perform a spk-based blockchain client sync.

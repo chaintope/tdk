@@ -12,7 +12,7 @@ use bdk_chain::{
     local_chain::LocalChain,
     tx_graph, ChainPosition, ConfirmationHeightAnchor, DescriptorExt,
 };
-use bitcoin::{
+use tapyrus::{
     secp256k1::Secp256k1, Amount, OutPoint, Script, ScriptBuf, Transaction, TxIn, TxOut,
 };
 use miniscript::Descriptor;
@@ -39,11 +39,11 @@ fn insert_relevant_txs() {
     let tx_a = Transaction {
         output: vec![
             TxOut {
-                value: Amount::from_sat(10_000),
+                value: Amount::from_tap(10_000),
                 script_pubkey: spk_0,
             },
             TxOut {
-                value: Amount::from_sat(20_000),
+                value: Amount::from_tap(20_000),
                 script_pubkey: spk_1,
             },
         ],
@@ -110,11 +110,11 @@ fn insert_relevant_txs() {
 ///
 /// Transactions:
 ///
-/// tx1: A Coinbase, sending 70000 sats to "trusted" address. [Block 0]
-/// tx2: A external Receive, sending 30000 sats to "untrusted" address. [Block 1]
+/// tx1: A Coinbase, sending 70000 taps to "trusted" address. [Block 0]
+/// tx2: A external Receive, sending 30000 taps to "untrusted" address. [Block 1]
 /// tx3: Internal Spend. Spends tx2 and returns change of 10000 to "trusted" address. [Block 2]
-/// tx4: Mempool tx, sending 20000 sats to "trusted" address.
-/// tx5: Mempool tx, sending 15000 sats to "untested" address.
+/// tx4: Mempool tx, sending 20000 taps to "trusted" address.
+/// tx5: Mempool tx, sending 15000 taps to "untested" address.
 /// tx6: Complete unrelated tx. [Block 3]
 ///
 /// Different transactions are added via `insert_relevant_txs`.
@@ -178,7 +178,7 @@ fn test_list_owned_txouts() {
             ..Default::default()
         }],
         output: vec![TxOut {
-            value: Amount::from_sat(70000),
+            value: Amount::from_tap(70000),
             script_pubkey: trusted_spks[0].to_owned(),
         }],
         ..common::new_tx(0)
@@ -187,7 +187,7 @@ fn test_list_owned_txouts() {
     // tx2 is an incoming transaction received at untrusted keychain at block 1.
     let tx2 = Transaction {
         output: vec![TxOut {
-            value: Amount::from_sat(30000),
+            value: Amount::from_tap(30000),
             script_pubkey: untrusted_spks[0].to_owned(),
         }],
         ..common::new_tx(0)
@@ -200,7 +200,7 @@ fn test_list_owned_txouts() {
             ..Default::default()
         }],
         output: vec![TxOut {
-            value: Amount::from_sat(10000),
+            value: Amount::from_tap(10000),
             script_pubkey: trusted_spks[1].to_owned(),
         }],
         ..common::new_tx(0)
@@ -209,7 +209,7 @@ fn test_list_owned_txouts() {
     // tx4 is an external transaction receiving at untrusted keychain, unconfirmed.
     let tx4 = Transaction {
         output: vec![TxOut {
-            value: Amount::from_sat(20000),
+            value: Amount::from_tap(20000),
             script_pubkey: untrusted_spks[1].to_owned(),
         }],
         ..common::new_tx(0)
@@ -218,7 +218,7 @@ fn test_list_owned_txouts() {
     // tx5 is spending tx3 and receiving change at trusted keychain, unconfirmed.
     let tx5 = Transaction {
         output: vec![TxOut {
-            value: Amount::from_sat(15000),
+            value: Amount::from_tap(15000),
             script_pubkey: trusted_spks[2].to_owned(),
         }],
         ..common::new_tx(0)
@@ -355,9 +355,9 @@ fn test_list_owned_txouts() {
         assert_eq!(
             balance,
             Balance {
-                immature: Amount::from_sat(70000),          // immature coinbase
-                trusted_pending: Amount::from_sat(25000),   // tx3 + tx5
-                untrusted_pending: Amount::from_sat(20000), // tx4
+                immature: Amount::from_tap(70000),          // immature coinbase
+                trusted_pending: Amount::from_tap(25000),   // tx3 + tx5
+                untrusted_pending: Amount::from_tap(20000), // tx4
                 confirmed: Amount::ZERO                     // Nothing is confirmed yet
             }
         );
@@ -390,9 +390,9 @@ fn test_list_owned_txouts() {
         assert_eq!(
             balance,
             Balance {
-                immature: Amount::from_sat(70000),          // immature coinbase
-                trusted_pending: Amount::from_sat(25000),   // tx3 + tx5
-                untrusted_pending: Amount::from_sat(20000), // tx4
+                immature: Amount::from_tap(70000),          // immature coinbase
+                trusted_pending: Amount::from_tap(25000),   // tx3 + tx5
+                untrusted_pending: Amount::from_tap(20000), // tx4
                 confirmed: Amount::ZERO                     // Nothing is confirmed yet
             }
         );
@@ -422,10 +422,10 @@ fn test_list_owned_txouts() {
         assert_eq!(
             balance,
             Balance {
-                immature: Amount::from_sat(70000),          // immature coinbase
-                trusted_pending: Amount::from_sat(15000),   // tx5
-                untrusted_pending: Amount::from_sat(20000), // tx4
-                confirmed: Amount::from_sat(10000)          // tx3 got confirmed
+                immature: Amount::from_tap(70000),          // immature coinbase
+                trusted_pending: Amount::from_tap(15000),   // tx5
+                untrusted_pending: Amount::from_tap(20000), // tx4
+                confirmed: Amount::from_tap(10000)          // tx3 got confirmed
             }
         );
     }
@@ -453,10 +453,10 @@ fn test_list_owned_txouts() {
         assert_eq!(
             balance,
             Balance {
-                immature: Amount::from_sat(70000),          // immature coinbase
-                trusted_pending: Amount::from_sat(15000),   // tx5
-                untrusted_pending: Amount::from_sat(20000), // tx4
-                confirmed: Amount::from_sat(10000)          // tx1 got matured
+                immature: Amount::from_tap(70000),          // immature coinbase
+                trusted_pending: Amount::from_tap(15000),   // tx5
+                untrusted_pending: Amount::from_tap(20000), // tx4
+                confirmed: Amount::from_tap(10000)          // tx1 got matured
             }
         );
     }
@@ -470,9 +470,9 @@ fn test_list_owned_txouts() {
             balance,
             Balance {
                 immature: Amount::ZERO,                     // coinbase matured
-                trusted_pending: Amount::from_sat(15000),   // tx5
-                untrusted_pending: Amount::from_sat(20000), // tx4
-                confirmed: Amount::from_sat(80000)          // tx1 + tx3
+                trusted_pending: Amount::from_tap(15000),   // tx5
+                untrusted_pending: Amount::from_tap(20000), // tx4
+                confirmed: Amount::from_tap(80000)          // tx1 + tx3
             }
         );
     }

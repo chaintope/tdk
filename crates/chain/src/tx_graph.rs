@@ -51,7 +51,7 @@
 //! # use bdk_chain::BlockId;
 //! # use bdk_chain::tx_graph::TxGraph;
 //! # use bdk_chain::example_utils::*;
-//! # use bitcoin::Transaction;
+//! # use tapyrus::Transaction;
 //! # let tx_a = tx_from_hex(RAW_TX_1);
 //! let mut tx_graph: TxGraph = TxGraph::default();
 //!
@@ -72,7 +72,7 @@
 //! # use bdk_chain::{Append, BlockId};
 //! # use bdk_chain::tx_graph::TxGraph;
 //! # use bdk_chain::example_utils::*;
-//! # use bitcoin::Transaction;
+//! # use tapyrus::Transaction;
 //! # let tx_a = tx_from_hex(RAW_TX_1);
 //! # let tx_b = tx_from_hex(RAW_TX_2);
 //! let mut graph: TxGraph = TxGraph::default();
@@ -95,7 +95,7 @@ use crate::{
 use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use bitcoin::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 use core::fmt::{self, Formatter};
 use core::{
     convert::Infallible,

@@ -1,6 +1,6 @@
 #![allow(unused)]
 use alloc::vec::Vec;
-use bitcoin::{
+use tapyrus::{
     consensus,
     hashes::{hex::FromHex, Hash},
     Transaction,
@@ -19,7 +19,7 @@ pub fn tx_from_hex(s: &str) -> Transaction {
 }
 
 pub fn new_hash<H: Hash>(s: &str) -> H {
-    <H as bitcoin::hashes::Hash>::hash(s.as_bytes())
+    <H as tapyrus::hashes::Hash>::hash(s.as_bytes())
 }
 
 pub fn new_block_id(height: u32, hash: &str) -> BlockId {

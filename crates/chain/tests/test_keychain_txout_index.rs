@@ -9,7 +9,7 @@ use bdk_chain::{
     Append, DescriptorExt, DescriptorId,
 };
 
-use bitcoin::{secp256k1::Secp256k1, Amount, OutPoint, ScriptBuf, Transaction, TxOut};
+use tapyrus::{secp256k1::Secp256k1, Amount, OutPoint, ScriptBuf, Transaction, TxOut};
 use miniscript::{Descriptor, DescriptorPublicKey};
 
 use crate::common::DESCRIPTORS;
@@ -21,7 +21,7 @@ enum TestKeychain {
 }
 
 fn parse_descriptor(descriptor: &str) -> Descriptor<DescriptorPublicKey> {
-    let secp = bdk_chain::bitcoin::secp256k1::Secp256k1::signing_only();
+    let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
     Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, descriptor)
         .unwrap()
         .0
@@ -55,7 +55,7 @@ fn spk_at_index(descriptor: &Descriptor<DescriptorPublicKey>, index: u32) -> Scr
 // - New keychain gets added if the keychain is in `other` but not in `self`.
 #[test]
 fn append_changesets_check_last_revealed() {
-    let secp = bitcoin::secp256k1::Secp256k1::signing_only();
+    let secp = tapyrus::secp256k1::Secp256k1::signing_only();
     let descriptor_ids: Vec<_> = DESCRIPTORS
         .iter()
         .take(4)
@@ -288,14 +288,14 @@ fn test_lookahead() {
                         .at_derivation_index(external_index)
                         .unwrap()
                         .script_pubkey(),
-                    value: Amount::from_sat(10_000),
+                    value: Amount::from_tap(10_000),
                 },
                 TxOut {
                     script_pubkey: internal_descriptor
                         .at_derivation_index(internal_index)
                         .unwrap()
                         .script_pubkey(),
-                    value: Amount::from_sat(10_000),
+                    value: Amount::from_tap(10_000),
                 },
             ],
             ..common::new_tx(external_index)
@@ -450,7 +450,7 @@ fn test_wildcard_derivations() {
 fn test_non_wildcard_derivations() {
     let mut txout_index = KeychainTxOutIndex::<TestKeychain>::new(0);
 
-    let secp = bitcoin::secp256k1::Secp256k1::signing_only();
+    let secp = tapyrus::secp256k1::Secp256k1::signing_only();
     let (no_wildcard_descriptor, _) =
         Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, DESCRIPTORS[6]).unwrap();
     let external_spk = no_wildcard_descriptor
@@ -635,7 +635,7 @@ fn lookahead_to_target() {
 /// This includes properly refilling the lookahead for said descriptors.
 #[test]
 fn index_txout_after_changing_descriptor_under_keychain() {
-    let secp = bdk_chain::bitcoin::secp256k1::Secp256k1::signing_only();
+    let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
     let (desc_a, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, DESCRIPTORS[0])
         .expect("descriptor 0 must be valid");
     let (desc_b, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, DESCRIPTORS[1])
@@ -660,7 +660,7 @@ fn index_txout_after_changing_descriptor_under_keychain() {
             // Use spk derivation index as vout as we just want an unique outpoint.
             OutPoint::new(h!("mock_tx"), i as _),
             &TxOut {
-                value: Amount::from_sat(10_000),
+                value: Amount::from_tap(10_000),
                 script_pubkey: spk_at_index,
             },
         );

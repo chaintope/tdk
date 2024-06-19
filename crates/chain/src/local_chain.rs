@@ -6,8 +6,8 @@ use core::ops::RangeBounds;
 use crate::collections::BTreeMap;
 use crate::{BlockId, ChainOracle};
 use alloc::sync::Arc;
-use bitcoin::block::Header;
-use bitcoin::BlockHash;
+use tapyrus::block::Header;
+use tapyrus::BlockHash;
 
 /// The [`ChangeSet`] represents changes to [`LocalChain`].
 ///
@@ -77,7 +77,7 @@ impl CheckPoint {
     /// we return a checkpoint linked with the previous block.
     ///
     /// [`prev`]: CheckPoint::prev
-    pub fn from_header(header: &bitcoin::block::Header, height: u32) -> Self {
+    pub fn from_header(header: &tapyrus::block::Header, height: u32) -> Self {
         let hash = header.block_hash();
         let this_block_id = BlockId { height, hash };
 
