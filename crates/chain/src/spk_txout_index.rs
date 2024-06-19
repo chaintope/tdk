@@ -138,8 +138,8 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         &self,
         range: impl RangeBounds<I>,
     ) -> impl DoubleEndedIterator<Item = (&I, OutPoint)> {
-        use tapyrus::hashes::Hash;
         use core::ops::Bound::*;
+        use tapyrus::hashes::Hash;
         let min_op = OutPoint {
             txid: Txid::all_zeros(),
             vout: u32::MIN,

@@ -9,9 +9,9 @@ use bdk_chain::{
     },
     BlockId,
 };
-use tapyrus::{block::Header, hashes::Hash, BlockHash};
 use proptest::prelude::*;
 use tapyrus::block::XField;
+use tapyrus::{block::Header, hashes::Hash, BlockHash};
 
 #[macro_use]
 mod common;

@@ -9,8 +9,8 @@ use bdk_chain::{
     Append, DescriptorExt, DescriptorId,
 };
 
-use tapyrus::{secp256k1::Secp256k1, Amount, OutPoint, ScriptBuf, Transaction, TxOut};
 use miniscript::{Descriptor, DescriptorPublicKey};
+use tapyrus::{secp256k1::Secp256k1, Amount, OutPoint, ScriptBuf, Transaction, TxOut};
 
 use crate::common::DESCRIPTORS;
 

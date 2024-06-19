@@ -1,6 +1,6 @@
 use crate::{
-    tapyrus::{secp256k1::Secp256k1, ScriptBuf},
     miniscript::{Descriptor, DescriptorPublicKey},
+    tapyrus::{secp256k1::Secp256k1, ScriptBuf},
 };
 use core::{borrow::Borrow, ops::Bound, ops::RangeBounds};
 
@@ -135,10 +135,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        tapyrus::secp256k1::Secp256k1,
         keychain::KeychainTxOutIndex,
         miniscript::{Descriptor, DescriptorPublicKey},
         spk_iter::{SpkIterator, BIP32_MAX_INDEX},
+        tapyrus::secp256k1::Secp256k1,
     };
 
     #[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]

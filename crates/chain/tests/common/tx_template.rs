@@ -4,11 +4,11 @@ use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 
 use bdk_chain::{tx_graph::TxGraph, Anchor, SpkTxOutIndex};
+use miniscript::Descriptor;
 use tapyrus::{
     locktime::absolute::LockTime, secp256k1::Secp256k1, transaction, Amount, OutPoint, ScriptBuf,
     Sequence, Transaction, TxIn, TxOut, Txid, Witness,
 };
-use miniscript::Descriptor;
 
 /// Template for creating a transaction in `TxGraph`.
 ///

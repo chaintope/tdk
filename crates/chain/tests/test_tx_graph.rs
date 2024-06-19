@@ -9,15 +9,15 @@ use bdk_chain::{
     tx_graph::{ChangeSet, TxGraph},
     Anchor, Append, BlockId, ChainOracle, ChainPosition, ConfirmationHeightAnchor,
 };
-use tapyrus::{
-    absolute, hashes::Hash, transaction, Amount, BlockHash, OutPoint, ScriptBuf, SignedAmount,
-    Transaction, TxIn, TxOut, Txid,
-};
 use common::*;
 use core::iter;
 use rand::RngCore;
 use std::sync::Arc;
 use std::vec;
+use tapyrus::{
+    absolute, hashes::Hash, transaction, Amount, BlockHash, OutPoint, ScriptBuf, SignedAmount,
+    Transaction, TxIn, TxOut, Txid,
+};
 
 #[test]
 fn insert_txouts() {

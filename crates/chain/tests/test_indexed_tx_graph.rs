@@ -12,10 +12,10 @@ use bdk_chain::{
     local_chain::LocalChain,
     tx_graph, ChainPosition, ConfirmationHeightAnchor, DescriptorExt,
 };
+use miniscript::Descriptor;
 use tapyrus::{
     secp256k1::Secp256k1, Amount, OutPoint, Script, ScriptBuf, Transaction, TxIn, TxOut,
 };
-use miniscript::Descriptor;
 
 /// Ensure [`IndexedTxGraph::insert_relevant_txs`] can successfully index transactions NOT presented
 /// in topological order.

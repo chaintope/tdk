@@ -95,12 +95,12 @@ use crate::{
 use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 use core::fmt::{self, Formatter};
 use core::{
     convert::Infallible,
     ops::{Deref, RangeInclusive},
 };
+use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 
 /// A graph of transactions and spends.
 ///

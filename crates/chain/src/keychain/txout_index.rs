@@ -5,11 +5,11 @@ use crate::{
     spk_iter::BIP32_MAX_INDEX,
     DescriptorExt, DescriptorId, SpkIterator, SpkTxOutIndex,
 };
-use tapyrus::{hashes::Hash, Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 use core::{
     fmt::Debug,
     ops::{Bound, RangeBounds},
 };
+use tapyrus::{hashes::Hash, Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 
 use crate::Append;
 

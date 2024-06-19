@@ -6,8 +6,8 @@ mod common;
 use std::collections::{BTreeSet, HashSet};
 
 use bdk_chain::{keychain::Balance, BlockId};
-use tapyrus::{Amount, OutPoint, Script};
 use common::*;
+use tapyrus::{Amount, OutPoint, Script};
 
 #[allow(dead_code)]
 struct Scenario<'a> {
