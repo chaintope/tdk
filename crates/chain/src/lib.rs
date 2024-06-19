@@ -20,7 +20,6 @@
 #![no_std]
 #![warn(missing_docs)]
 
-pub use bitcoin;
 pub use tapyrus;
 mod spk_txout_index;
 pub use spk_txout_index::*;
