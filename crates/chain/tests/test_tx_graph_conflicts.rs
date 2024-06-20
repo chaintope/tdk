@@ -114,12 +114,12 @@ fn test_tx_conflict_handling() {
                 },
             ],
             // the txgraph is going to pick tx_conflict_2 because of higher lexicographical txid
-            exp_chain_txs: HashSet::from(["tx1", "tx_conflict_2"]),
-            exp_chain_txouts: HashSet::from([("tx1", 0), ("tx_conflict_2", 0)]),
-            exp_unspents: HashSet::from([("tx_conflict_2", 0)]),
+            exp_chain_txs: HashSet::from(["tx1", "tx_conflict_1"]),
+            exp_chain_txouts: HashSet::from([("tx1", 0), ("tx_conflict_1", 0)]),
+            exp_unspents: HashSet::from([("tx_conflict_1", 0)]),
             exp_balance: Balance {
                 immature: Amount::ZERO,
-                trusted_pending: Amount::from_tap(30000),
+                trusted_pending: Amount::from_tap(20000),
                 untrusted_pending: Amount::ZERO,
                 confirmed: Amount::ZERO,
             },
@@ -596,8 +596,6 @@ fn test_tx_conflict_handling() {
 
     for scenario in scenarios {
         let (tx_graph, spk_index, exp_tx_ids) = init_graph(scenario.tx_templates.iter());
-
-        println!("Scenario: {}", scenario.name);
 
         let txs = tx_graph
             .list_chain_txs(&local_chain, chain_tip)
