@@ -133,8 +133,8 @@ const DEFAULT_LOOKAHEAD: u32 = 25;
 /// ## Synopsis
 ///
 /// ```
-/// use bdk_chain::keychain::KeychainTxOutIndex;
-/// # use bdk_chain::{ miniscript::{Descriptor, DescriptorPublicKey} };
+/// use tdk_chain::keychain::KeychainTxOutIndex;
+/// # use tdk_chain::{ miniscript::{Descriptor, DescriptorPublicKey} };
 /// # use core::str::FromStr;
 ///
 /// // imagine our service has internal and external addresses but also addresses for users
@@ -149,7 +149,7 @@ const DEFAULT_LOOKAHEAD: u32 = 25;
 ///
 /// let mut txout_index = KeychainTxOutIndex::<MyKeychain>::default();
 ///
-/// # let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
+/// # let secp = tdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
 /// # let (external_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/0/*)").unwrap();
 /// # let (internal_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/*)").unwrap();
 /// # let (descriptor_42, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/2/*)").unwrap();

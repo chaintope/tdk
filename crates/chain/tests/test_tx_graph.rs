@@ -2,13 +2,6 @@
 
 #[macro_use]
 mod common;
-use bdk_chain::tx_graph::CalculateFeeError;
-use bdk_chain::{
-    collections::*,
-    local_chain::LocalChain,
-    tx_graph::{ChangeSet, TxGraph},
-    Anchor, Append, BlockId, ChainOracle, ChainPosition, ConfirmationHeightAnchor,
-};
 use common::*;
 use core::iter;
 use rand::RngCore;
@@ -17,6 +10,13 @@ use std::vec;
 use tapyrus::{
     absolute, hashes::Hash, transaction, Amount, BlockHash, OutPoint, ScriptBuf, SignedAmount,
     Transaction, TxIn, TxOut, Txid,
+};
+use tdk_chain::tx_graph::CalculateFeeError;
+use tdk_chain::{
+    collections::*,
+    local_chain::LocalChain,
+    tx_graph::{ChangeSet, TxGraph},
+    Anchor, Append, BlockId, ChainOracle, ChainPosition, ConfirmationHeightAnchor,
 };
 
 #[test]

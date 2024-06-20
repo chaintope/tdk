@@ -12,9 +12,9 @@
 use alloc::boxed::Box;
 use core::convert::AsRef;
 
-use bdk_chain::ConfirmationTime;
 use bitcoin::blockdata::transaction::{OutPoint, Sequence, TxOut};
 use bitcoin::psbt;
+use tdk_chain::ConfirmationTime;
 
 use serde::{Deserialize, Serialize};
 

@@ -2,15 +2,15 @@ use std::collections::BTreeSet;
 use std::thread::JoinHandle;
 use std::usize;
 
-use bdk_chain::collections::BTreeMap;
-use bdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
-use bdk_chain::Anchor;
-use bdk_chain::{
+use esplora_client::TxStatus;
+use tdk_chain::collections::BTreeMap;
+use tdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
+use tdk_chain::Anchor;
+use tdk_chain::{
     bitcoin::{Amount, BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     local_chain::CheckPoint,
     BlockId, ConfirmationTimeHeightAnchor, TxGraph,
 };
-use esplora_client::TxStatus;
 
 use crate::anchor_from_status;
 
@@ -214,7 +214,7 @@ fn chain_update<A: Anchor>(
 }
 
 /// This performs a full scan to get an update for the [`TxGraph`] and
-/// [`KeychainTxOutIndex`](bdk_chain::keychain::KeychainTxOutIndex).
+/// [`KeychainTxOutIndex`](tdk_chain::keychain::KeychainTxOutIndex).
 fn full_scan_for_index_and_graph_blocking<K: Ord + Clone>(
     client: &esplora_client::BlockingClient,
     keychain_spks: BTreeMap<K, impl IntoIterator<Item = (u32, ScriptBuf)>>,
@@ -397,25 +397,25 @@ fn sync_for_index_and_graph_blocking(
 #[cfg(test)]
 mod test {
     use crate::blocking_ext::{chain_update, fetch_latest_blocks};
-    use bdk_chain::bitcoin::hashes::Hash;
-    use bdk_chain::bitcoin::Txid;
-    use bdk_chain::local_chain::LocalChain;
-    use bdk_chain::BlockId;
     use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
     use esplora_client::{BlockHash, Builder};
     use std::collections::{BTreeMap, BTreeSet};
     use std::time::Duration;
+    use tdk_chain::bitcoin::hashes::Hash;
+    use tdk_chain::bitcoin::Txid;
+    use tdk_chain::local_chain::LocalChain;
+    use tdk_chain::BlockId;
 
     macro_rules! h {
         ($index:literal) => {{
-            bdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
+            tdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
         }};
     }
 
     macro_rules! local_chain {
         [ $(($height:expr, $block_hash:expr)), * ] => {{
             #[allow(unused_mut)]
-            bdk_chain::local_chain::LocalChain::from_blocks([$(($height, $block_hash).into()),*].into_iter().collect())
+            tdk_chain::local_chain::LocalChain::from_blocks([$(($height, $block_hash).into()),*].into_iter().collect())
                 .expect("chain must have genesis block")
         }};
     }
@@ -714,10 +714,10 @@ mod test {
                 .request_heights
                 .iter()
                 .map(|&h| {
-                    let anchor_blockhash: BlockHash = bdk_chain::bitcoin::hashes::Hash::hash(
+                    let anchor_blockhash: BlockHash = tdk_chain::bitcoin::hashes::Hash::hash(
                         &format!("hash_at_height_{}", h).into_bytes(),
                     );
-                    let txid: Txid = bdk_chain::bitcoin::hashes::Hash::hash(
+                    let txid: Txid = tdk_chain::bitcoin::hashes::Hash::hash(
                         &format!("txid_at_height_{}", h).into_bytes(),
                     );
                     let anchor = BlockId {

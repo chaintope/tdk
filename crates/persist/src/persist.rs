@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::boxed::Box;
-use bdk_chain::Append;
 use core::fmt;
+use tdk_chain::Append;
 
 /// `Persist` wraps a [`PersistBackend`] to create a convenient staging area for changes (`C`)
 /// before they are persisted.

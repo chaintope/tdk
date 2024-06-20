@@ -3,15 +3,6 @@ use std::{
     sync::Mutex,
 };
 
-use bdk_chain::{
-    bitcoin::{constants::genesis_block, Address, Network, Txid},
-    collections::BTreeSet,
-    indexed_tx_graph::{self, IndexedTxGraph},
-    keychain,
-    local_chain::{self, LocalChain},
-    spk_client::{FullScanRequest, SyncRequest},
-    Append, ConfirmationHeightAnchor,
-};
 use bdk_electrum::{
     electrum_client::{self, Client, ElectrumApi},
     BdkElectrumClient,
@@ -20,6 +11,15 @@ use example_cli::{
     anyhow::{self, Context},
     clap::{self, Parser, Subcommand},
     Keychain,
+};
+use tdk_chain::{
+    bitcoin::{constants::genesis_block, Address, Network, Txid},
+    collections::BTreeSet,
+    indexed_tx_graph::{self, IndexedTxGraph},
+    keychain,
+    local_chain::{self, LocalChain},
+    spk_client::{FullScanRequest, SyncRequest},
+    Append, ConfirmationHeightAnchor,
 };
 
 const DB_MAGIC: &[u8] = b"bdk_example_electrum";

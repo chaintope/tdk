@@ -1,11 +1,11 @@
 [package]
-name = "bdk_chain"
+name = "tdk_chain"
 version = "0.15.0"
 edition = "2021"
 rust-version = "1.63"
 homepage = "https://bitcoindevkit.org"
 repository = "https://github.com/bitcoindevkit/bdk"
-documentation = "https://docs.rs/bdk_chain"
+documentation = "https://docs.rs/tdk_chain"
 description = "Collection of core structures for Bitcoin Dev Kit."
 license = "MIT OR Apache-2.0"
 readme = "README.md"

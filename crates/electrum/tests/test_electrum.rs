@@ -1,12 +1,12 @@
-use bdk_chain::{
+use bdk_electrum::BdkElectrumClient;
+use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+use tdk_chain::{
     bitcoin::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     keychain::Balance,
     local_chain::LocalChain,
     spk_client::SyncRequest,
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
-use bdk_electrum::BdkElectrumClient;
-use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 
 fn get_balance(
     recv_chain: &LocalChain,
@@ -41,7 +41,7 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
         .get_new_address(None, None)?
         .assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
-    let addr_to_track = Address::from_script(&spk_to_track, bdk_chain::bitcoin::Network::Regtest)?;
+    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::bitcoin::Network::Regtest)?;
 
     // Setup receiver.
     let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.bitcoind.client.get_block_hash(0)?);
@@ -134,7 +134,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
         .get_new_address(None, None)?
         .assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
-    let addr_to_track = Address::from_script(&spk_to_track, bdk_chain::bitcoin::Network::Regtest)?;
+    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::bitcoin::Network::Regtest)?;
 
     // Setup receiver.
     let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.bitcoind.client.get_block_hash(0)?);

@@ -1,17 +1,17 @@
 #![cfg(feature = "miniscript")]
 
-use bdk_chain::{indexed_tx_graph, keychain, local_chain, tapyrus::Network, Anchor, Append};
+use tdk_chain::{indexed_tx_graph, keychain, local_chain, tapyrus::Network, Anchor, Append};
 
-/// Changes from a combination of [`bdk_chain`] structures.
+/// Changes from a combination of [`tdk_chain`] structures.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(
     feature = "serde",
-    derive(bdk_chain::serde::Deserialize, bdk_chain::serde::Serialize),
+    derive(tdk_chain::serde::Deserialize, tdk_chain::serde::Serialize),
     serde(
-        crate = "bdk_chain::serde",
+        crate = "tdk_chain::serde",
         bound(
-            deserialize = "A: Ord + bdk_chain::serde::Deserialize<'de>, K: Ord + bdk_chain::serde::Deserialize<'de>",
-            serialize = "A: Ord + bdk_chain::serde::Serialize, K: Ord + bdk_chain::serde::Serialize",
+            deserialize = "A: Ord + tdk_chain::serde::Deserialize<'de>, K: Ord + tdk_chain::serde::Deserialize<'de>",
+            serialize = "A: Ord + tdk_chain::serde::Serialize, K: Ord + tdk_chain::serde::Serialize",
         ),
     )
 )]

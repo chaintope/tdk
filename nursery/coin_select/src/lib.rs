@@ -5,15 +5,15 @@ extern crate std;
 
 #[macro_use]
 extern crate alloc;
-extern crate bdk_chain;
+extern crate tdk_chain;
 
 use alloc::vec::Vec;
-use bdk_chain::{
+use bitcoin::{absolute, transaction, Transaction, TxOut};
+use core::fmt::{Debug, Display};
+use tdk_chain::{
     bitcoin,
     collections::{BTreeSet, HashMap},
 };
-use bitcoin::{absolute, transaction, Transaction, TxOut};
-use core::fmt::{Debug, Display};
 
 mod coin_selector;
 pub use coin_selector::*;

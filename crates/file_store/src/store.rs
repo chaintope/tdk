@@ -1,7 +1,5 @@
 use crate::{bincode_options, EntryIter, FileError, IterError};
 use anyhow::anyhow;
-use bdk_chain::Append;
-use bdk_persist::PersistBackend;
 use bincode::Options;
 use std::{
     fmt::{self, Debug},
@@ -10,6 +8,8 @@ use std::{
     marker::PhantomData,
     path::Path,
 };
+use tdk_chain::Append;
+use tdk_persist::PersistBackend;
 
 /// Persists an append-only list of changesets (`C`) to a single file.
 #[derive(Debug)]

@@ -2,7 +2,7 @@
 
 #[macro_use]
 mod common;
-use bdk_chain::{
+use tdk_chain::{
     collections::BTreeMap,
     indexed_tx_graph::Indexer,
     keychain::{self, ChangeSet, KeychainTxOutIndex},
@@ -21,7 +21,7 @@ enum TestKeychain {
 }
 
 fn parse_descriptor(descriptor: &str) -> Descriptor<DescriptorPublicKey> {
-    let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
+    let secp = tdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
     Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, descriptor)
         .unwrap()
         .0
@@ -31,8 +31,8 @@ fn init_txout_index(
     external_descriptor: Descriptor<DescriptorPublicKey>,
     internal_descriptor: Descriptor<DescriptorPublicKey>,
     lookahead: u32,
-) -> bdk_chain::keychain::KeychainTxOutIndex<TestKeychain> {
-    let mut txout_index = bdk_chain::keychain::KeychainTxOutIndex::<TestKeychain>::new(lookahead);
+) -> tdk_chain::keychain::KeychainTxOutIndex<TestKeychain> {
+    let mut txout_index = tdk_chain::keychain::KeychainTxOutIndex::<TestKeychain>::new(lookahead);
 
     let _ = txout_index.insert_descriptor(TestKeychain::External, external_descriptor);
     let _ = txout_index.insert_descriptor(TestKeychain::Internal, internal_descriptor);
@@ -142,7 +142,7 @@ fn test_apply_changeset_with_different_descriptors_to_same_keychain() {
 
 #[test]
 fn test_set_all_derivation_indices() {
-    use bdk_chain::indexed_tx_graph::Indexer;
+    use tdk_chain::indexed_tx_graph::Indexer;
 
     let external_descriptor = parse_descriptor(DESCRIPTORS[0]);
     let internal_descriptor = parse_descriptor(DESCRIPTORS[1]);
@@ -635,14 +635,14 @@ fn lookahead_to_target() {
 /// This includes properly refilling the lookahead for said descriptors.
 #[test]
 fn index_txout_after_changing_descriptor_under_keychain() {
-    let secp = bdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
+    let secp = tdk_chain::tapyrus::secp256k1::Secp256k1::signing_only();
     let (desc_a, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, DESCRIPTORS[0])
         .expect("descriptor 0 must be valid");
     let (desc_b, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, DESCRIPTORS[1])
         .expect("descriptor 1 must be valid");
     let desc_id_a = desc_a.descriptor_id();
 
-    let mut txout_index = bdk_chain::keychain::KeychainTxOutIndex::<()>::new(10);
+    let mut txout_index = tdk_chain::keychain::KeychainTxOutIndex::<()>::new(10);
 
     // Introduce `desc_a` under keychain `()` and replace the descriptor.
     let _ = txout_index.insert_descriptor((), desc_a.clone());
@@ -666,7 +666,7 @@ fn index_txout_after_changing_descriptor_under_keychain() {
         );
         assert_eq!(
             index_changeset,
-            bdk_chain::keychain::ChangeSet {
+            tdk_chain::keychain::ChangeSet {
                 keychains_added: BTreeMap::default(),
                 last_revealed: [(desc_id_a, i)].into(),
             },

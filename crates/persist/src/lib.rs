@@ -4,5 +4,7 @@
 
 mod changeset;
 mod persist;
+
+#[cfg(feature = "miniscript")]
 pub use changeset::*;
 pub use persist::*;

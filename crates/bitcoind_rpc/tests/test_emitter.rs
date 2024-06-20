@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bdk_bitcoind_rpc::Emitter;
-use bdk_chain::{
+use bdk_testenv::{anyhow, TestEnv};
+use bitcoin::{hashes::Hash, Block, OutPoint, ScriptBuf, WScriptHash};
+use bitcoincore_rpc::RpcApi;
+use tdk_chain::{
     bitcoin::{Address, Amount, Txid},
     keychain::Balance,
     local_chain::{CheckPoint, LocalChain},
     Append, BlockId, IndexedTxGraph, SpkTxOutIndex,
 };
-use bdk_testenv::{anyhow, TestEnv};
-use bitcoin::{hashes::Hash, Block, OutPoint, ScriptBuf, WScriptHash};
-use bitcoincore_rpc::RpcApi;
 
 /// Ensure that blocks are emitted in order even after reorg.
 ///
@@ -96,7 +96,7 @@ pub fn test_sync_local_chain() -> anyhow::Result<()> {
             if exp_height == exp_hashes.len() - reorged_blocks.len() {
                 core::iter::once((height, Some(hash)))
                     .chain((height + 1..exp_hashes.len() as u32).map(|h| (h, None)))
-                    .collect::<bdk_chain::local_chain::ChangeSet>()
+                    .collect::<tdk_chain::local_chain::ChangeSet>()
             } else {
                 BTreeMap::from([(height, Some(hash))])
             },
@@ -405,7 +405,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
 
 /// Ensure avoid-re-emission-logic is sound when [`Emitter`] is synced to tip.
 ///
-/// The receiver (bdk_chain structures) is synced to the chain tip, and there is txs in the mempool.
+/// The receiver (tdk_chain structures) is synced to the chain tip, and there is txs in the mempool.
 /// When we call Emitter::mempool multiple times, mempool txs should not be re-emitted, even if the
 /// chain tip is extended.
 #[test]

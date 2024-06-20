@@ -2,16 +2,16 @@
 
 use std::ops::{Bound, RangeBounds};
 
-use bdk_chain::{
+use proptest::prelude::*;
+use tapyrus::block::XField;
+use tapyrus::{block::Header, hashes::Hash, BlockHash};
+use tdk_chain::{
     local_chain::{
         AlterCheckPointError, ApplyHeaderError, CannotConnectError, ChangeSet, CheckPoint,
         LocalChain, MissingGenesisError,
     },
     BlockId,
 };
-use proptest::prelude::*;
-use tapyrus::block::XField;
-use tapyrus::{block::Header, hashes::Hash, BlockHash};
 
 #[macro_use]
 mod common;

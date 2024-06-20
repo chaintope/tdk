@@ -5,7 +5,9 @@ use bdk_file_store::Store;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{cmp::Reverse, collections::BTreeMap, path::PathBuf, sync::Mutex, time::Duration};
 
-use bdk_chain::{
+pub use bdk_file_store;
+pub use clap;
+use tdk_chain::{
     bitcoin::{
         absolute, address,
         secp256k1::Secp256k1,
@@ -21,9 +23,7 @@ use bdk_chain::{
     },
     Anchor, Append, ChainOracle, DescriptorExt, FullTxOut,
 };
-pub use bdk_file_store;
-use bdk_persist::{Persist, PersistBackend};
-pub use clap;
+use tdk_persist::{Persist, PersistBackend};
 
 use clap::{Parser, Subcommand};
 

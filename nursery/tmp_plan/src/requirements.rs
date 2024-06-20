@@ -1,5 +1,5 @@
-use bdk_chain::{bitcoin, collections::*, miniscript};
 use core::ops::Deref;
+use tdk_chain::{bitcoin, collections::*, miniscript};
 
 use bitcoin::{
     bip32,

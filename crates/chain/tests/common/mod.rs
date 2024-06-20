@@ -7,7 +7,7 @@ pub use tx_template::*;
 #[allow(unused_macros)]
 macro_rules! block_id {
     ($height:expr, $hash:literal) => {{
-        bdk_chain::BlockId {
+        tdk_chain::BlockId {
             height: $height,
             hash: tapyrus::hashes::Hash::hash($hash.as_bytes()),
         }
@@ -25,7 +25,7 @@ macro_rules! h {
 macro_rules! local_chain {
     [ $(($height:expr, $block_hash:expr)), * ] => {{
         #[allow(unused_mut)]
-        bdk_chain::local_chain::LocalChain::from_blocks([$(($height, $block_hash).into()),*].into_iter().collect())
+        tdk_chain::local_chain::LocalChain::from_blocks([$(($height, $block_hash).into()),*].into_iter().collect())
             .expect("chain must have genesis block")
     }};
 }
@@ -34,7 +34,7 @@ macro_rules! local_chain {
 macro_rules! chain_update {
     [ $(($height:expr, $hash:expr)), * ] => {{
         #[allow(unused_mut)]
-        bdk_chain::local_chain::LocalChain::from_blocks([$(($height, $hash).into()),*].into_iter().collect())
+        tdk_chain::local_chain::LocalChain::from_blocks([$(($height, $hash).into()),*].into_iter().collect())
             .expect("chain must have genesis block")
             .tip()
     }};
@@ -48,10 +48,10 @@ macro_rules! changeset {
         checkpoints: [ $(( $height:expr, $cp_to:expr )),* ]
         $(,txids: [ $(( $txid:expr, $tx_to:expr )),* ])?
     ) => {{
-        use bdk_chain::collections::BTreeMap;
+        use tdk_chain::collections::BTreeMap;
 
         #[allow(unused_mut)]
-        bdk_chain::sparse_chain::ChangeSet::<$ind> {
+        tdk_chain::sparse_chain::ChangeSet::<$ind> {
             checkpoints: {
                 let mut changes = BTreeMap::default();
                 $(changes.insert($height, $cp_to);)*

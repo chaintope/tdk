@@ -1,12 +1,3 @@
-use bdk_chain::{
-    bitcoin::{
-        address::NetworkChecked, block::Header, hash_types::TxMerkleNode, hashes::Hash,
-        secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash, CompactTarget,
-        ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
-    },
-    local_chain::CheckPoint,
-    BlockId,
-};
 use bitcoincore_rpc::{
     bitcoincore_rpc_json::{GetBlockTemplateModes, GetBlockTemplateRules},
     RpcApi,
@@ -18,6 +9,15 @@ pub use electrsd::bitcoind::bitcoincore_rpc;
 pub use electrsd::electrum_client;
 use electrsd::electrum_client::ElectrumApi;
 use std::time::Duration;
+use tdk_chain::{
+    bitcoin::{
+        address::NetworkChecked, block::Header, hash_types::TxMerkleNode, hashes::Hash,
+        secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash, CompactTarget,
+        ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
+    },
+    local_chain::CheckPoint,
+    BlockId,
+};
 
 /// Struct for running a regtest environment with a single `bitcoind` node with an `electrs`
 /// instance connected to it.
@@ -119,16 +119,16 @@ impl TestEnv {
 
         let txdata = vec![Transaction {
             version: transaction::Version::ONE,
-            lock_time: bdk_chain::bitcoin::absolute::LockTime::from_height(0)?,
+            lock_time: tdk_chain::bitcoin::absolute::LockTime::from_height(0)?,
             input: vec![TxIn {
-                previous_output: bdk_chain::bitcoin::OutPoint::default(),
+                previous_output: tdk_chain::bitcoin::OutPoint::default(),
                 script_sig: ScriptBuf::builder()
                     .push_int(bt.height as _)
                     // randomn number so that re-mining creates unique block
                     .push_int(random())
                     .into_script(),
-                sequence: bdk_chain::bitcoin::Sequence::default(),
-                witness: bdk_chain::bitcoin::Witness::new(),
+                sequence: tdk_chain::bitcoin::Sequence::default(),
+                witness: tdk_chain::bitcoin::Witness::new(),
             }],
             output: vec![TxOut {
                 value: Amount::ZERO,
@@ -144,7 +144,7 @@ impl TestEnv {
 
         let mut block = Block {
             header: Header {
-                version: bdk_chain::bitcoin::block::Version::default(),
+                version: tdk_chain::bitcoin::block::Version::default(),
                 prev_blockhash: bt.previous_block_hash,
                 merkle_root: TxMerkleNode::all_zeros(),
                 time: Ord::max(bt.min_time, std::time::UNIX_EPOCH.elapsed()?.as_secs()) as u32,

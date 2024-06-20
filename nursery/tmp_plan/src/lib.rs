@@ -14,7 +14,6 @@
 //!
 //! Once you've obstained signatures, hash pre-images etc required by the plan, it can create a
 //! witness/script_sig for the input.
-use bdk_chain::{bitcoin, collections::*, miniscript};
 use bitcoin::{
     absolute,
     bip32::{DerivationPath, Fingerprint, KeySource},
@@ -29,6 +28,7 @@ use miniscript::{
     descriptor::{InnerXKey, Tr},
     hash256, DefiniteDescriptorKey, Descriptor, DescriptorPublicKey, ScriptContext, ToPublicKey,
 };
+use tdk_chain::{bitcoin, collections::*, miniscript};
 
 pub(crate) fn varint_len(v: usize) -> usize {
     bitcoin::VarInt(v as u64).size() as usize

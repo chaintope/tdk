@@ -1,8 +1,8 @@
-use bdk_chain::{bitcoin, miniscript};
 use bitcoin::{
     bip32::DerivationPath,
     hashes::{hash160, ripemd160, sha256},
 };
+use tdk_chain::{bitcoin, miniscript};
 
 use super::*;
 use crate::{hash256, varint_len, DefiniteDescriptorKey};
