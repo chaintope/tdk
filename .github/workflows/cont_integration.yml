@@ -35,18 +35,12 @@ jobs:
           cargo update -p home --precise "0.5.5"
           cargo update -p proptest --precise "1.2.0"
           cargo update -p url --precise "2.5.0"
-      - name: Build Chain
+      - name: Build
         working-directory: ./crates/chain
-        run: cargo build ${{ matrix.features }}
-      - name: "[Pending]Build"
-        run: echo "Pending other crates"
-#        run: cargo build ${{ matrix.features }}
-      - name: Test Chain
+        run: cargo build -p "tdk_*" ${{ matrix.features }}
+      - name: Test
         working-directory: ./crates/chain
-        run: cargo test ${{ matrix.features }}
-      - name: "[Pending]Test"
-        run: echo "Pending other crates"
-#        run: cargo test ${{ matrix.features }}
+        run: cargo test -p "tdk_*" ${{ matrix.features }}
 
   check-no-std:
     name: Check no_std
@@ -140,6 +134,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --manifest-path crates/chain/Cargo.toml --all-features --all-targets -- -D warnings
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path crates/persist/Cargo.toml --all-features --all-targets -- -D warnings
 #      - uses: actions-rs/clippy-check@v1
 #        with:
 #          token: ${{ secrets.GITHUB_TOKEN }}
