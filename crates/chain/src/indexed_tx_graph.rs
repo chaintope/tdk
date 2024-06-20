@@ -1,7 +1,7 @@
 //! Contains the [`IndexedTxGraph`] and associated types. Refer to the
 //! [`IndexedTxGraph`] documentation for more.
 use alloc::vec::Vec;
-use bitcoin::{Block, OutPoint, Transaction, TxOut, Txid};
+use tapyrus::{Block, OutPoint, Transaction, TxOut, Txid};
 
 use crate::{
     tx_graph::{self, TxGraph},

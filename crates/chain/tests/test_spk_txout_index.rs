@@ -1,5 +1,5 @@
 use bdk_chain::{indexed_tx_graph::Indexer, SpkTxOutIndex};
-use bitcoin::{
+use tapyrus::{
     absolute, transaction, Amount, OutPoint, ScriptBuf, SignedAmount, Transaction, TxIn, TxOut,
 };
 
@@ -17,28 +17,28 @@ fn spk_txout_sent_and_received() {
         lock_time: absolute::LockTime::ZERO,
         input: vec![],
         output: vec![TxOut {
-            value: Amount::from_sat(42_000),
+            value: Amount::from_tap(42_000),
             script_pubkey: spk1.clone(),
         }],
     };
 
     assert_eq!(
         index.sent_and_received(&tx1, ..),
-        (Amount::from_sat(0), Amount::from_sat(42_000))
+        (Amount::from_tap(0), Amount::from_tap(42_000))
     );
     assert_eq!(
         index.sent_and_received(&tx1, ..1),
-        (Amount::from_sat(0), Amount::from_sat(42_000))
+        (Amount::from_tap(0), Amount::from_tap(42_000))
     );
     assert_eq!(
         index.sent_and_received(&tx1, 1..),
-        (Amount::from_sat(0), Amount::from_sat(0))
+        (Amount::from_tap(0), Amount::from_tap(0))
     );
-    assert_eq!(index.net_value(&tx1, ..), SignedAmount::from_sat(42_000));
+    assert_eq!(index.net_value(&tx1, ..), SignedAmount::from_tap(42_000));
     index.index_tx(&tx1);
     assert_eq!(
         index.sent_and_received(&tx1, ..),
-        (Amount::from_sat(0), Amount::from_sat(42_000)),
+        (Amount::from_tap(0), Amount::from_tap(42_000)),
         "shouldn't change after scanning"
     );
 
@@ -54,29 +54,29 @@ fn spk_txout_sent_and_received() {
         }],
         output: vec![
             TxOut {
-                value: Amount::from_sat(20_000),
+                value: Amount::from_tap(20_000),
                 script_pubkey: spk2,
             },
             TxOut {
                 script_pubkey: spk1,
-                value: Amount::from_sat(30_000),
+                value: Amount::from_tap(30_000),
             },
         ],
     };
 
     assert_eq!(
         index.sent_and_received(&tx2, ..),
-        (Amount::from_sat(42_000), Amount::from_sat(50_000))
+        (Amount::from_tap(42_000), Amount::from_tap(50_000))
     );
     assert_eq!(
         index.sent_and_received(&tx2, ..1),
-        (Amount::from_sat(42_000), Amount::from_sat(30_000))
+        (Amount::from_tap(42_000), Amount::from_tap(30_000))
     );
     assert_eq!(
         index.sent_and_received(&tx2, 1..),
-        (Amount::from_sat(0), Amount::from_sat(20_000))
+        (Amount::from_tap(0), Amount::from_tap(20_000))
     );
-    assert_eq!(index.net_value(&tx2, ..), SignedAmount::from_sat(8_000));
+    assert_eq!(index.net_value(&tx2, ..), SignedAmount::from_tap(8_000));
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn mark_used() {
         lock_time: absolute::LockTime::ZERO,
         input: vec![],
         output: vec![TxOut {
-            value: Amount::from_sat(42_000),
+            value: Amount::from_tap(42_000),
             script_pubkey: spk1,
         }],
     };

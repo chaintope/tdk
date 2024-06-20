@@ -4,11 +4,11 @@ use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 
 use bdk_chain::{tx_graph::TxGraph, Anchor, SpkTxOutIndex};
-use bitcoin::{
+use miniscript::Descriptor;
+use tapyrus::{
     locktime::absolute::LockTime, secp256k1::Secp256k1, transaction, Amount, OutPoint, ScriptBuf,
     Sequence, Transaction, TxIn, TxOut, Txid, Witness,
 };
-use miniscript::Descriptor;
 
 /// Template for creating a transaction in `TxGraph`.
 ///
@@ -79,7 +79,7 @@ pub fn init_graph<'a, A: Anchor + Clone + 'a>(
                 .map(|input| match input {
                     TxInTemplate::Bogus => TxIn {
                         previous_output: OutPoint::new(
-                            bitcoin::hashes::Hash::hash(
+                            tapyrus::hashes::Hash::hash(
                                 Alphanumeric
                                     .sample_string(&mut rand::thread_rng(), 20)
                                     .as_bytes(),
@@ -114,11 +114,11 @@ pub fn init_graph<'a, A: Anchor + Clone + 'a>(
                 .iter()
                 .map(|output| match &output.spk_index {
                     None => TxOut {
-                        value: Amount::from_sat(output.value),
+                        value: Amount::from_tap(output.value),
                         script_pubkey: ScriptBuf::new(),
                     },
                     Some(index) => TxOut {
-                        value: Amount::from_sat(output.value),
+                        value: Amount::from_tap(output.value),
                         script_pubkey: spk_index.spk_at_index(index).unwrap().to_owned(),
                     },
                 })

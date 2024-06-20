@@ -1,6 +1,6 @@
 use crate::{
-    bitcoin::{secp256k1::Secp256k1, ScriptBuf},
     miniscript::{Descriptor, DescriptorPublicKey},
+    tapyrus::{secp256k1::Secp256k1, ScriptBuf},
 };
 use core::{borrow::Borrow, ops::Bound, ops::RangeBounds};
 
@@ -18,10 +18,10 @@ pub const BIP32_MAX_INDEX: u32 = (1 << 31) - 1;
 /// ```
 /// use bdk_chain::SpkIterator;
 /// # use miniscript::{Descriptor, DescriptorPublicKey};
-/// # use bitcoin::{secp256k1::Secp256k1};
+/// # use tapyrus::{secp256k1::Secp256k1};
 /// # use std::str::FromStr;
-/// # let secp = bitcoin::secp256k1::Secp256k1::signing_only();
-/// # let (descriptor, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "wpkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/0)").unwrap();
+/// # let secp = tapyrus::secp256k1::Secp256k1::signing_only();
+/// # let (descriptor, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/0)").unwrap();
 /// # let external_spk_0 = descriptor.at_derivation_index(0).unwrap().script_pubkey();
 /// # let external_spk_3 = descriptor.at_derivation_index(3).unwrap().script_pubkey();
 /// # let external_spk_4 = descriptor.at_derivation_index(4).unwrap().script_pubkey();
@@ -36,7 +36,7 @@ pub struct SpkIterator<D> {
     next_index: u32,
     end: u32,
     descriptor: D,
-    secp: Secp256k1<bitcoin::secp256k1::VerifyOnly>,
+    secp: Secp256k1<tapyrus::secp256k1::VerifyOnly>,
 }
 
 impl<D> SpkIterator<D>
@@ -135,10 +135,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        bitcoin::secp256k1::Secp256k1,
         keychain::KeychainTxOutIndex,
         miniscript::{Descriptor, DescriptorPublicKey},
         spk_iter::{SpkIterator, BIP32_MAX_INDEX},
+        tapyrus::secp256k1::Secp256k1,
     };
 
     #[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
@@ -155,8 +155,8 @@ mod test {
         let mut txout_index = KeychainTxOutIndex::<TestKeychain>::new(0);
 
         let secp = Secp256k1::signing_only();
-        let (external_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "tr([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/0/*)").unwrap();
-        let (internal_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "tr([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/*)").unwrap();
+        let (external_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/0/*)").unwrap();
+        let (internal_descriptor,_) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/*)").unwrap();
 
         let _ = txout_index.insert_descriptor(TestKeychain::External, external_descriptor.clone());
         let _ = txout_index.insert_descriptor(TestKeychain::Internal, internal_descriptor.clone());
@@ -199,8 +199,8 @@ mod test {
     #[test]
     #[allow(clippy::iter_nth_zero)]
     fn test_spkiterator_non_wildcard() {
-        let secp = bitcoin::secp256k1::Secp256k1::signing_only();
-        let (no_wildcard_descriptor, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "wpkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/0)").unwrap();
+        let secp = tapyrus::secp256k1::Secp256k1::signing_only();
+        let (no_wildcard_descriptor, _) = Descriptor::<DescriptorPublicKey>::parse_descriptor(&secp, "pkh([73c5da0a/86'/0'/0']xprv9xgqHN7yz9MwCkxsBPN5qetuNdQSUttZNKw1dcYTV4mkaAFiBVGQziHs3NRSWMkCzvgjEe3n9xV8oYywvM8at9yRqyaZVz6TYYhX98VjsUk/1/0)").unwrap();
         let external_spk_0 = no_wildcard_descriptor
             .at_derivation_index(0)
             .unwrap()

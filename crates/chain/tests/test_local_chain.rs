@@ -9,8 +9,9 @@ use bdk_chain::{
     },
     BlockId,
 };
-use bitcoin::{block::Header, hashes::Hash, BlockHash};
 use proptest::prelude::*;
+use tapyrus::block::XField;
+use tapyrus::{block::Header, hashes::Hash, BlockHash};
 
 #[macro_use]
 mod common;
@@ -654,12 +655,13 @@ fn checkpoint_insert() {
 fn local_chain_apply_header_connected_to() {
     fn header_from_prev_blockhash(prev_blockhash: BlockHash) -> Header {
         Header {
-            version: bitcoin::block::Version::default(),
+            version: tapyrus::block::Version::default(),
             prev_blockhash,
-            merkle_root: bitcoin::hash_types::TxMerkleNode::all_zeros(),
+            merkle_root: tapyrus::hash_types::TxMerkleNode::all_zeros(),
+            im_merkle_root: tapyrus::hash_types::TxMerkleNode::all_zeros(),
             time: 0,
-            bits: bitcoin::CompactTarget::default(),
-            nonce: 0,
+            xfield: XField::None,
+            proof: None,
         }
     }
 
@@ -822,7 +824,7 @@ fn generate_checkpoints(max_height: u32, max_count: usize) -> impl Strategy<Valu
     proptest::collection::btree_set(1..max_height, 0..max_count).prop_map(|mut heights| {
         heights.insert(0); // must have genesis
         CheckPoint::from_block_ids(heights.into_iter().map(|height| {
-            let hash = bitcoin::hashes::Hash::hash(height.to_le_bytes().as_slice());
+            let hash = tapyrus::hashes::Hash::hash(height.to_le_bytes().as_slice());
             BlockId { height, hash }
         }))
         .expect("blocks must be in order as it comes from btreeset")

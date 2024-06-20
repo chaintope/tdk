@@ -1,4 +1,4 @@
-use bitcoin::{hashes::Hash, BlockHash, OutPoint, TxOut, Txid};
+use tapyrus::{hashes::Hash, BlockHash, OutPoint, TxOut, Txid};
 
 use crate::{Anchor, AnchorFromBlockPosition, COINBASE_MATURITY};
 
@@ -110,7 +110,7 @@ impl Anchor for BlockId {
 }
 
 impl AnchorFromBlockPosition for BlockId {
-    fn from_block_position(_block: &bitcoin::Block, block_id: BlockId, _tx_pos: usize) -> Self {
+    fn from_block_position(_block: &tapyrus::Block, block_id: BlockId, _tx_pos: usize) -> Self {
         block_id
     }
 }
@@ -176,7 +176,7 @@ impl Anchor for ConfirmationHeightAnchor {
 }
 
 impl AnchorFromBlockPosition for ConfirmationHeightAnchor {
-    fn from_block_position(_block: &bitcoin::Block, block_id: BlockId, _tx_pos: usize) -> Self {
+    fn from_block_position(_block: &tapyrus::Block, block_id: BlockId, _tx_pos: usize) -> Self {
         Self {
             anchor_block: block_id,
             confirmation_height: block_id.height,
@@ -216,7 +216,7 @@ impl Anchor for ConfirmationTimeHeightAnchor {
 }
 
 impl AnchorFromBlockPosition for ConfirmationTimeHeightAnchor {
-    fn from_block_position(block: &bitcoin::Block, block_id: BlockId, _tx_pos: usize) -> Self {
+    fn from_block_position(block: &tapyrus::Block, block_id: BlockId, _tx_pos: usize) -> Self {
         Self {
             anchor_block: block_id,
             confirmation_height: block_id.height,

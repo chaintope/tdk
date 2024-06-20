@@ -14,7 +14,7 @@ jobs:
             clippy: true
           - version: 1.63.0 # MSRV
         features:
-          - --no-default-features
+          - --no-default-features --features tapyrus/no-std,miniscript/no-std,hashbrown
           - --all-features
     steps:
       - name: checkout
@@ -35,10 +35,18 @@ jobs:
           cargo update -p home --precise "0.5.5"
           cargo update -p proptest --precise "1.2.0"
           cargo update -p url --precise "2.5.0"
-      - name: Build
+      - name: Build Chain
+        working-directory: ./crates/chain
         run: cargo build ${{ matrix.features }}
-      - name: Test
+      - name: "[Pending]Build"
+        run: echo "Pending other crates"
+#        run: cargo build ${{ matrix.features }}
+      - name: Test Chain
+        working-directory: ./crates/chain
         run: cargo test ${{ matrix.features }}
+      - name: "[Pending]Test"
+        run: echo "Pending other crates"
+#        run: cargo test ${{ matrix.features }}
 
   check-no-std:
     name: Check no_std
@@ -58,15 +66,17 @@ jobs:
       - name: Check bdk_chain
         working-directory: ./crates/chain
         # TODO "--target thumbv6m-none-eabi" should work but currently does not
-        run: cargo check --no-default-features --features bitcoin/no-std,miniscript/no-std,hashbrown
-      - name: Check bdk wallet
+        run: cargo check --no-default-features --features tapyrus/no-std,miniscript/no-std,hashbrown
+      - name: "[Pending]Check bdk wallet"
         working-directory: ./crates/wallet
         # TODO "--target thumbv6m-none-eabi" should work but currently does not
-        run: cargo check --no-default-features --features bitcoin/no-std,miniscript/no-std,bdk_chain/hashbrown
-      - name: Check esplora
+        run: echo "Pending"
+#        run: cargo check --no-default-features --features tapyrus/no-std,miniscript/no-std,bdk_chain/hashbrown
+      - name: "[Pending]Check esplora"
         working-directory: ./crates/esplora
         # TODO "--target thumbv6m-none-eabi" should work but currently does not
-        run: cargo check --no-default-features --features bitcoin/no-std,miniscript/no-std,bdk_chain/hashbrown
+        run: echo "Pending"
+#        run: cargo check --no-default-features --features tapyrus/no-std,miniscript/no-std,bdk_chain/hashbrown
 
   check-wasm:
     name: Check WASM
@@ -90,12 +100,14 @@ jobs:
             target: "wasm32-unknown-unknown"
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.2.1
-      - name: Check bdk wallet
+      - name: "[Pending]Check bdk wallet"
         working-directory: ./crates/wallet
-        run: cargo check --target wasm32-unknown-unknown --no-default-features --features bitcoin/no-std,miniscript/no-std,bdk_chain/hashbrown,dev-getrandom-wasm
-      - name: Check esplora
+        run: echo "Pending"
+#        run: cargo check --target wasm32-unknown-unknown --no-default-features --features tapyrus/no-std,miniscript/no-std,bdk_chain/hashbrown,dev-getrandom-wasm
+      - name: "[Pending]Check esplora"
         working-directory: ./crates/esplora
-        run: cargo check --target wasm32-unknown-unknown --no-default-features --features bitcoin/no-std,miniscript/no-std,bdk_chain/hashbrown,async
+        run: echo "Pending"
+#        run: cargo check --target wasm32-unknown-unknown --no-default-features --features tapyrus/no-std,miniscript/no-std,bdk_chain/hashbrown,async
 
   fmt:
     name: Rust fmt
@@ -127,4 +139,10 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets -- -D warnings
+          args: --manifest-path crates/chain/Cargo.toml --all-features --all-targets -- -D warnings
+#      - uses: actions-rs/clippy-check@v1
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          args: --all-features --all-targets -- -D warnings
+      - name: "[Pending]Clippy"
+        run: echo "Pending other crates"

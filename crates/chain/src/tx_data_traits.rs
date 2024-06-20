@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 /// # use bdk_chain::ConfirmationHeightAnchor;
 /// # use bdk_chain::ConfirmationTimeHeightAnchor;
 /// # use bdk_chain::example_utils::*;
-/// # use bitcoin::hashes::Hash;
+/// # use tapyrus::hashes::Hash;
 /// // Initialize the local chain with two blocks.
 /// let chain = LocalChain::from_blocks(
 ///     [
@@ -110,7 +110,7 @@ impl<'a, A: Anchor> Anchor for &'a A {
 /// within the block.
 pub trait AnchorFromBlockPosition: Anchor {
     /// Construct the anchor from a given `block`, block height and `tx_pos` within the block.
-    fn from_block_position(block: &bitcoin::Block, block_id: BlockId, tx_pos: usize) -> Self;
+    fn from_block_position(block: &tapyrus::Block, block_id: BlockId, tx_pos: usize) -> Self;
 }
 
 /// Trait that makes an object appendable.

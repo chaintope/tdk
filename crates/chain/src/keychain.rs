@@ -12,7 +12,7 @@
 
 #[cfg(feature = "miniscript")]
 mod txout_index;
-use bitcoin::Amount;
+use tapyrus::Amount;
 #[cfg(feature = "miniscript")]
 pub use txout_index::*;
 
