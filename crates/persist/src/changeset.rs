@@ -1,6 +1,6 @@
 #![cfg(feature = "miniscript")]
 
-use bdk_chain::{bitcoin::Network, indexed_tx_graph, keychain, local_chain, Anchor, Append};
+use bdk_chain::{indexed_tx_graph, keychain, local_chain, tapyrus::Network, Anchor, Append};
 
 /// Changes from a combination of [`bdk_chain`] structures.
 #[derive(Debug, Clone, PartialEq)]
