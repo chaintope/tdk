@@ -470,7 +470,7 @@ impl Wallet {
     /// # use bdk_wallet::descriptor::Descriptor;
     /// # use bitcoin::key::Secp256k1;
     /// # use bdk_wallet::KeychainKind;
-    /// # use bdk_sqlite::{Store, rusqlite::Connection};
+    /// # use tdk_sqlite::{Store, rusqlite::Connection};
     /// #
     /// # fn main() -> Result<(), anyhow::Error> {
     /// # let temp_dir = tempfile::tempdir().expect("must create tempdir");

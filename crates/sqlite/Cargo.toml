@@ -1,10 +1,10 @@
 [package]
-name = "bdk_sqlite"
+name = "tdk_sqlite"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bitcoindevkit/bdk"
-documentation = "https://docs.rs/bdk_sqlite"
+documentation = "https://docs.rs/tdk_sqlite"
 description = "A simple SQLite based implementation of Persist for Bitcoin Dev Kit."
 keywords = ["bitcoin", "persist", "persistence", "bdk", "sqlite"]
 authors = ["Bitcoin Dev Kit Developers"]
