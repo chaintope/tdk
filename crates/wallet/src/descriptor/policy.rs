@@ -46,9 +46,9 @@ use core::fmt;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
-use bitcoin::bip32::Fingerprint;
-use bitcoin::hashes::{hash160, ripemd160, sha256};
-use bitcoin::{absolute, key::XOnlyPublicKey, PublicKey, Sequence};
+use tapyrus::bip32::Fingerprint;
+use tapyrus::hashes::{hash160, ripemd160, sha256};
+use tapyrus::{absolute, key::XOnlyPublicKey, PublicKey, Sequence};
 
 use miniscript::descriptor::{
     DescriptorPublicKey, ShInner, SinglePub, SinglePubKey, SortedMultiVec, WshInner,
@@ -66,7 +66,7 @@ use crate::wallet::utils::{After, Older, SecpCtx};
 use super::checksum::calc_checksum;
 use super::error::Error;
 use super::XKeyUtils;
-use bitcoin::psbt::{self, Psbt};
+use tapyrus::psbt::{self, Psbt};
 use miniscript::psbt::PsbtInputSatisfier;
 
 /// A unique identifier for a key
@@ -940,9 +940,9 @@ impl<Ctx: ScriptContext + 'static> ExtractPolicy for Miniscript<DescriptorPublic
                 {
                     let after = After::new(Some(current_height), false);
                     let after_sat =
-                        Satisfier::<bitcoin::PublicKey>::check_after(&after, (*value).into());
+                        Satisfier::<tapyrus::PublicKey>::check_after(&after, (*value).into());
                     let inputs_sat = psbt_inputs_sat(psbt).all(|sat| {
-                        Satisfier::<bitcoin::PublicKey>::check_after(&sat, (*value).into())
+                        Satisfier::<tapyrus::PublicKey>::check_after(&sat, (*value).into())
                     });
                     if after_sat && inputs_sat {
                         policy.satisfaction = policy.contribution.clone();
@@ -966,9 +966,9 @@ impl<Ctx: ScriptContext + 'static> ExtractPolicy for Miniscript<DescriptorPublic
                 } = build_sat
                 {
                     let older = Older::new(Some(current_height), Some(input_max_height), false);
-                    let older_sat = Satisfier::<bitcoin::PublicKey>::check_older(&older, *value);
+                    let older_sat = Satisfier::<tapyrus::PublicKey>::check_older(&older, *value);
                     let inputs_sat = psbt_inputs_sat(psbt)
-                        .all(|sat| Satisfier::<bitcoin::PublicKey>::check_older(&sat, *value));
+                        .all(|sat| Satisfier::<tapyrus::PublicKey>::check_older(&sat, *value));
                     if older_sat && inputs_sat {
                         policy.satisfaction = policy.contribution.clone();
                     }
@@ -1168,9 +1168,9 @@ mod test {
     use crate::wallet::signer::SignersContainer;
     use alloc::{string::ToString, sync::Arc};
     use assert_matches::assert_matches;
-    use bitcoin::bip32;
-    use bitcoin::secp256k1::Secp256k1;
-    use bitcoin::Network;
+    use tapyrus::bip32;
+    use tapyrus::secp256k1::Secp256k1;
+    use tapyrus::Network;
     use core::str::FromStr;
 
     const TPRV0_STR:&str = "tprv8ZgxMBicQKsPdZXrcHNLf5JAJWFAoJ2TrstMRdSKtEggz6PddbuSkvHKM9oKJyFgZV1B7rw8oChspxyYbtmEXYyg1AjfWbL3ho3XHDpHRZf";

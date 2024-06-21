@@ -1,5 +1,5 @@
 use core::str::FromStr;
-use tdk_wallet::bitcoin::{Amount, FeeRate, Psbt, TxIn};
+use tdk_wallet::tapyrus::{Amount, FeeRate, Psbt, TxIn};
 use tdk_wallet::{psbt, KeychainKind, SignOptions};
 mod common;
 use common::*;
@@ -158,10 +158,10 @@ fn test_psbt_fee_rate_with_missing_txout() {
 
 #[test]
 fn test_psbt_multiple_internalkey_signers() {
-    use bitcoin::key::TapTweak;
-    use bitcoin::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
-    use bitcoin::sighash::{Prevouts, SighashCache, TapSighashType};
-    use bitcoin::{PrivateKey, TxOut};
+    use tapyrus::key::TapTweak;
+    use tapyrus::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
+    use tapyrus::sighash::{Prevouts, SighashCache, TapSighashType};
+    use tapyrus::{PrivateKey, TxOut};
     use std::sync::Arc;
     use tdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
     use tdk_wallet::KeychainKind;

@@ -9,8 +9,8 @@
 // You may not use this file except in accordance with one or both of these
 // licenses.
 
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::{absolute, Script, Sequence};
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::{absolute, Script, Sequence};
 
 use miniscript::{MiniscriptKey, Satisfier, ToPublicKey};
 
@@ -119,7 +119,7 @@ mod test {
     pub(crate) const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
 
     use super::{check_nsequence_rbf, IsDust};
-    use crate::bitcoin::{Address, Network, Sequence};
+    use crate::tapyrus::{Address, Network, Sequence};
     use core::str::FromStr;
 
     #[test]

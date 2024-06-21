@@ -20,10 +20,10 @@ use core::marker::PhantomData;
 use core::ops::Deref;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{self, Secp256k1, Signing};
+use tapyrus::secp256k1::{self, Secp256k1, Signing};
 
-use bitcoin::bip32;
-use bitcoin::{key::XOnlyPublicKey, Network, PrivateKey, PublicKey};
+use tapyrus::bip32;
+use tapyrus::{key::XOnlyPublicKey, Network, PrivateKey, PublicKey};
 
 use miniscript::descriptor::{Descriptor, DescriptorXKey, Wildcard};
 pub use miniscript::descriptor::{
@@ -347,7 +347,7 @@ impl<Ctx: ScriptContext> ExtendedKey<Ctx> {
     /// given [`Network`]
     pub fn into_xpub<C: Signing>(
         self,
-        network: bitcoin::Network,
+        network: tapyrus::Network,
         secp: &Secp256k1<C>,
     ) -> bip32::Xpub {
         let mut xpub = match self {
@@ -471,7 +471,7 @@ pub trait DerivableKey<Ctx: ScriptContext = miniscript::Legacy>: Sized {
 This can be used to get direct access to `xprv`s and `xpub`s for types that implement this trait,
 like [`Mnemonic`](bip39::Mnemonic) when the `keys-bip39` feature is enabled.
 ```rust
-use tdk_wallet::bitcoin::Network;
+use tdk_wallet::tapyrus::Network;
 use tdk_wallet::keys::{DerivableKey, ExtendedKey};
 use tdk_wallet::keys::bip39::{Mnemonic, Language};
 
@@ -683,7 +683,7 @@ impl<Ctx: ScriptContext> GeneratableKey<Ctx> for bip32::Xpriv {
         entropy: Self::Entropy,
     ) -> Result<GeneratedKey<Self, Ctx>, Self::Error> {
         // pick a arbitrary network here, but say that we support all of them
-        let xprv = bip32::Xpriv::new_master(Network::Bitcoin, entropy.as_ref())?;
+        let xprv = bip32::Xpriv::new_master(Network::tapyrus, entropy.as_ref())?;
         Ok(GeneratedKey::new(xprv, any_network()))
     }
 }
@@ -882,7 +882,7 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for XOnlyPublicKey {
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorSecretKey {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         let networks = match &self {
-            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Bitcoin => {
+            DescriptorSecretKey::Single(sk) if sk.key.network == Network::tapyrus => {
                 mainnet_network()
             }
             DescriptorSecretKey::XPrv(DescriptorXKey { xkey, .. })
@@ -929,7 +929,7 @@ pub enum KeyError {
     Message(String),
 
     /// BIP32 error
-    Bip32(bitcoin::bip32::Error),
+    Bip32(tapyrus::bip32::Error),
     /// Miniscript error
     Miniscript(miniscript::Error),
 }
@@ -964,7 +964,7 @@ impl std::error::Error for KeyError {}
 
 #[cfg(test)]
 pub mod test {
-    use bitcoin::bip32;
+    use tapyrus::bip32;
 
     use super::*;
 
@@ -982,7 +982,7 @@ pub mod test {
     #[test]
     fn test_keys_generate_wif() {
         let generated_wif: GeneratedKey<_, miniscript::Segwitv0> =
-            bitcoin::PrivateKey::generate_with_entropy_default(TEST_ENTROPY).unwrap();
+            tapyrus::PrivateKey::generate_with_entropy_default(TEST_ENTROPY).unwrap();
 
         assert_eq!(generated_wif.valid_networks, any_network());
         assert_eq!(

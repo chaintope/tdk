@@ -18,10 +18,10 @@ use crate::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, KeySource, Xpub};
-use bitcoin::{key::XOnlyPublicKey, secp256k1, PublicKey};
-use bitcoin::{psbt, taproot};
-use bitcoin::{Network, TxOut};
+use tapyrus::bip32::{ChildNumber, DerivationPath, Fingerprint, KeySource, Xpub};
+use tapyrus::{key::XOnlyPublicKey, secp256k1, PublicKey};
+use tapyrus::{psbt, taproot};
+use tapyrus::{Network, TxOut};
 
 use miniscript::descriptor::{
     DefiniteDescriptorKey, DescriptorMultiXKey, DescriptorSecretKey, DescriptorType,
@@ -604,10 +604,10 @@ mod test {
     use core::str::FromStr;
 
     use assert_matches::assert_matches;
-    use bitcoin::hex::FromHex;
-    use bitcoin::secp256k1::Secp256k1;
-    use bitcoin::ScriptBuf;
-    use bitcoin::{bip32, Psbt};
+    use tapyrus::hex::FromHex;
+    use tapyrus::secp256k1::Secp256k1;
+    use tapyrus::ScriptBuf;
+    use tapyrus::{bip32, Psbt};
 
     use super::*;
     use crate::psbt::PsbtUtils;

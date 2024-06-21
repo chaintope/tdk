@@ -87,13 +87,13 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Bound::Included, Deref};
 
-use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpriv};
-use bitcoin::hashes::hash160;
-use bitcoin::secp256k1::Message;
-use bitcoin::sighash::{EcdsaSighashType, TapSighash, TapSighashType};
-use bitcoin::{ecdsa, psbt, sighash, taproot};
-use bitcoin::{key::TapTweak, key::XOnlyPublicKey, secp256k1};
-use bitcoin::{PrivateKey, Psbt, PublicKey};
+use tapyrus::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpriv};
+use tapyrus::hashes::hash160;
+use tapyrus::secp256k1::Message;
+use tapyrus::sighash::{EcdsaSighashType, TapSighash, TapSighashType};
+use tapyrus::{ecdsa, psbt, sighash, taproot};
+use tapyrus::{key::TapTweak, key::XOnlyPublicKey, secp256k1};
+use tapyrus::{PrivateKey, Psbt, PublicKey};
 
 use miniscript::descriptor::{
     Descriptor, DescriptorMultiXKey, DescriptorPublicKey, DescriptorSecretKey, DescriptorXKey,
@@ -549,7 +549,7 @@ fn sign_psbt_ecdsa(
     secret_key: &secp256k1::SecretKey,
     pubkey: PublicKey,
     psbt_input: &mut psbt::Input,
-    hash: impl bitcoin::hashes::Hash + bitcoin::secp256k1::ThirtyTwoByteHash,
+    hash: impl tapyrus::hashes::Hash + tapyrus::secp256k1::ThirtyTwoByteHash,
     hash_ty: EcdsaSighashType,
     secp: &SecpCtx,
     allow_grinding: bool,
@@ -1069,9 +1069,9 @@ mod signers_container_tests {
     use crate::descriptor::IntoWalletDescriptor;
     use crate::keys::{DescriptorKey, IntoDescriptorKey};
     use assert_matches::assert_matches;
-    use bitcoin::bip32;
-    use bitcoin::secp256k1::{All, Secp256k1};
-    use bitcoin::Network;
+    use tapyrus::bip32;
+    use tapyrus::secp256k1::{All, Secp256k1};
+    use tapyrus::Network;
     use core::str::FromStr;
     use miniscript::ScriptContext;
 
