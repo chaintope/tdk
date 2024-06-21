@@ -739,11 +739,11 @@ mod test {
         let desc = crate::descriptor!(wpkh(key)).unwrap();
         // this should convert the key that supports "any_network" to the right network (testnet)
         let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
+            .into_wallet_descriptor(&secp, Network::Prod)
             .unwrap();
 
         let mut xprv_testnet = xprv;
-        xprv_testnet.network = Network::Testnet;
+        xprv_testnet.network = Network::Prod;
 
         let xpub_testnet = bip32::Xpub::from_priv(&secp, &xprv_testnet);
         let desc_pubkey = DescriptorPublicKey::XPub(DescriptorXKey {
@@ -768,27 +768,27 @@ mod test {
         let secp = Secp256k1::new();
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#tqz0nc62"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
     }
 
@@ -798,35 +798,35 @@ mod test {
         let secp = Secp256k1::new();
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Regtest);
+            .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Regtest);
+            .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
         let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
         let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
 
         let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
     }
 
@@ -843,13 +843,13 @@ mod test {
         let desc = crate::descriptor!(wpkh(key)).unwrap();
 
         let (wallet_desc, _) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
+            .into_wallet_descriptor(&secp, Network::Prod)
             .unwrap();
         let wallet_desc_str = wallet_desc.to_string();
         assert_eq!(wallet_desc_str, "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw");
 
         let (wallet_desc2, _) = wallet_desc_str
-            .into_wallet_descriptor(&secp, Network::Testnet)
+            .into_wallet_descriptor(&secp, Network::Prod)
             .unwrap();
         assert_eq!(wallet_desc, wallet_desc2)
     }
@@ -859,18 +859,18 @@ mod test {
         let secp = Secp256k1::new();
 
         let descriptor = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0'/1/2/*)";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Prod);
 
         assert_matches!(result, Err(DescriptorError::HardenedDerivationXpub));
 
         let descriptor = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/<0;1>/*)";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Prod);
 
         assert_matches!(result, Err(DescriptorError::MultiPath));
 
         // repeated pubkeys
         let descriptor = "wsh(multi(2,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*))";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Prod);
 
         assert!(result.is_err());
     }
@@ -883,7 +883,7 @@ mod test {
 
         let descriptor = "sh(wsh(sortedmulti(3,tpubDEsqS36T4DVsKJd9UH8pAKzrkGBYPLEt9jZMwpKtzh1G6mgYehfHt9WCgk7MJG5QGSFWf176KaBNoXbcuFcuadAFKxDpUdMDKGBha7bY3QM/0/*,tpubDF3cpwfs7fMvXXuoQbohXtLjNM6ehwYT287LWtmLsd4r77YLg6MZg4vTETx5MSJ2zkfigbYWu31VA2Z2Vc1cZugCYXgS7FQu6pE8V6TriEH/0/*,tpubDE1SKfcW76Tb2AASv5bQWMuScYNAdoqLHoexw13sNDXwmUhQDBbCD3QAedKGLhxMrWQdMDKENzYtnXPDRvexQPNuDrLj52wAjHhNEm8sJ4p/0/*,tpubDFLc6oXwJmhm3FGGzXkfJNTh2KitoY3WhmmQvuAjMhD8YbyWn5mAqckbxXfm2etM3p5J6JoTpSrMqRSTfMLtNW46poDaEZJ1kjd3csRSjwH/0/*,tpubDEWD9NBeWP59xXmdqSNt4VYdtTGwbpyP8WS962BuqpQeMZmX9Pur14dhXdZT5a7wR1pK6dPtZ9fP5WR493hPzemnBvkfLLYxnUjAKj1JCQV/0/*,tpubDEHyZkkwd7gZWCTgQuYQ9C4myF2hMEmyHsBCCmLssGqoqUxeT3gzohF5uEVURkf9TtmeepJgkSUmteac38FwZqirjApzNX59XSHLcwaTZCH/0/*,tpubDEqLouCekwnMUWN486kxGzD44qVgeyuqHyxUypNEiQt5RnUZNJe386TKPK99fqRV1vRkZjYAjtXGTECz98MCsdLcnkM67U6KdYRzVubeCgZ/0/*)))";
         let (descriptor, _) =
-            into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet).unwrap();
+            into_wallet_descriptor_checked(descriptor, &secp, Network::Prod).unwrap();
 
         let descriptor = descriptor.at_derivation_index(0).unwrap();
 

@@ -26,7 +26,7 @@ use tapyrus::{
     Transaction, TxOut, Txid, Witness,
 };
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
-use tapyrus::{constants::genesis_block, Amount};
+use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
 use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
@@ -404,10 +404,19 @@ impl Wallet {
         descriptor: E,
         change_descriptor: E,
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
-        network: Network,
     ) -> Result<Self, NewError> {
-        let genesis_hash = genesis_block(network).block_hash();
-        Self::new_with_genesis_hash(descriptor, change_descriptor, db, network, genesis_hash)
+        let genesis_hash = mainet_genesis_block().block_hash();
+        Self::new_with_genesis_hash(descriptor, change_descriptor, db, Network::Prod, genesis_hash)
+    }
+
+    /// Initialize an empty [`Wallet`].
+    pub fn new_with_testnet<E: IntoWalletDescriptor>(
+        descriptor: E,
+        change_descriptor: E,
+        db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+    ) -> Result<Self, NewError> {
+        let genesis_hash = testnet_genesis_block().block_hash();
+        Self::new_with_genesis_hash(descriptor, change_descriptor, db, Network::Prod, genesis_hash)
     }
 
     /// Initialize an empty [`Wallet`] with a custom genesis hash.
@@ -1238,7 +1247,7 @@ impl Wallet {
     /// # use tdk_wallet::bitcoin::Network;
     /// let descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/0/*)";
     /// let change_descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/1/*)";
-    /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Testnet)?;
+    /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Prod)?;
     /// for secret_key in wallet.get_signers(KeychainKind::External).signers().iter().filter_map(|s| s.descriptor_secret_key()) {
     ///     // secret_key: tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/0'/0'/0/*
     ///     println!("secret_key: {}", secret_key);
@@ -2575,7 +2584,7 @@ macro_rules! doctest_wallet {
         let mut wallet = Wallet::new_no_persist(
             descriptor,
             change_descriptor,
-            Network::Regtest,
+            Network::Dev,
         )
         .unwrap();
         let address = wallet.peek_address(KeychainKind::External, 0).address;

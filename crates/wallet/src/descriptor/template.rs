@@ -82,7 +82,7 @@ impl<T: DescriptorTemplate> IntoWalletDescriptor for T {
 /// let key_internal =
 ///     bitcoin::PrivateKey::from_wif("cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW")?;
 /// let mut wallet =
-///     Wallet::new_no_persist(P2Pkh(key_external), P2Pkh(key_internal), Network::Testnet)?;
+///     Wallet::new_no_persist(P2Pkh(key_external), P2Pkh(key_internal), Network::Prod)?;
 ///
 /// assert_eq!(
 ///     wallet
@@ -117,7 +117,7 @@ impl<K: IntoDescriptorKey<Legacy>> DescriptorTemplate for P2Pkh<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     P2Wpkh_P2Sh(key_external),
 ///     P2Wpkh_P2Sh(key_internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(
@@ -152,7 +152,7 @@ impl<K: IntoDescriptorKey<Segwitv0>> DescriptorTemplate for P2Wpkh_P2Sh<K> {
 /// let key_internal =
 ///     bitcoin::PrivateKey::from_wif("cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW")?;
 /// let mut wallet =
-///     Wallet::new_no_persist(P2Wpkh(key_external), P2Wpkh(key_internal), Network::Testnet)?;
+///     Wallet::new_no_persist(P2Wpkh(key_external), P2Wpkh(key_internal), Network::Prod)?;
 ///
 /// assert_eq!(
 ///     wallet
@@ -185,7 +185,7 @@ impl<K: IntoDescriptorKey<Segwitv0>> DescriptorTemplate for P2Wpkh<K> {
 /// let key_internal =
 ///     bitcoin::PrivateKey::from_wif("cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW")?;
 /// let mut wallet =
-///     Wallet::new_no_persist(P2TR(key_external), P2TR(key_internal), Network::Testnet)?;
+///     Wallet::new_no_persist(P2TR(key_external), P2TR(key_internal), Network::Prod)?;
 ///
 /// assert_eq!(
 ///     wallet
@@ -221,7 +221,7 @@ impl<K: IntoDescriptorKey<Tap>> DescriptorTemplate for P2TR<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip44(key.clone(), KeychainKind::External),
 ///     Bip44(key, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "mmogjc7HJEZkrLqyQYqJmxUqFaC7i4uf89");
@@ -258,7 +258,7 @@ impl<K: DerivableKey<Legacy>> DescriptorTemplate for Bip44<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip44Public(key.clone(), fingerprint, KeychainKind::External),
 ///     Bip44Public(key, fingerprint, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "miNG7dJTzJqNbFS19svRdTCisC65dsubtR");
@@ -294,7 +294,7 @@ impl<K: DerivableKey<Legacy>> DescriptorTemplate for Bip44Public<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip49(key.clone(), KeychainKind::External),
 ///     Bip49(key, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "2N4zkWAoGdUv4NXhSsU8DvS5MB36T8nKHEB");
@@ -331,7 +331,7 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip49<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip49Public(key.clone(), fingerprint, KeychainKind::External),
 ///     Bip49Public(key, fingerprint, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "2N3K4xbVAHoiTQSwxkZjWDfKoNC27pLkYnt");
@@ -367,7 +367,7 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip49Public<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip84(key.clone(), KeychainKind::External),
 ///     Bip84(key, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "tb1qhl85z42h7r4su5u37rvvw0gk8j2t3n9y7zsg4n");
@@ -404,7 +404,7 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip84<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip84Public(key.clone(), fingerprint, KeychainKind::External),
 ///     Bip84Public(key, fingerprint, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "tb1qedg9fdlf8cnnqfd5mks6uz5w4kgpk2pr6y4qc7");
@@ -440,7 +440,7 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip84Public<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip86(key.clone(), KeychainKind::External),
 ///     Bip86(key, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "tb1p5unlj09djx8xsjwe97269kqtxqpwpu2epeskgqjfk4lnf69v4tnqpp35qu");
@@ -477,7 +477,7 @@ impl<K: DerivableKey<Tap>> DescriptorTemplate for Bip86<K> {
 /// let mut wallet = Wallet::new_no_persist(
 ///     Bip86Public(key.clone(), fingerprint, KeychainKind::External),
 ///     Bip86Public(key, fingerprint, KeychainKind::Internal),
-///     Network::Testnet,
+///     Network::Prod,
 /// )?;
 ///
 /// assert_eq!(wallet.next_unused_address(KeychainKind::External)?.to_string(), "tb1pwjp9f2k5n0xq73ecuu0c5njvgqr3vkh7yaylmpqvsuuaafymh0msvcmh37");
@@ -510,7 +510,7 @@ macro_rules! expand_make_bipxx {
                 derivation_path.push(bip32::ChildNumber::from_hardened_idx(bip)?);
 
                 match network {
-                    Network::Bitcoin => {
+                    Network::Prod => {
                         derivation_path.push(bip32::ChildNumber::from_hardened_idx(0)?);
                     }
                     _ => {
@@ -547,7 +547,7 @@ macro_rules! expand_make_bipxx {
                 let source_path = bip32::DerivationPath::from(vec![
                     bip32::ChildNumber::from_hardened_idx(bip)?,
                     match network {
-                        Network::Bitcoin => bip32::ChildNumber::from_hardened_idx(0)?,
+                        Network::Prod => bip32::ChildNumber::from_hardened_idx(0)?,
                         _ => bip32::ChildNumber::from_hardened_idx(1)?,
                     },
                     bip32::ChildNumber::from_hardened_idx(0)?,
@@ -583,9 +583,9 @@ mod test {
         use tapyrus::bip32::ChildNumber::{self, Hardened};
 
         let xprvkey = tapyrus::bip32::Xpriv::from_str("xprv9s21ZrQH143K2fpbqApQL69a4oKdGVnVN52R82Ft7d1pSqgKmajF62acJo3aMszZb6qQ22QsVECSFxvf9uyxFUvFYQMq3QbtwtRSMjLAhMf").unwrap();
-        assert_eq!(Network::Bitcoin, xprvkey.network);
+        assert_eq!(Network::Prod, xprvkey.network);
         let xdesc = Bip44(xprvkey, KeychainKind::Internal)
-            .build(Network::Bitcoin)
+            .build(Network::Prod)
             .unwrap();
 
         if let ExtendedDescriptor::Pkh(pkh) = xdesc.0 {
@@ -597,9 +597,9 @@ mod test {
         }
 
         let tprvkey = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
-        assert_eq!(Network::Testnet, tprvkey.network);
+        assert_eq!(Network::Prod, tprvkey.network);
         let tdesc = Bip44(tprvkey, KeychainKind::Internal)
-            .build(Network::Testnet)
+            .build(Network::Prod)
             .unwrap();
 
         if let ExtendedDescriptor::Pkh(pkh) = tdesc.0 {
@@ -647,7 +647,7 @@ mod test {
             false,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["mwJ8hxFYW19JLuc65RCTaP4v1rzVU8cVMT"],
         );
 
@@ -660,7 +660,7 @@ mod test {
             false,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["muZpTpBYhxmRFuCjLc7C6BBDF32C8XVJUi"],
         );
     }
@@ -672,11 +672,11 @@ mod test {
             tapyrus::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")
                 .unwrap();
         check(
-            P2Wpkh_P2Sh(prvkey).build(Network::Bitcoin),
+            P2Wpkh_P2Sh(prvkey).build(Network::Prod),
             true,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["2NB4ox5VDRw1ecUv6SnT3VQHPXveYztRqk5"],
         );
 
@@ -685,11 +685,11 @@ mod test {
         )
         .unwrap();
         check(
-            P2Wpkh_P2Sh(pubkey).build(Network::Bitcoin),
+            P2Wpkh_P2Sh(pubkey).build(Network::Prod),
             true,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["2N5LiC3CqzxDamRTPG1kiNv1FpNJQ7x28sb"],
         );
     }
@@ -701,11 +701,11 @@ mod test {
             tapyrus::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")
                 .unwrap();
         check(
-            P2Wpkh(prvkey).build(Network::Bitcoin),
+            P2Wpkh(prvkey).build(Network::Prod),
             true,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["bcrt1q4525hmgw265tl3drrl8jjta7ayffu6jfcwxx9y"],
         );
 
@@ -714,11 +714,11 @@ mod test {
         )
         .unwrap();
         check(
-            P2Wpkh(pubkey).build(Network::Bitcoin),
+            P2Wpkh(pubkey).build(Network::Prod),
             true,
             false,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["bcrt1qngw83fg8dz0k749cg7k3emc7v98wy0c7azaa6h"],
         );
     }
@@ -730,11 +730,11 @@ mod test {
             tapyrus::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")
                 .unwrap();
         check(
-            P2TR(prvkey).build(Network::Bitcoin),
+            P2TR(prvkey).build(Network::Prod),
             false,
             true,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["bcrt1pvjf9t34fznr53u5tqhejz4nr69luzkhlvsdsdfq9pglutrpve2xqnwtkqq"],
         );
 
@@ -743,11 +743,11 @@ mod test {
         )
         .unwrap();
         check(
-            P2TR(pubkey).build(Network::Bitcoin),
+            P2TR(pubkey).build(Network::Prod),
             false,
             true,
             true,
-            Network::Regtest,
+            Network::Dev,
             &["bcrt1pw74tdcrxlzn5r8z6ku2vztr86fgq0m245s72mjktf4afwzsf8ugs4evwdf"],
         );
     }
@@ -757,11 +757,11 @@ mod test {
     fn test_bip44_template() {
         let prvkey = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
         check(
-            Bip44(prvkey, KeychainKind::External).build(Network::Bitcoin),
+            Bip44(prvkey, KeychainKind::External).build(Network::Prod),
             false,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "n453VtnjDHPyDt2fDstKSu7A3YCJoHZ5g5",
                 "mvfrrumXgTtwFPWDNUecBBgzuMXhYM7KRP",
@@ -769,11 +769,11 @@ mod test {
             ],
         );
         check(
-            Bip44(prvkey, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip44(prvkey, KeychainKind::Internal).build(Network::Prod),
             false,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "muHF98X9KxEzdKrnFAX85KeHv96eXopaip",
                 "n4hpyLJE5ub6B5Bymv4eqFxS5KjrewSmYR",
@@ -788,11 +788,11 @@ mod test {
         let pubkey = tapyrus::bip32::Xpub::from_str("tpubDDDzQ31JkZB7VxUr9bjvBivDdqoFLrDPyLWtLapArAi51ftfmCb2DPxwLQzX65iNcXz1DGaVvyvo6JQ6rTU73r2gqdEo8uov9QKRb7nKCSU").unwrap();
         let fingerprint = tapyrus::bip32::Fingerprint::from_str("c55b303f").unwrap();
         check(
-            Bip44Public(pubkey, fingerprint, KeychainKind::External).build(Network::Bitcoin),
+            Bip44Public(pubkey, fingerprint, KeychainKind::External).build(Network::Prod),
             false,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "miNG7dJTzJqNbFS19svRdTCisC65dsubtR",
                 "n2UqaDbCjWSFJvpC84m3FjUk5UaeibCzYg",
@@ -800,11 +800,11 @@ mod test {
             ],
         );
         check(
-            Bip44Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip44Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Prod),
             false,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "moDr3vJ8wpt5nNxSK55MPq797nXJb2Ru9H",
                 "ms7A1Yt4uTezT2XkefW12AvLoko8WfNJMG",
@@ -818,11 +818,11 @@ mod test {
     fn test_bip49_template() {
         let prvkey = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
         check(
-            Bip49(prvkey, KeychainKind::External).build(Network::Bitcoin),
+            Bip49(prvkey, KeychainKind::External).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "2N9bCAJXGm168MjVwpkBdNt6ucka3PKVoUV",
                 "2NDckYkqrYyDMtttEav5hB3Bfw9EGAW5HtS",
@@ -830,11 +830,11 @@ mod test {
             ],
         );
         check(
-            Bip49(prvkey, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip49(prvkey, KeychainKind::Internal).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "2NB3pA8PnzJLGV8YEKNDFpbViZv3Bm1K6CG",
                 "2NBiX2Wzxngb5rPiWpUiJQ2uLVB4HBjFD4p",
@@ -849,11 +849,11 @@ mod test {
         let pubkey = tapyrus::bip32::Xpub::from_str("tpubDC49r947KGK52X5rBWS4BLs5m9SRY3pYHnvRrm7HcybZ3BfdEsGFyzCMzayi1u58eT82ZeyFZwH7DD6Q83E3fM9CpfMtmnTygnLfP59jL9L").unwrap();
         let fingerprint = tapyrus::bip32::Fingerprint::from_str("c55b303f").unwrap();
         check(
-            Bip49Public(pubkey, fingerprint, KeychainKind::External).build(Network::Bitcoin),
+            Bip49Public(pubkey, fingerprint, KeychainKind::External).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "2N3K4xbVAHoiTQSwxkZjWDfKoNC27pLkYnt",
                 "2NCTQfJ1sZa3wQ3pPseYRHbaNEpC3AquEfX",
@@ -861,11 +861,11 @@ mod test {
             ],
         );
         check(
-            Bip49Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip49Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "2NF2vttKibwyxigxtx95Zw8K7JhDbo5zPVJ",
                 "2Mtmyd8taksxNVWCJ4wVvaiss7QPZGcAJuH",
@@ -879,11 +879,11 @@ mod test {
     fn test_bip84_template() {
         let prvkey = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
         check(
-            Bip84(prvkey, KeychainKind::External).build(Network::Bitcoin),
+            Bip84(prvkey, KeychainKind::External).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "bcrt1qkmvk2nadgplmd57ztld8nf8v2yxkzmdvwtjf8s",
                 "bcrt1qx0v6zgfwe50m4kqc58cqzcyem7ay2sfl3gvqhp",
@@ -891,11 +891,11 @@ mod test {
             ],
         );
         check(
-            Bip84(prvkey, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip84(prvkey, KeychainKind::Internal).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "bcrt1qtrwtz00wxl69e5xex7amy4xzlxkaefg3gfdkxa",
                 "bcrt1qqqasfhxpkkf7zrxqnkr2sfhn74dgsrc3e3ky45",
@@ -910,11 +910,11 @@ mod test {
         let pubkey = tapyrus::bip32::Xpub::from_str("tpubDC2Qwo2TFsaNC4ju8nrUJ9mqVT3eSgdmy1yPqhgkjwmke3PRXutNGRYAUo6RCHTcVQaDR3ohNU9we59brGHuEKPvH1ags2nevW5opEE9Z5Q").unwrap();
         let fingerprint = tapyrus::bip32::Fingerprint::from_str("c55b303f").unwrap();
         check(
-            Bip84Public(pubkey, fingerprint, KeychainKind::External).build(Network::Bitcoin),
+            Bip84Public(pubkey, fingerprint, KeychainKind::External).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "bcrt1qedg9fdlf8cnnqfd5mks6uz5w4kgpk2prcdvd0h",
                 "bcrt1q3lncdlwq3lgcaaeyruynjnlccr0ve0kakh6ana",
@@ -922,11 +922,11 @@ mod test {
             ],
         );
         check(
-            Bip84Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip84Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Prod),
             true,
             false,
             false,
-            Network::Regtest,
+            Network::Dev,
             &[
                 "bcrt1qm6wqukenh7guu792lj2njgw9n78cmwsy8xy3z2",
                 "bcrt1q694twxtjn4nnrvnyvra769j0a23rllj5c6cgwp",
@@ -941,11 +941,11 @@ mod test {
     fn test_bip86_template() {
         let prvkey = tapyrus::bip32::Xpriv::from_str("xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu").unwrap();
         check(
-            Bip86(prvkey, KeychainKind::External).build(Network::Bitcoin),
+            Bip86(prvkey, KeychainKind::External).build(Network::Prod),
             false,
             true,
             false,
-            Network::Bitcoin,
+            Network::Prod,
             &[
                 "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
                 "bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh",
@@ -953,11 +953,11 @@ mod test {
             ],
         );
         check(
-            Bip86(prvkey, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip86(prvkey, KeychainKind::Internal).build(Network::Prod),
             false,
             true,
             false,
-            Network::Bitcoin,
+            Network::Prod,
             &[
                 "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7",
                 "bc1ptdg60grjk9t3qqcqczp4tlyy3z47yrx9nhlrjsmw36q5a72lhdrs9f00nj",
@@ -973,11 +973,11 @@ mod test {
         let pubkey = tapyrus::bip32::Xpub::from_str("xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ").unwrap();
         let fingerprint = tapyrus::bip32::Fingerprint::from_str("73c5da0a").unwrap();
         check(
-            Bip86Public(pubkey, fingerprint, KeychainKind::External).build(Network::Bitcoin),
+            Bip86Public(pubkey, fingerprint, KeychainKind::External).build(Network::Prod),
             false,
             true,
             false,
-            Network::Bitcoin,
+            Network::Prod,
             &[
                 "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
                 "bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh",
@@ -985,11 +985,11 @@ mod test {
             ],
         );
         check(
-            Bip86Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Bitcoin),
+            Bip86Public(pubkey, fingerprint, KeychainKind::Internal).build(Network::Prod),
             false,
             true,
             false,
-            Network::Bitcoin,
+            Network::Prod,
             &[
                 "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7",
                 "bc1ptdg60grjk9t3qqcqczp4tlyy3z47yrx9nhlrjsmw36q5a72lhdrs9f00nj",

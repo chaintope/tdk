@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // The `SignerContainer` can sign for `PSBT`s.
     // a tdk_wallet::wallet internally uses these to handle transaction signing.
     // But they can be used as independent tools also.
-    let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Testnet)?;
+    let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Prod)?;
 
     println!("Example Descriptor for policy analysis : {}", wallet_desc);
 

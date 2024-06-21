@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // Create a new wallet from descriptors
-    let mut wallet = Wallet::new_no_persist(&descriptor, &internal_descriptor, Network::Regtest)?;
+    let mut wallet = Wallet::new_no_persist(&descriptor, &internal_descriptor, Network::Dev)?;
 
     println!(
         "First derived address from the descriptor: \n{}",

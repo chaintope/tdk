@@ -46,21 +46,19 @@ pub type ValidNetworks = HashSet<Network>;
 /// Create a set containing mainnet, testnet, signet, and regtest
 pub fn any_network() -> ValidNetworks {
     vec![
-        Network::Bitcoin,
-        Network::Testnet,
-        Network::Regtest,
-        Network::Signet,
+        Network::Prod,
+        Network::Dev,
     ]
     .into_iter()
     .collect()
 }
 /// Create a set only containing mainnet
 pub fn mainnet_network() -> ValidNetworks {
-    vec![Network::Bitcoin].into_iter().collect()
+    vec![Network::Prod].into_iter().collect()
 }
 /// Create a set containing testnet and regtest
 pub fn test_networks() -> ValidNetworks {
-    vec![Network::Testnet, Network::Regtest, Network::Signet]
+    vec![Network::Prod, Network::Dev]
         .into_iter()
         .collect()
 }
@@ -434,7 +432,7 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// impl<Ctx: ScriptContext> DerivableKey<Ctx> for MyCustomKeyType {
 ///     fn into_extended_key(self) -> Result<ExtendedKey<Ctx>, KeyError> {
 ///         let xprv = bip32::Xpriv {
-///             network: bitcoin::Network::Bitcoin, // pick an arbitrary network here
+///             network: bitcoin::Network::Prod, // pick an arbitrary network here
 ///             depth: 0,
 ///             parent_fingerprint: bip32::Fingerprint::default(),
 ///             private_key: self.key_data.inner,
@@ -482,7 +480,7 @@ let xkey: ExtendedKey =
         "jelly crash boy whisper mouse ecology tuna soccer memory million news short",
     )?
     .into_extended_key()?;
-let xprv = xkey.into_xprv(Network::Bitcoin).unwrap();
+let xprv = xkey.into_xprv(Network::Prod).unwrap();
 # Ok(()) }
 ```
 "##
@@ -717,7 +715,7 @@ impl<Ctx: ScriptContext> GeneratableKey<Ctx> for PrivateKey {
         let inner = secp256k1::SecretKey::from_slice(&entropy)?;
         let private_key = PrivateKey {
             compressed: options.compressed,
-            network: Network::Bitcoin,
+            network: Network::Prod,
             inner,
         };
 
@@ -848,7 +846,7 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorPublicKey {
         let networks = match self {
             DescriptorPublicKey::Single(_) => any_network(),
             DescriptorPublicKey::XPub(DescriptorXKey { xkey, .. })
-                if xkey.network == Network::Bitcoin =>
+                if xkey.network == Network::Prod =>
             {
                 mainnet_network()
             }
@@ -886,7 +884,7 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorSecretKey {
                 mainnet_network()
             }
             DescriptorSecretKey::XPrv(DescriptorXKey { xkey, .. })
-                if xkey.network == Network::Bitcoin =>
+                if xkey.network == Network::Prod =>
             {
                 mainnet_network()
             }
@@ -1001,8 +999,8 @@ pub mod test {
         .unwrap()
         .into_extended_key()
         .unwrap();
-        let xprv = xkey.into_xprv(Network::Testnet).unwrap();
+        let xprv = xkey.into_xprv(Network::Prod).unwrap();
 
-        assert_eq!(xprv.network, Network::Testnet);
+        assert_eq!(xprv.network, Network::Prod);
     }
 }
