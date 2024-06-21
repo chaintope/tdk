@@ -52,7 +52,7 @@
 //!             .scan(
 //!                 (&mut selected_amount, &mut additional_weight),
 //!                 |(selected_amount, additional_weight), weighted_utxo| {
-//!                     **selected_amount += weighted_utxo.utxo.txout().value.to_sat();
+//!                     **selected_amount += weighted_utxo.utxo.txout().value.to_tap();
 //!                     **additional_weight += Weight::from_wu(
 //!                         (TxIn::default().segwit_weight().to_wu()
 //!                             + weighted_utxo.satisfaction_weight as u64)
@@ -62,7 +62,7 @@
 //!                 },
 //!             )
 //!             .collect::<Vec<_>>();
-//!         let additional_fees = (fee_rate * additional_weight).to_sat();
+//!         let additional_fees = (fee_rate * additional_weight).to_tap();
 //!         let amount_needed_with_fees = additional_fees + target_amount;
 //!         if selected_amount < amount_needed_with_fees {
 //!             return Err(coin_selection::Error::InsufficientFunds {
@@ -92,7 +92,7 @@
 //!     .unwrap();
 //! let psbt = {
 //!     let mut builder = wallet.build_tx().coin_selection(AlwaysSpendEverything);
-//!     builder.add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000));
+//!     builder.add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000));
 //!     builder.finish()?
 //! };
 //!
@@ -193,7 +193,7 @@ pub struct CoinSelectionResult {
 impl CoinSelectionResult {
     /// The total value of the inputs selected.
     pub fn selected_amount(&self) -> u64 {
-        self.selected.iter().map(|u| u.txout().value.to_sat()).sum()
+        self.selected.iter().map(|u| u.txout().value.to_tap()).sum()
     }
 
     /// The total value of the inputs selected from the local wallet.
@@ -201,7 +201,7 @@ impl CoinSelectionResult {
         self.selected
             .iter()
             .filter_map(|u| match u {
-                Utxo::Local(_) => Some(u.txout().value.to_sat()),
+                Utxo::Local(_) => Some(u.txout().value.to_tap()),
                 _ => None,
             })
             .sum()
@@ -312,11 +312,11 @@ pub fn decide_change(remaining_amount: u64, fee_rate: FeeRate, drain_script: &Sc
     // drain_output_len = size(len(script_pubkey)) + len(script_pubkey) + size(output_value)
     let drain_output_len = serialize(drain_script).len() + 8usize;
     let change_fee =
-        (fee_rate * Weight::from_vb(drain_output_len as u64).expect("overflow occurred")).to_sat();
+        (fee_rate * Weight::from_vb(drain_output_len as u64).expect("overflow occurred")).to_tap();
     let drain_val = remaining_amount.saturating_sub(change_fee);
 
     if drain_val.is_dust(drain_script) {
-        let dust_threshold = drain_script.dust_value().to_sat();
+        let dust_threshold = drain_script.dust_value().to_tap();
         Excess::NoChange {
             dust_threshold,
             change_fee,
@@ -348,8 +348,8 @@ fn select_sorted_utxos(
                             TxIn::default().segwit_weight().to_wu()
                                 + weighted_utxo.satisfaction_weight as u64,
                         ))
-                    .to_sat();
-                    **selected_amount += weighted_utxo.utxo.txout().value.to_sat();
+                    .to_tap();
+                    **selected_amount += weighted_utxo.utxo.txout().value.to_tap();
                     Some(weighted_utxo.utxo)
                 } else {
                     None
@@ -393,8 +393,8 @@ impl OutputGroup {
             * Weight::from_wu(
                 TxIn::default().segwit_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
             ))
-        .to_sat();
-        let effective_value = weighted_utxo.utxo.txout().value.to_sat() as i64 - fee as i64;
+        .to_tap();
+        let effective_value = weighted_utxo.utxo.txout().value.to_tap() as i64 - fee as i64;
         OutputGroup {
             weighted_utxo,
             fee,
@@ -461,7 +461,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
             .fold(0, |acc, x| acc + x.effective_value);
 
         let cost_of_change =
-            (Weight::from_vb(self.size_of_change).expect("overflow occurred") * fee_rate).to_sat();
+            (Weight::from_vb(self.size_of_change).expect("overflow occurred") * fee_rate).to_tap();
 
         // `curr_value` and `curr_available_value` are both the sum of *effective_values* of
         // the UTXOs. For the optional UTXOs (curr_available_value) we filter out UTXOs with
@@ -485,7 +485,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
                     .chain(optional_utxos.iter())
                     .fold((0, 0), |(mut fees, mut value), utxo| {
                         fees += utxo.fee;
-                        value += utxo.weighted_utxo.utxo.txout().value.to_sat();
+                        value += utxo.weighted_utxo.utxo.txout().value.to_tap();
 
                         (fees, value)
                     });
@@ -771,7 +771,7 @@ mod test {
             utxo: Utxo::Local(LocalOutput {
                 outpoint,
                 txout: TxOut {
-                    value: Amount::from_sat(value),
+                    value: Amount::from_tap(value),
                     script_pubkey: ScriptBuf::new(),
                 },
                 keychain: KeychainKind::External,
@@ -835,7 +835,7 @@ mod test {
                     ))
                     .unwrap(),
                     txout: TxOut {
-                        value: Amount::from_sat(rng.gen_range(0..200000000)),
+                        value: Amount::from_tap(rng.gen_range(0..200000000)),
                         script_pubkey: ScriptBuf::new(),
                     },
                     keychain: KeychainKind::External,
@@ -866,7 +866,7 @@ mod test {
                     ))
                     .unwrap(),
                     txout: TxOut {
-                        value: Amount::from_sat(utxos_value),
+                        value: Amount::from_tap(utxos_value),
                         script_pubkey: ScriptBuf::new(),
                     },
                     keychain: KeychainKind::External,
@@ -883,7 +883,7 @@ mod test {
         utxos.shuffle(&mut rng);
         utxos[..utxos_picked_len]
             .iter()
-            .map(|u| u.utxo.txout().value.to_sat())
+            .map(|u| u.utxo.txout().value.to_tap())
             .sum()
     }
 
@@ -1074,7 +1074,7 @@ mod test {
 
         let target_amount: u64 = utxos
             .iter()
-            .map(|wu| wu.utxo.txout().value.to_sat())
+            .map(|wu| wu.utxo.txout().value.to_tap())
             .sum::<u64>()
             - 50;
         let drain_script = ScriptBuf::default();
@@ -1171,9 +1171,9 @@ mod test {
         ));
 
         // Defensive assertions, for sanity and in case someone changes the test utxos vector.
-        let amount: u64 = required.iter().map(|u| u.utxo.txout().value.to_sat()).sum();
+        let amount: u64 = required.iter().map(|u| u.utxo.txout().value.to_tap()).sum();
         assert_eq!(amount, 100_000);
-        let amount: u64 = optional.iter().map(|u| u.utxo.txout().value.to_sat()).sum();
+        let amount: u64 = optional.iter().map(|u| u.utxo.txout().value.to_tap()).sum();
         assert!(amount > 150_000);
         let drain_script = ScriptBuf::default();
 
@@ -1246,7 +1246,7 @@ mod test {
         let input_weight =
             TxIn::default().segwit_weight().to_wu() + P2WPKH_SATISFACTION_SIZE as u64;
         // the final fee rate should be exactly the same as the fee rate given
-        let result_feerate = Amount::from_sat(result.fee_amount) / Weight::from_wu(input_weight);
+        let result_feerate = Amount::from_tap(result.fee_amount) / Weight::from_wu(input_weight);
         assert_eq!(result_feerate, feerate);
     }
 
@@ -1284,7 +1284,7 @@ mod test {
         let curr_available_value = utxos.iter().fold(0, |acc, x| acc + x.effective_value);
 
         let size_of_change = 31;
-        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_sat();
+        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_tap();
 
         let drain_script = ScriptBuf::default();
         let target_amount = 20_000 + FEE_AMOUNT;
@@ -1314,7 +1314,7 @@ mod test {
         let curr_available_value = utxos.iter().fold(0, |acc, x| acc + x.effective_value);
 
         let size_of_change = 31;
-        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_sat();
+        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_tap();
         let target_amount = 20_000 + FEE_AMOUNT;
 
         let drain_script = ScriptBuf::default();
@@ -1338,7 +1338,7 @@ mod test {
     fn test_bnb_function_almost_exact_match_with_fees() {
         let fee_rate = FeeRate::from_sat_per_vb_unchecked(1);
         let size_of_change = 31;
-        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_sat();
+        let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_tap();
 
         let utxos: Vec<_> = generate_same_value_utxos(50_000, 10)
             .into_iter()
@@ -1467,7 +1467,7 @@ mod test {
         let drain_script = ScriptBuf::default();
 
         let (required, optional) = utxos.into_iter().partition(
-            |u| matches!(u, WeightedUtxo { utxo, .. } if utxo.txout().value.to_sat() < 1000),
+            |u| matches!(u, WeightedUtxo { utxo, .. } if utxo.txout().value.to_tap() < 1000),
         );
 
         let selection = BranchAndBoundCoinSelection::default().coin_select(
@@ -1517,7 +1517,7 @@ mod test {
                 utxo: Utxo::Local(LocalOutput {
                     outpoint: OutPoint::new(tapyrus::hashes::Hash::hash(txid.as_bytes()), 0),
                     txout: TxOut {
-                        value: Amount::from_sat(value),
+                        value: Amount::from_tap(value),
                         script_pubkey: ScriptBuf::new(),
                     },
                     keychain: KeychainKind::External,

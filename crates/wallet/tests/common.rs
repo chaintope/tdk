@@ -36,7 +36,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
             witness: Default::default(),
         }],
         output: vec![TxOut {
-            value: Amount::from_sat(76_000),
+            value: Amount::from_tap(76_000),
             script_pubkey: receive_address.script_pubkey(),
         }],
     };
@@ -55,11 +55,11 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         }],
         output: vec![
             TxOut {
-                value: Amount::from_sat(50_000),
+                value: Amount::from_tap(50_000),
                 script_pubkey: receive_address.script_pubkey(),
             },
             TxOut {
-                value: Amount::from_sat(25_000),
+                value: Amount::from_tap(25_000),
                 script_pubkey: sendto_address.script_pubkey(),
             },
         ],
@@ -190,5 +190,5 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 pub fn feerate_unchecked(sat_vb: f64) -> FeeRate {
     // 1 sat_vb / 4wu_vb * 1000kwu_wu = 250 sat_kwu
     let sat_kwu = (sat_vb * 250.0).ceil() as u64;
-    FeeRate::from_sat_per_kwu(sat_kwu)
+    FeeRate::from_tap_per_kwu(sat_kwu)
 }

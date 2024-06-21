@@ -1273,7 +1273,7 @@ impl Wallet {
     /// let psbt = {
     ///    let mut builder =  wallet.build_tx();
     ///    builder
-    ///        .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000));
+    ///        .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000));
     ///    builder.finish()?
     /// };
     ///
@@ -1439,7 +1439,7 @@ impl Wallet {
                 if let Some(previous_fee) = params.bumping_fee {
                     if fee < previous_fee.absolute {
                         return Err(CreateTxError::FeeTooLow {
-                            required: Amount::from_sat(previous_fee.absolute),
+                            required: Amount::from_tap(previous_fee.absolute),
                         });
                     }
                 }
@@ -1447,9 +1447,9 @@ impl Wallet {
             }
             FeePolicy::FeeRate(rate) => {
                 if let Some(previous_fee) = params.bumping_fee {
-                    let required_feerate = FeeRate::from_sat_per_kwu(
-                        previous_fee.rate.to_sat_per_kwu()
-                            + FeeRate::BROADCAST_MIN.to_sat_per_kwu(), // +1 sat/vb
+                    let required_feerate = FeeRate::from_tap_per_kwu(
+                        previous_fee.rate.to_tap_per_kwu()
+                            + FeeRate::BROADCAST_MIN.to_tap_per_kwu(), // +1 sat/vb
                     );
                     if rate < required_feerate {
                         return Err(CreateTxError::FeeRateTooLow {
@@ -1486,20 +1486,20 @@ impl Wallet {
             }
 
             if self.is_mine(script_pubkey) {
-                received += Amount::from_sat(value);
+                received += Amount::from_tap(value);
             }
 
             let new_out = TxOut {
                 script_pubkey: script_pubkey.clone(),
-                value: Amount::from_sat(value),
+                value: Amount::from_tap(value),
             };
 
             tx.output.push(new_out);
 
-            outgoing += Amount::from_sat(value);
+            outgoing += Amount::from_tap(value);
         }
 
-        fee_amount += (fee_rate * tx.weight()).to_sat();
+        fee_amount += (fee_rate * tx.weight()).to_tap();
 
         let (required_utxos, optional_utxos) =
             self.preselect_utxos(&params, Some(current_height.to_consensus_u32()));
@@ -1532,7 +1532,7 @@ impl Wallet {
             required_utxos,
             optional_utxos,
             fee_rate,
-            outgoing.to_sat() + fee_amount,
+            outgoing.to_tap() + fee_amount,
             &drain_script,
         )?;
         fee_amount += coin_selection.fee_amount;
@@ -1580,13 +1580,13 @@ impl Wallet {
             } => fee_amount += remaining_amount,
             Change { amount, fee } => {
                 if self.is_mine(&drain_script) {
-                    received += Amount::from_sat(*amount);
+                    received += Amount::from_tap(*amount);
                 }
                 fee_amount += fee;
 
                 // create drain output
                 let drain_output = TxOut {
-                    value: Amount::from_sat(*amount),
+                    value: Amount::from_tap(*amount),
                     script_pubkey: drain_script,
                 };
 
@@ -1627,7 +1627,7 @@ impl Wallet {
     /// let mut psbt = {
     ///     let mut builder = wallet.build_tx();
     ///     builder
-    ///         .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+    ///         .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
     ///         .enable_rbf();
     ///     builder.finish()?
     /// };
@@ -1762,11 +1762,11 @@ impl Wallet {
             recipients: tx
                 .output
                 .into_iter()
-                .map(|txout| (txout.script_pubkey, txout.value.to_sat()))
+                .map(|txout| (txout.script_pubkey, txout.value.to_tap()))
                 .collect(),
             utxos: original_utxos,
             bumping_fee: Some(tx_builder::PreviousFee {
-                absolute: fee.to_sat(),
+                absolute: fee.to_tap(),
                 rate: fee_rate,
             }),
             ..Default::default()
@@ -1801,7 +1801,7 @@ impl Wallet {
     /// # let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap().assume_checked();
     /// let mut psbt = {
     ///     let mut builder = wallet.build_tx();
-    ///     builder.add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000));
+    ///     builder.add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000));
     ///     builder.finish()?
     /// };
     /// let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
@@ -2557,7 +2557,7 @@ macro_rules! floating_rate {
     ($rate:expr) => {{
         use $crate::tapyrus::blockdata::constants::WITNESS_SCALE_FACTOR;
         // sat_kwu / 250.0 -> sat_vb
-        $rate.to_sat_per_kwu() as f64 / ((1000 / WITNESS_SCALE_FACTOR) as f64)
+        $rate.to_tap_per_kwu() as f64 / ((1000 / WITNESS_SCALE_FACTOR) as f64)
     }};
 }
 
@@ -2584,7 +2584,7 @@ macro_rules! doctest_wallet {
             lock_time: absolute::LockTime::ZERO,
             input: vec![],
             output: vec![TxOut {
-                value: Amount::from_sat(500_000),
+                value: Amount::from_tap(500_000),
                 script_pubkey: address.script_pubkey(),
             }],
         };

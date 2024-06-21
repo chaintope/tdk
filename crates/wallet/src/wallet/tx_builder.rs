@@ -28,7 +28,7 @@
 //!
 //! tx_builder
 //!     // Create a transaction with one output to `to_address` of 50_000 satoshi
-//!     .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+//!     .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
 //!     // With a custom fee rate of 5.0 satoshi/vbyte
 //!     .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"))
 //!     // Only spend non-change outputs
@@ -78,8 +78,8 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 ///     let mut builder = wallet.build_tx();
 ///     builder
 ///         .ordering(TxOrdering::Untouched)
-///         .add_recipient(addr1.script_pubkey(), Amount::from_sat(50_000))
-///         .add_recipient(addr2.script_pubkey(), Amount::from_sat(50_000));
+///         .add_recipient(addr1.script_pubkey(), Amount::from_tap(50_000))
+///         .add_recipient(addr2.script_pubkey(), Amount::from_tap(50_000));
 ///     builder.finish()?
 /// };
 ///
@@ -88,7 +88,7 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 ///     let mut builder = wallet.build_tx();
 ///     builder.ordering(TxOrdering::Untouched);
 ///     for addr in &[addr1, addr2] {
-///         builder.add_recipient(addr.script_pubkey(), Amount::from_sat(50_000));
+///         builder.add_recipient(addr.script_pubkey(), Amount::from_tap(50_000));
 ///     }
 ///     builder.finish()?
 /// };
@@ -195,7 +195,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// overshoot it slightly since adding a change output to drain the remaining
     /// excess might not be viable.
     pub fn fee_absolute(&mut self, fee_amount: Amount) -> &mut Self {
-        self.params.fee_policy = Some(FeePolicy::FeeAmount(fee_amount.to_sat()));
+        self.params.fee_policy = Some(FeePolicy::FeeAmount(fee_amount.to_tap()));
         self
     }
 
@@ -256,7 +256,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     ///
     /// let builder = wallet
     ///     .build_tx()
-    ///     .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+    ///     .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
     ///     .policy_path(path, KeychainKind::External);
     ///
     /// # Ok::<(), anyhow::Error>(())
@@ -595,7 +595,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn set_recipients(&mut self, recipients: Vec<(ScriptBuf, Amount)>) -> &mut Self {
         self.params.recipients = recipients
             .into_iter()
-            .map(|(script, amount)| (script, amount.to_sat()))
+            .map(|(script, amount)| (script, amount.to_tap()))
             .collect();
         self
     }
@@ -604,7 +604,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn add_recipient(&mut self, script_pubkey: ScriptBuf, amount: Amount) -> &mut Self {
         self.params
             .recipients
-            .push((script_pubkey, amount.to_sat()));
+            .push((script_pubkey, amount.to_tap()));
         self
     }
 
@@ -917,7 +917,7 @@ mod test {
             .unwrap()
         );
 
-        assert_eq!(tx.output[0].value.to_sat(), 800);
+        assert_eq!(tx.output[0].value.to_tap(), 800);
         assert_eq!(tx.output[1].script_pubkey, ScriptBuf::from(vec![0xAA]));
         assert_eq!(
             tx.output[2].script_pubkey,
