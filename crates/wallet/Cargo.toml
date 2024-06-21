@@ -46,7 +46,7 @@ lazy_static = "1.4"
 assert_matches = "1.5.0"
 tempfile = "3"
 tdk_sqlite = { path = "../sqlite" }
-bdk_file_store = { path = "../file_store" }
+tdk_file_store = { path = "../file_store" }
 anyhow = "1"
 
 [package.metadata.docs.rs]

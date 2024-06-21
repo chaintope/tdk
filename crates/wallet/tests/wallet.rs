@@ -127,8 +127,8 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
 
     run(
         "store.db",
-        |path| Ok(bdk_file_store::Store::create_new(DB_MAGIC, path)?),
-        |path| Ok(bdk_file_store::Store::open(DB_MAGIC, path)?),
+        |path| Ok(tdk_file_store::Store::create_new(DB_MAGIC, path)?),
+        |path| Ok(tdk_file_store::Store::open(DB_MAGIC, path)?),
     )?;
     run(
         "store.sqlite",
@@ -261,7 +261,7 @@ fn new_or_load() -> anyhow::Result<()> {
     }
 
     run("store.db", |path| {
-        Ok(bdk_file_store::Store::open_or_create_new(DB_MAGIC, path)?)
+        Ok(tdk_file_store::Store::open_or_create_new(DB_MAGIC, path)?)
     })?;
     run("store.sqlite", |path| {
         Ok(tdk_sqlite::Store::new(Connection::open(path)?)?)

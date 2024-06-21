@@ -1,11 +1,10 @@
 pub use anyhow;
 use anyhow::Context;
 use bdk_coin_select::{coin_select_bnb, CoinSelector, CoinSelectorOpt, WeightedValue};
-use bdk_file_store::Store;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{cmp::Reverse, collections::BTreeMap, path::PathBuf, sync::Mutex, time::Duration};
+use tdk_file_store::Store;
 
-pub use bdk_file_store;
 pub use clap;
 use tdk_chain::{
     bitcoin::{
@@ -23,6 +22,7 @@ use tdk_chain::{
     },
     Anchor, Append, ChainOracle, DescriptorExt, FullTxOut,
 };
+pub use tdk_file_store;
 use tdk_persist::{Persist, PersistBackend};
 
 use clap::{Parser, Subcommand};

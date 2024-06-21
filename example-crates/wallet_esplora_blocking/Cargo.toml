@@ -9,5 +9,5 @@ publish = false
 [dependencies]
 bdk_wallet = { path = "../../crates/wallet" }
 bdk_esplora = { path = "../../crates/esplora", features = ["blocking"] }
-bdk_file_store = { path = "../../crates/file_store" }
+tdk_file_store = { path = "../../crates/file_store" }
 anyhow = "1"
