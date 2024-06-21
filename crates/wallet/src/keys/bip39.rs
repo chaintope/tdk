@@ -15,8 +15,8 @@
 // something that should be fairly simple to re-implement.
 
 use alloc::string::String;
-use bitcoin::bip32;
-use bitcoin::Network;
+use tapyrus::bip32;
+use tapyrus::Network;
 
 use miniscript::ScriptContext;
 
@@ -154,7 +154,7 @@ mod test {
     use alloc::string::ToString;
     use core::str::FromStr;
 
-    use bitcoin::bip32;
+    use tapyrus::bip32;
 
     use bip39::{Language, Mnemonic};
 

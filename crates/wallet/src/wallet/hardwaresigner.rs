@@ -47,9 +47,9 @@
 //! # }
 //! ```
 
-use bitcoin::bip32::Fingerprint;
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::Psbt;
+use tapyrus::bip32::Fingerprint;
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::Psbt;
 
 use hwi::error::Error;
 use hwi::types::{HWIChain, HWIDevice};

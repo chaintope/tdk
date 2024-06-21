@@ -16,7 +16,7 @@ extern crate std;
 #[macro_use]
 pub extern crate alloc;
 
-pub extern crate bitcoin;
+pub extern crate tapyrus;
 pub extern crate miniscript;
 extern crate serde;
 extern crate serde_json;

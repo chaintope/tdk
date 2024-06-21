@@ -12,7 +12,7 @@
 extern crate tdk_wallet;
 use std::error::Error;
 
-use tdk_wallet::bitcoin::Network;
+use tdk_wallet::tapyrus::Network;
 use tdk_wallet::descriptor::{policy::BuildSatisfaction, ExtractPolicy, IntoWalletDescriptor};
 use tdk_wallet::wallet::signer::SignersContainer;
 
@@ -27,7 +27,7 @@ use tdk_wallet::wallet::signer::SignersContainer;
 /// one of the Extend Private key.
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let secp = bitcoin::secp256k1::Secp256k1::new();
+    let secp = tapyrus::secp256k1::Secp256k1::new();
 
     // The descriptor used in the example
     // The form is "wsh(multi(2, <privkey>, <pubkey>))"

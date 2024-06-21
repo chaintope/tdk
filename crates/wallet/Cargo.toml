@@ -15,8 +15,8 @@ rust-version = "1.63"
 [dependencies]
 anyhow = { version = "1", default-features = false }
 rand = "^0.8"
-miniscript = { version = "11.0.0", features = ["serde"], default-features = false }
-bitcoin = { version = "0.31.0", features = ["serde", "base64", "rand-std"], default-features = false }
+miniscript = { git = "https://github.com/chaintope/rust-miniscript", branch = "master", features = ["serde"], default-features = false }
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", features = ["serde", "base64", "rand-std"], default-features = false, subdirectory = "tapyrus" }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1.0" }
 tdk_chain = { path = "../chain", version = "0.15.0", features = ["miniscript", "serde"], default-features = false }
@@ -31,7 +31,7 @@ js-sys = "0.3"
 
 [features]
 default = ["std"]
-std = ["bitcoin/std", "miniscript/std", "tdk_chain/std"]
+std = ["tapyrus/std", "miniscript/std", "tdk_chain/std"]
 compiler = ["miniscript/compiler"]
 all-keys = ["keys-bip39"]
 keys-bip39 = ["bip39"]

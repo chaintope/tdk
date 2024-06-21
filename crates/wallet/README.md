@@ -67,7 +67,7 @@ To persist the `Wallet` on disk, it must be constructed with a [`PersistBackend`
 
 <!-- compile_fail because outpoint and txout are fake variables -->
 ```rust,compile_fail
-use tdk_wallet::{bitcoin::Network, wallet::{ChangeSet, Wallet}};
+use tdk_wallet::{tapyrus::Network, wallet::{ChangeSet, Wallet}};
 
 fn main() {
     // Create a new file `Store`.

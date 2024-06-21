@@ -43,9 +43,9 @@ use alloc::{boxed::Box, rc::Rc, string::String, vec::Vec};
 use core::cell::RefCell;
 use core::fmt;
 
-use bitcoin::psbt::{self, Psbt};
-use bitcoin::script::PushBytes;
-use bitcoin::{absolute, Amount, FeeRate, OutPoint, ScriptBuf, Sequence, Transaction, Txid};
+use tapyrus::psbt::{self, Psbt};
+use tapyrus::script::PushBytes;
+use tapyrus::{absolute, Amount, FeeRate, OutPoint, ScriptBuf, Sequence, Transaction, Txid};
 
 use super::coin_selection::CoinSelectionAlgorithm;
 use super::{CreateTxError, Wallet};
@@ -838,14 +838,14 @@ mod test {
                                     00000000";
     macro_rules! ordering_test_tx {
         () => {
-            deserialize::<bitcoin::Transaction>(&Vec::<u8>::from_hex(ORDERING_TEST_TX).unwrap())
+            deserialize::<tapyrus::Transaction>(&Vec::<u8>::from_hex(ORDERING_TEST_TX).unwrap())
                 .unwrap()
         };
     }
 
-    use bitcoin::consensus::deserialize;
-    use bitcoin::hex::FromHex;
-    use bitcoin::TxOut;
+    use tapyrus::consensus::deserialize;
+    use tapyrus::hex::FromHex;
+    use tapyrus::TxOut;
     use tdk_chain::ConfirmationTime;
 
     use super::*;
@@ -897,21 +897,21 @@ mod test {
 
         assert_eq!(
             tx.input[0].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0e53ec5dfb2cb8a71fec32dc9a634a35b7e24799295ddd5278217822e0b31f57:5"
             )
             .unwrap()
         );
         assert_eq!(
             tx.input[1].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0f60fdd185542f2c6ea19030b0796051e7772b6026dd5ddccd7a2f93b73e6fc2:0"
             )
             .unwrap()
         );
         assert_eq!(
             tx.input[2].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0f60fdd185542f2c6ea19030b0796051e7772b6026dd5ddccd7a2f93b73e6fc2:1"
             )
             .unwrap()
@@ -926,12 +926,12 @@ mod test {
     }
 
     fn get_test_utxos() -> Vec<LocalOutput> {
-        use bitcoin::hashes::Hash;
+        use tapyrus::hashes::Hash;
 
         vec![
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: bitcoin::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
                     vout: 0,
                 },
                 txout: TxOut::NULL,
@@ -942,7 +942,7 @@ mod test {
             },
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: bitcoin::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
                     vout: 1,
                 },
                 txout: TxOut::NULL,

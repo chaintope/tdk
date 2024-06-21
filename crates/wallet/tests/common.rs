@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use bitcoin::hashes::Hash;
-use bitcoin::{
+use tapyrus::hashes::Hash;
+use tapyrus::{
     transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
     Txid,
 };
@@ -15,7 +15,7 @@ use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
 /// to a foreign address and one returning 50_000 back to the wallet. The remaining 1000
 /// sats are the transaction fee.
-pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, bitcoin::Txid) {
+pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, tapyrus::Txid) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Regtest).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address = Address::from_str("bcrt1q3qtze4ys45tgdvguj66zrk4fu6hq3a3v9pfly5")
@@ -25,7 +25,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 
     let tx0 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: Txid::all_zeros(),
@@ -43,7 +43,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 
     let tx1 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: tx0.txid(),
@@ -108,12 +108,12 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 /// Note: the change descriptor will have script type `p2wpkh`. If passing some other script type
 /// as argument, make sure you're ok with getting a wallet where the keychains have potentially
 /// different script types. Otherwise, use `get_funded_wallet_with_change`.
-pub fn get_funded_wallet(descriptor: &str) -> (Wallet, bitcoin::Txid) {
+pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::Txid) {
     let change = get_test_wpkh_change();
     get_funded_wallet_with_change(descriptor, change)
 }
 
-pub fn get_funded_wallet_wpkh() -> (Wallet, bitcoin::Txid) {
+pub fn get_funded_wallet_wpkh() -> (Wallet, tapyrus::Txid) {
     get_funded_wallet_with_change(get_test_wpkh(), get_test_wpkh_change())
 }
 

@@ -214,8 +214,8 @@ mod test {
     use core::str::FromStr;
 
     use crate::std::string::ToString;
-    use bitcoin::hashes::Hash;
-    use bitcoin::{transaction, BlockHash, Network, Transaction};
+    use tapyrus::hashes::Hash;
+    use tapyrus::{transaction, BlockHash, Network, Transaction};
     use tdk_chain::{BlockId, ConfirmationTime};
 
     use super::*;
@@ -227,7 +227,7 @@ mod test {
             input: vec![],
             output: vec![],
             version: transaction::Version::non_standard(0),
-            lock_time: bitcoin::absolute::LockTime::ZERO,
+            lock_time: tapyrus::absolute::LockTime::ZERO,
         };
         wallet
             .insert_checkpoint(BlockId {

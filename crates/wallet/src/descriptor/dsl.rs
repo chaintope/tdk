@@ -64,7 +64,7 @@ macro_rules! impl_top_level_pk {
 
         #[allow(unused_imports)]
         use $crate::keys::{DescriptorKey, IntoDescriptorKey};
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
 
         $key.into_descriptor_key()
             .and_then(|key: DescriptorKey<$ctx>| key.extract(&secp))
@@ -85,7 +85,7 @@ macro_rules! impl_top_level_tr {
         #[allow(unused_imports)]
         use $crate::keys::{DescriptorKey, IntoDescriptorKey, ValidNetworks};
 
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
 
         $internal_key
             .into_descriptor_key()
@@ -250,12 +250,12 @@ macro_rules! impl_node_opcode_three {
 #[macro_export]
 macro_rules! impl_sortedmulti {
     ( $build_desc:expr, sortedmulti_vec ( $thresh:expr, $keys:expr ) ) => ({
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
         $crate::keys::make_sortedmulti($thresh, $keys, $build_desc, &secp)
     });
     ( $build_desc:expr, sortedmulti ( $thresh:expr $(, $key:expr )+ ) ) => ({
         use $crate::keys::IntoDescriptorKey;
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
 
         let keys = vec![
             $(
@@ -692,21 +692,21 @@ macro_rules! fragment {
         $crate::impl_leaf_opcode!(False)
     });
     ( pk_k ( $key:expr ) ) => ({
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
         $crate::keys::make_pk($key, &secp)
     });
     ( pk ( $key:expr ) ) => ({
         $crate::fragment!(c:pk_k ( $key ))
     });
     ( pk_h ( $key:expr ) ) => ({
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
         $crate::keys::make_pkh($key, &secp)
     });
     ( after ( $value:expr ) ) => ({
         $crate::impl_leaf_opcode_value!(After, $crate::miniscript::AbsLockTime::from_consensus($value))
     });
     ( older ( $value:expr ) ) => ({
-        $crate::impl_leaf_opcode_value!(Older, $crate::bitcoin::Sequence($value)) // TODO!!
+        $crate::impl_leaf_opcode_value!(Older, $crate::tapyrus::Sequence($value)) // TODO!!
     });
     ( sha256 ( $hash:expr ) ) => ({
         $crate::impl_leaf_opcode_value!(Sha256, $hash)
@@ -767,7 +767,7 @@ macro_rules! fragment {
             .and_then(|items| $crate::fragment!(thresh_vec($thresh, items)))
     });
     ( multi_vec ( $thresh:expr, $keys:expr ) ) => ({
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
 
         $crate::keys::make_multi($thresh, $crate::miniscript::Terminal::Multi, $keys, &secp)
     });
@@ -776,7 +776,7 @@ macro_rules! fragment {
             .and_then(|keys| $crate::fragment!( multi_vec ( $thresh, keys ) ))
     });
     ( multi_a_vec ( $thresh:expr, $keys:expr ) ) => ({
-        let secp = $crate::bitcoin::secp256k1::Secp256k1::new();
+        let secp = $crate::tapyrus::secp256k1::Secp256k1::new();
 
         $crate::keys::make_multi($thresh, $crate::miniscript::Terminal::MultiA, $keys, &secp)
     });
@@ -797,7 +797,7 @@ macro_rules! fragment {
 #[cfg(test)]
 mod test {
     use alloc::string::ToString;
-    use bitcoin::secp256k1::Secp256k1;
+    use tapyrus::secp256k1::Secp256k1;
     use miniscript::descriptor::{DescriptorPublicKey, KeyMap};
     use miniscript::{Descriptor, Legacy, Segwitv0};
 
@@ -805,9 +805,9 @@ mod test {
 
     use crate::descriptor::{DescriptorError, DescriptorMeta};
     use crate::keys::{DescriptorKey, IntoDescriptorKey, ValidNetworks};
-    use bitcoin::bip32;
-    use bitcoin::Network::{Bitcoin, Regtest, Signet, Testnet};
-    use bitcoin::PrivateKey;
+    use tapyrus::bip32;
+    use tapyrus::Network::{Bitcoin, Regtest, Signet, Testnet};
+    use tapyrus::PrivateKey;
 
     // test the descriptor!() macro
 
@@ -843,11 +843,11 @@ mod test {
 
     #[test]
     fn test_fixed_legacy_descriptors() {
-        let pubkey1 = bitcoin::PublicKey::from_str(
+        let pubkey1 = tapyrus::PublicKey::from_str(
             "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
         )
         .unwrap();
-        let pubkey2 = bitcoin::PublicKey::from_str(
+        let pubkey2 = tapyrus::PublicKey::from_str(
             "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
         )
         .unwrap();
@@ -880,11 +880,11 @@ mod test {
 
     #[test]
     fn test_fixed_segwitv0_descriptors() {
-        let pubkey1 = bitcoin::PublicKey::from_str(
+        let pubkey1 = tapyrus::PublicKey::from_str(
             "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
         )
         .unwrap();
-        let pubkey2 = bitcoin::PublicKey::from_str(
+        let pubkey2 = tapyrus::PublicKey::from_str(
             "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
         )
         .unwrap();
@@ -917,11 +917,11 @@ mod test {
 
     #[test]
     fn test_fixed_threeop_descriptors() {
-        let redeem_key = bitcoin::PublicKey::from_str(
+        let redeem_key = tapyrus::PublicKey::from_str(
             "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
         )
         .unwrap();
-        let move_key = bitcoin::PublicKey::from_str(
+        let move_key = tapyrus::PublicKey::from_str(
             "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
         )
         .unwrap();
@@ -1112,7 +1112,7 @@ mod test {
         let desc_key = (xprv, path).into_descriptor_key().unwrap();
 
         let (_desc, _key_map, valid_networks) = descriptor!(wpkh(desc_key)).unwrap();
-        assert_eq!(valid_networks, [Bitcoin].iter().cloned().collect());
+        assert_eq!(valid_networks, [tapyrus].iter().cloned().collect());
     }
 
     // - verify the key_maps are correctly merged together

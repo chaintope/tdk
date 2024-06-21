@@ -9,7 +9,7 @@
 // You may not use this file except in accordance with one or both of these
 // licenses.
 
-extern crate bitcoin;
+extern crate tapyrus;
 extern crate miniscript;
 extern crate serde_json;
 extern crate tdk_wallet;
@@ -17,7 +17,7 @@ extern crate tdk_wallet;
 use std::error::Error;
 use std::str::FromStr;
 
-use bitcoin::Network;
+use tapyrus::Network;
 use miniscript::policy::Concrete;
 use miniscript::Descriptor;
 

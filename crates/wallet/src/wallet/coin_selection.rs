@@ -105,13 +105,13 @@ use crate::chain::collections::HashSet;
 use crate::wallet::utils::IsDust;
 use crate::Utxo;
 use crate::WeightedUtxo;
-use bitcoin::FeeRate;
+use tapyrus::FeeRate;
 
 use alloc::vec::Vec;
-use bitcoin::consensus::encode::serialize;
-use bitcoin::OutPoint;
-use bitcoin::TxIn;
-use bitcoin::{Script, Weight};
+use tapyrus::consensus::encode::serialize;
+use tapyrus::OutPoint;
+use tapyrus::TxIn;
+use tapyrus::{Script, Weight};
 
 use core::convert::TryInto;
 use core::fmt::{self, Formatter};
@@ -500,7 +500,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
 
         let target_amount = target_amount
             .try_into()
-            .expect("Bitcoin amount to fit into i64");
+            .expect("tapyrus amount to fit into i64");
 
         if curr_value > target_amount {
             // remaining_amount can't be negative as that would mean the
@@ -742,7 +742,7 @@ mod test {
     use assert_matches::assert_matches;
     use core::str::FromStr;
 
-    use bitcoin::{Amount, ScriptBuf, TxIn, TxOut};
+    use tapyrus::{Amount, ScriptBuf, TxIn, TxOut};
     use tdk_chain::ConfirmationTime;
 
     use super::*;
@@ -1515,7 +1515,7 @@ mod test {
             WeightedUtxo {
                 satisfaction_weight: 0,
                 utxo: Utxo::Local(LocalOutput {
-                    outpoint: OutPoint::new(bitcoin::hashes::Hash::hash(txid.as_bytes()), 0),
+                    outpoint: OutPoint::new(tapyrus::hashes::Hash::hash(txid.as_bytes()), 0),
                     txout: TxOut {
                         value: Amount::from_sat(value),
                         script_pubkey: ScriptBuf::new(),

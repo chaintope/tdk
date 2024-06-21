@@ -2,13 +2,13 @@ use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
-use bitcoin::hashes::Hash;
-use bitcoin::key::Secp256k1;
-use bitcoin::psbt;
-use bitcoin::script::PushBytesBuf;
-use bitcoin::sighash::{EcdsaSighashType, TapSighashType};
-use bitcoin::taproot::TapNodeHash;
-use bitcoin::{
+use tapyrus::hashes::Hash;
+use tapyrus::key::Secp256k1;
+use tapyrus::psbt;
+use tapyrus::script::PushBytesBuf;
+use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
+use tapyrus::taproot::TapNodeHash;
+use tapyrus::{
     absolute, transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, ScriptBuf,
     Sequence, Transaction, TxIn, TxOut, Txid, Weight,
 };
@@ -180,7 +180,7 @@ fn new_or_load() -> anyhow::Result<()> {
         {
             let exp_blockhash = BlockHash::all_zeros();
             let got_blockhash =
-                bitcoin::blockdata::constants::genesis_block(Network::Testnet).block_hash();
+                tapyrus::blockdata::constants::genesis_block(Network::Testnet).block_hash();
 
             let db = new_or_load(&file_path).expect("must open db");
             let err = Wallet::new_or_load_with_genesis_hash(
@@ -962,7 +962,7 @@ fn test_create_tx_custom_sighash() {
 
 #[test]
 fn test_create_tx_input_hd_keypaths() {
-    use bitcoin::bip32::{DerivationPath, Fingerprint};
+    use tapyrus::bip32::{DerivationPath, Fingerprint};
     use core::str::FromStr;
 
     let (mut wallet, _) = get_funded_wallet("wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)");
@@ -983,7 +983,7 @@ fn test_create_tx_input_hd_keypaths() {
 
 #[test]
 fn test_create_tx_output_hd_keypaths() {
-    use bitcoin::bip32::{DerivationPath, Fingerprint};
+    use tapyrus::bip32::{DerivationPath, Fingerprint};
     use core::str::FromStr;
 
     let (mut wallet, _) = get_funded_wallet("wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)");
@@ -1006,7 +1006,7 @@ fn test_create_tx_output_hd_keypaths() {
 
 #[test]
 fn test_create_tx_set_redeem_script_p2sh() {
-    use bitcoin::hex::FromHex;
+    use tapyrus::hex::FromHex;
 
     let (mut wallet, _) =
         get_funded_wallet("sh(pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW))");
@@ -1029,7 +1029,7 @@ fn test_create_tx_set_redeem_script_p2sh() {
 
 #[test]
 fn test_create_tx_set_witness_script_p2wsh() {
-    use bitcoin::hex::FromHex;
+    use tapyrus::hex::FromHex;
 
     let (mut wallet, _) =
         get_funded_wallet("wsh(pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW))");
@@ -1305,8 +1305,8 @@ fn test_create_tx_policy_path_ignored_subtree_with_csv() {
 
 #[test]
 fn test_create_tx_global_xpubs_with_origin() {
-    use bitcoin::bip32;
-    use bitcoin::hex::FromHex;
+    use tapyrus::bip32;
+    use tapyrus::hex::FromHex;
 
     let (mut wallet, _) = get_funded_wallet("wpkh([73756c7f/48'/0'/0'/2']tpubDCKxNyM3bLgbEX13Mcd8mYxbVg9ajDkWXMh29hMWBurKfVmBfWAM96QVP3zaUcN51HvkZ3ar4VwP82kC8JZhhux8vFQoJintSpVBwpFvyU3/0/*)");
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -1582,8 +1582,8 @@ fn test_create_tx_global_xpubs_origin_missing() {
 
 #[test]
 fn test_create_tx_global_xpubs_master_without_origin() {
-    use bitcoin::bip32;
-    use bitcoin::hex::FromHex;
+    use tapyrus::bip32;
+    use tapyrus::hex::FromHex;
 
     let (mut wallet, _) = get_funded_wallet("wpkh(tpubD6NzVbkrYhZ4Y55A58Gv9RSNF5hy84b5AJqYy7sCcjFrkcLpPre8kmgfit6kY1Zs3BLgeypTDBZJM222guPpdz7Cup5yzaMu62u7mYGbwFL/0/*)");
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -2693,10 +2693,10 @@ fn test_signing_only_one_of_multiple_inputs() {
     let mut psbt = builder.finish().unwrap();
 
     // add another input to the psbt that is at least passable.
-    let dud_input = bitcoin::psbt::Input {
+    let dud_input = tapyrus::psbt::Input {
         witness_utxo: Some(TxOut {
             value: Amount::from_sat(100_000),
-            script_pubkey: miniscript::Descriptor::<bitcoin::PublicKey>::from_str(
+            script_pubkey: miniscript::Descriptor::<tapyrus::PublicKey>::from_str(
                 "wpkh(025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357)",
             )
             .unwrap()
@@ -2706,7 +2706,7 @@ fn test_signing_only_one_of_multiple_inputs() {
     };
 
     psbt.inputs.push(dud_input);
-    psbt.unsigned_tx.input.push(bitcoin::TxIn::default());
+    psbt.unsigned_tx.input.push(tapyrus::TxIn::default());
     let is_final = wallet
         .sign(
             &mut psbt,
@@ -3043,7 +3043,7 @@ fn test_sending_to_bip350_bech32m_address() {
 #[test]
 fn test_get_address() {
     use tdk_wallet::descriptor::template::Bip84;
-    let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
+    let key = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let wallet = Wallet::new_no_persist(
         Bip84(key, KeychainKind::External),
         Bip84(key, KeychainKind::Internal),
@@ -3101,7 +3101,7 @@ fn test_get_address_no_reuse() {
     use std::collections::HashSet;
     use tdk_wallet::descriptor::template::Bip84;
 
-    let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
+    let key = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let mut wallet = Wallet::new_no_persist(
         Bip84(key, KeychainKind::External),
         Bip84(key, KeychainKind::Internal),
@@ -3255,8 +3255,8 @@ fn test_taproot_psbt_populate_tap_key_origins_repeated_key() {
 
 #[test]
 fn test_taproot_psbt_input_tap_tree() {
-    use bitcoin::hex::FromHex;
-    use bitcoin::taproot;
+    use tapyrus::hex::FromHex;
+    use tapyrus::taproot;
 
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree());
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -3295,7 +3295,7 @@ fn test_taproot_psbt_input_tap_tree() {
         psbt.outputs[0].tap_internal_key
     );
 
-    let tap_tree: bitcoin::taproot::TapTree = serde_json::from_str(r#"[1,{"Script":["2051494dc22e24a32fe9dcfbd7e85faf345fa1df296fb49d156e859ef345201295ac",192]},1,{"Script":["208aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642ac",192]}]"#).unwrap();
+    let tap_tree: tapyrus::taproot::TapTree = serde_json::from_str(r#"[1,{"Script":["2051494dc22e24a32fe9dcfbd7e85faf345fa1df296fb49d156e859ef345201295ac",192]},1,{"Script":["208aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642ac",192]}]"#).unwrap();
     assert_eq!(psbt.outputs[0].tap_tree, Some(tap_tree));
 }
 
@@ -3496,7 +3496,7 @@ fn test_taproot_script_spend_sign_all_leaves() {
 
 #[test]
 fn test_taproot_script_spend_sign_include_some_leaves() {
-    use bitcoin::taproot::TapLeafHash;
+    use tapyrus::taproot::TapLeafHash;
     use tdk_wallet::signer::TapLeavesOptions;
 
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());
@@ -3536,7 +3536,7 @@ fn test_taproot_script_spend_sign_include_some_leaves() {
 
 #[test]
 fn test_taproot_script_spend_sign_exclude_some_leaves() {
-    use bitcoin::taproot::TapLeafHash;
+    use tapyrus::taproot::TapLeafHash;
     use tdk_wallet::signer::TapLeavesOptions;
 
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());

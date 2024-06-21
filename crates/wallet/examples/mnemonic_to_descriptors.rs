@@ -8,9 +8,9 @@
 
 use anyhow::anyhow;
 use std::str::FromStr;
-use tdk_wallet::bitcoin::bip32::DerivationPath;
-use tdk_wallet::bitcoin::secp256k1::Secp256k1;
-use tdk_wallet::bitcoin::Network;
+use tdk_wallet::tapyrus::bip32::DerivationPath;
+use tdk_wallet::tapyrus::secp256k1::Secp256k1;
+use tdk_wallet::tapyrus::Network;
 use tdk_wallet::descriptor;
 use tdk_wallet::descriptor::IntoWalletDescriptor;
 use tdk_wallet::keys::bip39::{Language, Mnemonic, WordCount};

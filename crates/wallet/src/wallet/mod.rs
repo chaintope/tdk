@@ -19,14 +19,14 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::sighash::{EcdsaSighashType, TapSighashType};
-use bitcoin::{
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
+use tapyrus::{
     absolute, psbt, Address, Block, FeeRate, Network, OutPoint, Script, ScriptBuf, Sequence,
     Transaction, TxOut, Txid, Witness,
 };
-use bitcoin::{consensus::encode::serialize, transaction, BlockHash, Psbt};
-use bitcoin::{constants::genesis_block, Amount};
+use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
+use tapyrus::{constants::genesis_block, Amount};
 use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
@@ -1541,7 +1541,7 @@ impl Wallet {
         tx.input = coin_selection
             .selected
             .iter()
-            .map(|u| bitcoin::TxIn {
+            .map(|u| tapyrus::TxIn {
                 previous_output: u.outpoint(),
                 script_sig: ScriptBuf::default(),
                 sequence: u.sequence().unwrap_or(n_sequence),
@@ -1938,7 +1938,7 @@ impl Wallet {
 
             match desc {
                 Some(desc) => {
-                    let mut tmp_input = bitcoin::TxIn::default();
+                    let mut tmp_input = tapyrus::TxIn::default();
                     match desc.satisfy(
                         &mut tmp_input,
                         (
@@ -2555,7 +2555,7 @@ fn create_signers<E: IntoWalletDescriptor>(
 #[doc(hidden)]
 macro_rules! floating_rate {
     ($rate:expr) => {{
-        use $crate::bitcoin::blockdata::constants::WITNESS_SCALE_FACTOR;
+        use $crate::tapyrus::blockdata::constants::WITNESS_SCALE_FACTOR;
         // sat_kwu / 250.0 -> sat_vb
         $rate.to_sat_per_kwu() as f64 / ((1000 / WITNESS_SCALE_FACTOR) as f64)
     }};
@@ -2566,7 +2566,7 @@ macro_rules! floating_rate {
 /// Macro for getting a wallet for use in a doctest
 macro_rules! doctest_wallet {
     () => {{
-        use $crate::bitcoin::{BlockHash, Transaction, absolute, TxOut, Network, hashes::Hash};
+        use $crate::tapyrus::{BlockHash, Transaction, absolute, TxOut, Network, hashes::Hash};
         use $crate::chain::{ConfirmationTime, BlockId};
         use $crate::{KeychainKind, wallet::Wallet};
         let descriptor = "tr([73c5da0a/86'/0'/0']tprv8fMn4hSKPRC1oaCPqxDb1JWtgkpeiQvZhsr8W2xuy3GEMkzoArcAWTfJxYb6Wj8XNNDWEjfYKK4wGQXh3ZUXhDF2NcnsALpWTeSwarJt7Vc/0/*)";
