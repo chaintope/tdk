@@ -39,10 +39,10 @@ fn main() -> Result<(), anyhow::Error> {
     // generate external and internal descriptor from mnemonic
     let (external_descriptor, ext_keymap) =
         descriptor!(tr((mnemonic_with_passphrase.clone(), external_path)))?
-            .into_wallet_descriptor(&secp, Network::Testnet)?;
+            .into_wallet_descriptor(&secp, Network::Prod)?;
     let (internal_descriptor, int_keymap) =
         descriptor!(tr((mnemonic_with_passphrase, internal_path)))?
-            .into_wallet_descriptor(&secp, Network::Testnet)?;
+            .into_wallet_descriptor(&secp, Network::Prod)?;
 
     println!("tpub external descriptor: {}", external_descriptor);
     println!("tpub internal descriptor: {}", internal_descriptor);

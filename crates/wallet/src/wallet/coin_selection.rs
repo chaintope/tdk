@@ -88,7 +88,7 @@
 //!
 //! let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt")
 //!     .unwrap()
-//!     .require_network(Network::Testnet)
+//!     .require_network(Network::Prod)
 //!     .unwrap();
 //! let psbt = {
 //!     let mut builder = wallet.build_tx().coin_selection(AlwaysSpendEverything);

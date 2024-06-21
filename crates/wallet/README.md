@@ -75,7 +75,7 @@ fn main() {
 
     let descriptor = "wpkh(tprv8ZgxMBicQKsPdcAqYBpzAFwU5yxBUo88ggoBqu1qPcHUfSbKK1sKMLmC7EAk438btHQrSdu3jGGQa6PA71nvH5nkDexhLteJqkM4dQmWF9g/84'/1'/0'/0/*)";
     let change_descriptor = "wpkh(tprv8ZgxMBicQKsPdcAqYBpzAFwU5yxBUo88ggoBqu1qPcHUfSbKK1sKMLmC7EAk438btHQrSdu3jGGQa6PA71nvH5nkDexhLteJqkM4dQmWF9g/84'/1'/0'/1/*)";
-    let mut wallet = Wallet::new_or_load(descriptor, change_descriptor, db, Network::Testnet).expect("create or load wallet");
+    let mut wallet = Wallet::new_or_load(descriptor, change_descriptor, db, Network::Prod).expect("create or load wallet");
 
     // Insert a single `TxOut` at `OutPoint` into the wallet.
     let _ = wallet.insert_txout(outpoint, txout);
@@ -97,7 +97,7 @@ fn main() {
 <!--     let wallet = Wallet::new( -->
 <!--         "wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/0/*)", -->
 <!--         Some("wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/1/*)"), -->
-<!--         Network::Testnet, -->
+<!--         Network::Prod, -->
 <!--     )?; -->
 
 <!--     wallet.sync(&blockchain, SyncOptions::default())?; -->
@@ -118,7 +118,7 @@ fn main() {
 <!--     let wallet = Wallet::new_no_persist( -->
 <!--         "wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/0/*)", -->
 <!--         Some("wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/1/*)"), -->
-<!--         Network::Testnet, -->
+<!--         Network::Prod, -->
 <!--     )?; -->
 
 <!--     println!("Address #0: {}", wallet.get_address(New)); -->
@@ -147,7 +147,7 @@ fn main() {
 <!--     let wallet = Wallet::new_no_persist( -->
 <!--         "wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/0/*)", -->
 <!--         Some("wpkh([c258d2e4/84h/1h/0h]tpubDDYkZojQFQjht8Tm4jsS3iuEmKjTiEGjG6KnuFNKKJb5A6ZUCUZKdvLdSDWofKi4ToRCwb9poe1XdqfUnP4jaJjCB2Zwv11ZLgSbnZSNecE/1/*)"), -->
-<!--         Network::Testnet, -->
+<!--         Network::Prod, -->
 <!--     )?; -->
 
 <!--     wallet.sync(&blockchain, SyncOptions::default())?; -->
@@ -183,7 +183,7 @@ fn main() {
 <!--     let wallet = Wallet::new_no_persist( -->
 <!--         "wpkh([c258d2e4/84h/1h/0h]tprv8griRPhA7342zfRyB6CqeKF8CJDXYu5pgnj1cjL1u2ngKcJha5jjTRimG82ABzJQ4MQe71CV54xfn25BbhCNfEGGJZnxvCDQCd6JkbvxW6h/0/*)", -->
 <!--         Some("wpkh([c258d2e4/84h/1h/0h]tprv8griRPhA7342zfRyB6CqeKF8CJDXYu5pgnj1cjL1u2ngKcJha5jjTRimG82ABzJQ4MQe71CV54xfn25BbhCNfEGGJZnxvCDQCd6JkbvxW6h/1/*)"), -->
-<!--         Network::Testnet, -->
+<!--         Network::Prod, -->
 <!--     )?; -->
 
 <!--     let psbt = "..."; -->
