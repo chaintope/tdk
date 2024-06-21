@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-use bdk_wallet::{KeychainKind, LocalOutput, Wallet};
 use bitcoin::hashes::Hash;
 use bitcoin::{
     transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
@@ -9,6 +8,7 @@ use bitcoin::{
 use std::str::FromStr;
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
+use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 
 /// Return a fake wallet that appears to be funded for testing.
 ///

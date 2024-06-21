@@ -7,15 +7,15 @@
 // licenses.
 
 use anyhow::anyhow;
-use bdk_wallet::bitcoin::bip32::DerivationPath;
-use bdk_wallet::bitcoin::secp256k1::Secp256k1;
-use bdk_wallet::bitcoin::Network;
-use bdk_wallet::descriptor;
-use bdk_wallet::descriptor::IntoWalletDescriptor;
-use bdk_wallet::keys::bip39::{Language, Mnemonic, WordCount};
-use bdk_wallet::keys::{GeneratableKey, GeneratedKey};
-use bdk_wallet::miniscript::Tap;
 use std::str::FromStr;
+use tdk_wallet::bitcoin::bip32::DerivationPath;
+use tdk_wallet::bitcoin::secp256k1::Secp256k1;
+use tdk_wallet::bitcoin::Network;
+use tdk_wallet::descriptor;
+use tdk_wallet::descriptor::IntoWalletDescriptor;
+use tdk_wallet::keys::bip39::{Language, Mnemonic, WordCount};
+use tdk_wallet::keys::{GeneratableKey, GeneratedKey};
+use tdk_wallet::miniscript::Tap;
 
 /// This example demonstrates how to generate a mnemonic phrase
 /// using BDK and use that to generate a descriptor string.

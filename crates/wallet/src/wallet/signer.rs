@@ -19,8 +19,8 @@
 //! # use core::str::FromStr;
 //! # use bitcoin::secp256k1::{Secp256k1, All};
 //! # use bitcoin::*;
-//! # use bdk_wallet::signer::*;
-//! # use bdk_wallet::*;
+//! # use tdk_wallet::signer::*;
+//! # use tdk_wallet::*;
 //! # #[derive(Debug)]
 //! # struct CustomHSM;
 //! # impl CustomHSM {

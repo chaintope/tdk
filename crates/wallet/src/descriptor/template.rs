@@ -36,17 +36,17 @@ pub type DescriptorTemplateOut = (ExtendedDescriptor, KeyMap, ValidNetworks);
 /// ## Example
 ///
 /// ```
-/// use bdk_wallet::descriptor::error::Error as DescriptorError;
-/// use bdk_wallet::keys::{IntoDescriptorKey, KeyError};
-/// use bdk_wallet::miniscript::Legacy;
-/// use bdk_wallet::template::{DescriptorTemplate, DescriptorTemplateOut};
 /// use bitcoin::Network;
+/// use tdk_wallet::descriptor::error::Error as DescriptorError;
+/// use tdk_wallet::keys::{IntoDescriptorKey, KeyError};
+/// use tdk_wallet::miniscript::Legacy;
+/// use tdk_wallet::template::{DescriptorTemplate, DescriptorTemplateOut};
 ///
 /// struct MyP2PKH<K: IntoDescriptorKey<Legacy>>(K);
 ///
 /// impl<K: IntoDescriptorKey<Legacy>> DescriptorTemplate for MyP2PKH<K> {
 ///     fn build(self, network: Network) -> Result<DescriptorTemplateOut, DescriptorError> {
-///         Ok(bdk_wallet::descriptor!(pkh(self.0))?)
+///         Ok(tdk_wallet::descriptor!(pkh(self.0))?)
 ///     }
 /// }
 /// ```
@@ -72,10 +72,10 @@ impl<T: DescriptorTemplate> IntoWalletDescriptor for T {
 /// ## Example
 ///
 /// ```
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::Wallet;
-/// # use bdk_wallet::KeychainKind;
-/// use bdk_wallet::template::P2Pkh;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::Wallet;
+/// # use tdk_wallet::KeychainKind;
+/// use tdk_wallet::template::P2Pkh;
 ///
 /// let key_external =
 ///     bitcoin::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")?;
@@ -105,10 +105,10 @@ impl<K: IntoDescriptorKey<Legacy>> DescriptorTemplate for P2Pkh<K> {
 /// ## Example
 ///
 /// ```
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::Wallet;
-/// # use bdk_wallet::KeychainKind;
-/// use bdk_wallet::template::P2Wpkh_P2Sh;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::Wallet;
+/// # use tdk_wallet::KeychainKind;
+/// use tdk_wallet::template::P2Wpkh_P2Sh;
 ///
 /// let key_external =
 ///     bitcoin::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")?;
@@ -142,10 +142,10 @@ impl<K: IntoDescriptorKey<Segwitv0>> DescriptorTemplate for P2Wpkh_P2Sh<K> {
 /// ## Example
 ///
 /// ```
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet};
-/// # use bdk_wallet::KeychainKind;
-/// use bdk_wallet::template::P2Wpkh;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet};
+/// # use tdk_wallet::KeychainKind;
+/// use tdk_wallet::template::P2Wpkh;
 ///
 /// let key_external =
 ///     bitcoin::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")?;
@@ -175,10 +175,10 @@ impl<K: IntoDescriptorKey<Segwitv0>> DescriptorTemplate for P2Wpkh<K> {
 /// ## Example
 ///
 /// ```
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::Wallet;
-/// # use bdk_wallet::KeychainKind;
-/// use bdk_wallet::template::P2TR;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::Wallet;
+/// # use tdk_wallet::KeychainKind;
+/// use tdk_wallet::template::P2TR;
 ///
 /// let key_external =
 ///     bitcoin::PrivateKey::from_wif("cTc4vURSzdx6QE6KVynWGomDbLaA75dNALMNyfjh3p8DRRar84Um")?;
@@ -213,9 +213,9 @@ impl<K: IntoDescriptorKey<Tap>> DescriptorTemplate for P2TR<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip44;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip44;
 ///
 /// let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPeZRHk4rTG6orPS2CRNFX3njhUXx5vj9qGog5ZMH4uGReDWN5kCkY3jmWEtWause41CDvBRXD1shKknAMKxT99o9qUTRVC6m")?;
 /// let mut wallet = Wallet::new_no_persist(
@@ -249,9 +249,9 @@ impl<K: DerivableKey<Legacy>> DescriptorTemplate for Bip44<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip44Public;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip44Public;
 ///
 /// let key = bitcoin::bip32::Xpub::from_str("tpubDDDzQ31JkZB7VxUr9bjvBivDdqoFLrDPyLWtLapArAi51ftfmCb2DPxwLQzX65iNcXz1DGaVvyvo6JQ6rTU73r2gqdEo8uov9QKRb7nKCSU")?;
 /// let fingerprint = bitcoin::bip32::Fingerprint::from_str("c55b303f")?;
@@ -286,9 +286,9 @@ impl<K: DerivableKey<Legacy>> DescriptorTemplate for Bip44Public<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip49;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip49;
 ///
 /// let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPeZRHk4rTG6orPS2CRNFX3njhUXx5vj9qGog5ZMH4uGReDWN5kCkY3jmWEtWause41CDvBRXD1shKknAMKxT99o9qUTRVC6m")?;
 /// let mut wallet = Wallet::new_no_persist(
@@ -322,9 +322,9 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip49<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip49Public;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip49Public;
 ///
 /// let key = bitcoin::bip32::Xpub::from_str("tpubDC49r947KGK52X5rBWS4BLs5m9SRY3pYHnvRrm7HcybZ3BfdEsGFyzCMzayi1u58eT82ZeyFZwH7DD6Q83E3fM9CpfMtmnTygnLfP59jL9L")?;
 /// let fingerprint = bitcoin::bip32::Fingerprint::from_str("c55b303f")?;
@@ -359,9 +359,9 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip49Public<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip84;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip84;
 ///
 /// let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPeZRHk4rTG6orPS2CRNFX3njhUXx5vj9qGog5ZMH4uGReDWN5kCkY3jmWEtWause41CDvBRXD1shKknAMKxT99o9qUTRVC6m")?;
 /// let mut wallet = Wallet::new_no_persist(
@@ -395,9 +395,9 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip84<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip84Public;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip84Public;
 ///
 /// let key = bitcoin::bip32::Xpub::from_str("tpubDC2Qwo2TFsaNC4ju8nrUJ9mqVT3eSgdmy1yPqhgkjwmke3PRXutNGRYAUo6RCHTcVQaDR3ohNU9we59brGHuEKPvH1ags2nevW5opEE9Z5Q")?;
 /// let fingerprint = bitcoin::bip32::Fingerprint::from_str("c55b303f")?;
@@ -432,9 +432,9 @@ impl<K: DerivableKey<Segwitv0>> DescriptorTemplate for Bip84Public<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip86;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip86;
 ///
 /// let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPeZRHk4rTG6orPS2CRNFX3njhUXx5vj9qGog5ZMH4uGReDWN5kCkY3jmWEtWause41CDvBRXD1shKknAMKxT99o9qUTRVC6m")?;
 /// let mut wallet = Wallet::new_no_persist(
@@ -468,9 +468,9 @@ impl<K: DerivableKey<Tap>> DescriptorTemplate for Bip86<K> {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// # use bdk_wallet::bitcoin::{PrivateKey, Network};
-/// # use bdk_wallet::{Wallet,  KeychainKind};
-/// use bdk_wallet::template::Bip86Public;
+/// # use tdk_wallet::bitcoin::{PrivateKey, Network};
+/// # use tdk_wallet::{Wallet,  KeychainKind};
+/// use tdk_wallet::template::Bip86Public;
 ///
 /// let key = bitcoin::bip32::Xpub::from_str("tpubDC2Qwo2TFsaNC4ju8nrUJ9mqVT3eSgdmy1yPqhgkjwmke3PRXutNGRYAUo6RCHTcVQaDR3ohNU9we59brGHuEKPvH1ags2nevW5opEE9Z5Q")?;
 /// let fingerprint = bitcoin::bip32::Fingerprint::from_str("c55b303f")?;

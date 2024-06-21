@@ -2,15 +2,6 @@ use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
-use bdk_wallet::descriptor::{calc_checksum, DescriptorError, IntoWalletDescriptor};
-use bdk_wallet::psbt::PsbtUtils;
-use bdk_wallet::signer::{SignOptions, SignerError};
-use bdk_wallet::wallet::coin_selection::{self, LargestFirstCoinSelection};
-use bdk_wallet::wallet::error::CreateTxError;
-use bdk_wallet::wallet::tx_builder::AddForeignUtxoError;
-use bdk_wallet::wallet::NewError;
-use bdk_wallet::wallet::{AddressInfo, Balance, Wallet};
-use bdk_wallet::KeychainKind;
 use bitcoin::hashes::Hash;
 use bitcoin::key::Secp256k1;
 use bitcoin::psbt;
@@ -26,6 +17,15 @@ use tdk_chain::COINBASE_MATURITY;
 use tdk_chain::{BlockId, ConfirmationTime};
 use tdk_persist::PersistBackend;
 use tdk_sqlite::rusqlite::Connection;
+use tdk_wallet::descriptor::{calc_checksum, DescriptorError, IntoWalletDescriptor};
+use tdk_wallet::psbt::PsbtUtils;
+use tdk_wallet::signer::{SignOptions, SignerError};
+use tdk_wallet::wallet::coin_selection::{self, LargestFirstCoinSelection};
+use tdk_wallet::wallet::error::CreateTxError;
+use tdk_wallet::wallet::tx_builder::AddForeignUtxoError;
+use tdk_wallet::wallet::NewError;
+use tdk_wallet::wallet::{AddressInfo, Balance, Wallet};
+use tdk_wallet::KeychainKind;
 
 mod common;
 use common::*;
@@ -75,7 +75,7 @@ const DB_MAGIC: &[u8] = &[0x21, 0x24, 0x48];
 fn load_recovers_wallet() -> anyhow::Result<()> {
     fn run<B, FN, FR>(filename: &str, create_new: FN, recover: FR) -> anyhow::Result<()>
     where
-        B: PersistBackend<bdk_wallet::wallet::ChangeSet> + Send + Sync + 'static,
+        B: PersistBackend<tdk_wallet::wallet::ChangeSet> + Send + Sync + 'static,
         FN: Fn(&Path) -> anyhow::Result<B>,
         FR: Fn(&Path) -> anyhow::Result<B>,
     {
@@ -143,7 +143,7 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
 fn new_or_load() -> anyhow::Result<()> {
     fn run<B, F>(filename: &str, new_or_load: F) -> anyhow::Result<()>
     where
-        B: PersistBackend<bdk_wallet::wallet::ChangeSet> + Send + Sync + 'static,
+        B: PersistBackend<tdk_wallet::wallet::ChangeSet> + Send + Sync + 'static,
         F: Fn(&Path) -> anyhow::Result<B>,
     {
         let temp_dir = tempfile::tempdir().expect("must create tempdir");
@@ -166,7 +166,7 @@ fn new_or_load() -> anyhow::Result<()> {
             assert!(
                 matches!(
                     err,
-                    bdk_wallet::wallet::NewOrLoadError::LoadedNetworkDoesNotMatch {
+                    tdk_wallet::wallet::NewOrLoadError::LoadedNetworkDoesNotMatch {
                         got: Some(Network::Testnet),
                         expected: Network::Bitcoin
                     }
@@ -194,7 +194,7 @@ fn new_or_load() -> anyhow::Result<()> {
             assert!(
                 matches!(
                     err,
-                    bdk_wallet::wallet::NewOrLoadError::LoadedGenesisDoesNotMatch { got, expected }
+                    tdk_wallet::wallet::NewOrLoadError::LoadedGenesisDoesNotMatch { got, expected }
                     if got == Some(got_blockhash) && expected == exp_blockhash
                 ),
                 "err: {}",
@@ -216,7 +216,7 @@ fn new_or_load() -> anyhow::Result<()> {
             assert!(
                 matches!(
                     err,
-                    bdk_wallet::wallet::NewOrLoadError::LoadedDescriptorDoesNotMatch { ref got, keychain }
+                    tdk_wallet::wallet::NewOrLoadError::LoadedDescriptorDoesNotMatch { ref got, keychain }
                     if got == &Some(got_descriptor) && keychain == KeychainKind::External
                 ),
                 "err: {}",
@@ -238,7 +238,7 @@ fn new_or_load() -> anyhow::Result<()> {
             assert!(
                 matches!(
                     err,
-                    bdk_wallet::wallet::NewOrLoadError::LoadedDescriptorDoesNotMatch { ref got, keychain }
+                    tdk_wallet::wallet::NewOrLoadError::LoadedDescriptorDoesNotMatch { ref got, keychain }
                     if got == &Some(got_descriptor) && keychain == KeychainKind::Internal
                 ),
                 "err: {}",
@@ -865,7 +865,7 @@ fn test_create_tx_absolute_high_fee() {
 
 #[test]
 fn test_create_tx_add_change() {
-    use bdk_wallet::wallet::tx_builder::TxOrdering;
+    use tdk_wallet::wallet::tx_builder::TxOrdering;
 
     let (mut wallet, _) = get_funded_wallet_wpkh();
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -920,7 +920,7 @@ fn test_create_tx_ordering_respected() {
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_sat(30_000))
         .add_recipient(addr.script_pubkey(), Amount::from_sat(10_000))
-        .ordering(bdk_wallet::wallet::tx_builder::TxOrdering::Bip69Lexicographic);
+        .ordering(tdk_wallet::wallet::tx_builder::TxOrdering::Bip69Lexicographic);
     let psbt = builder.finish().unwrap();
     let fee = check_fee!(wallet, psbt);
 
@@ -3042,7 +3042,7 @@ fn test_sending_to_bip350_bech32m_address() {
 
 #[test]
 fn test_get_address() {
-    use bdk_wallet::descriptor::template::Bip84;
+    use tdk_wallet::descriptor::template::Bip84;
     let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let wallet = Wallet::new_no_persist(
         Bip84(key, KeychainKind::External),
@@ -3098,8 +3098,8 @@ fn test_reveal_addresses() {
 
 #[test]
 fn test_get_address_no_reuse() {
-    use bdk_wallet::descriptor::template::Bip84;
     use std::collections::HashSet;
+    use tdk_wallet::descriptor::template::Bip84;
 
     let key = bitcoin::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let mut wallet = Wallet::new_no_persist(
@@ -3467,7 +3467,7 @@ fn test_taproot_script_spend() {
 
 #[test]
 fn test_taproot_script_spend_sign_all_leaves() {
-    use bdk_wallet::signer::TapLeavesOptions;
+    use tdk_wallet::signer::TapLeavesOptions;
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
 
@@ -3496,8 +3496,8 @@ fn test_taproot_script_spend_sign_all_leaves() {
 
 #[test]
 fn test_taproot_script_spend_sign_include_some_leaves() {
-    use bdk_wallet::signer::TapLeavesOptions;
     use bitcoin::taproot::TapLeafHash;
+    use tdk_wallet::signer::TapLeavesOptions;
 
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -3536,8 +3536,8 @@ fn test_taproot_script_spend_sign_include_some_leaves() {
 
 #[test]
 fn test_taproot_script_spend_sign_exclude_some_leaves() {
-    use bdk_wallet::signer::TapLeavesOptions;
     use bitcoin::taproot::TapLeafHash;
+    use tdk_wallet::signer::TapLeavesOptions;
 
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -3576,7 +3576,7 @@ fn test_taproot_script_spend_sign_exclude_some_leaves() {
 
 #[test]
 fn test_taproot_script_spend_sign_no_leaves() {
-    use bdk_wallet::signer::TapLeavesOptions;
+    use tdk_wallet::signer::TapLeavesOptions;
     let (mut wallet, _) = get_funded_wallet(get_test_tr_with_taptree_both_priv());
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
 
