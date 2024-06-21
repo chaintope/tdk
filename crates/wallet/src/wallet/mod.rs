@@ -19,6 +19,10 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
+use core::fmt;
+use core::ops::Deref;
+use descriptor::error::Error as DescriptorError;
+use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
 use tapyrus::secp256k1::{All, Secp256k1};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
@@ -27,10 +31,6 @@ use tapyrus::{
 };
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
-use core::fmt;
-use core::ops::Deref;
-use descriptor::error::Error as DescriptorError;
-use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
 pub use tdk_chain::keychain::Balance;
 use tdk_chain::{
     indexed_tx_graph,
@@ -169,9 +169,9 @@ impl Wallet {
     pub fn new_no_persist<E: IntoWalletDescriptor>(
         descriptor: E,
         change_descriptor: E,
-        network: Network,
+        _network: Network,
     ) -> Result<Self, DescriptorError> {
-        Self::new(descriptor, change_descriptor, (), network).map_err(|e| match e {
+        Self::new(descriptor, change_descriptor, ()).map_err(|e| match e {
             NewError::NonEmptyDatabase => unreachable!("mock-database cannot have data"),
             NewError::Descriptor(e) => e,
             NewError::Persist(_) => unreachable!("mock-write must always succeed"),
@@ -405,8 +405,14 @@ impl Wallet {
         change_descriptor: E,
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
     ) -> Result<Self, NewError> {
-        let genesis_hash = mainet_genesis_block().block_hash();
-        Self::new_with_genesis_hash(descriptor, change_descriptor, db, Network::Prod, genesis_hash)
+        let genesis_hash = mainnet_genesis_block().block_hash();
+        Self::new_with_genesis_hash(
+            descriptor,
+            change_descriptor,
+            db,
+            Network::Prod,
+            genesis_hash,
+        )
     }
 
     /// Initialize an empty [`Wallet`].
@@ -416,7 +422,13 @@ impl Wallet {
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
     ) -> Result<Self, NewError> {
         let genesis_hash = testnet_genesis_block().block_hash();
-        Self::new_with_genesis_hash(descriptor, change_descriptor, db, Network::Prod, genesis_hash)
+        Self::new_with_genesis_hash(
+            descriptor,
+            change_descriptor,
+            db,
+            Network::Prod,
+            genesis_hash,
+        )
     }
 
     /// Initialize an empty [`Wallet`] with a custom genesis hash.
@@ -567,14 +579,31 @@ impl Wallet {
         descriptor: E,
         change_descriptor: E,
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
-        network: Network,
     ) -> Result<Self, NewOrLoadError> {
-        let genesis_hash = genesis_block(network).block_hash();
+        let genesis_hash = mainnet_genesis_block().block_hash();
         Self::new_or_load_with_genesis_hash(
             descriptor,
             change_descriptor,
             db,
-            network,
+            Network::Prod,
+            genesis_hash,
+        )
+    }
+
+    /// Either loads [`Wallet`] from persistence, or initializes it if it does not exist.
+    ///
+    /// This method will fail if the loaded [`Wallet`] has different parameters to those provided.
+    pub fn new_or_load_with_testnet<E: IntoWalletDescriptor>(
+        descriptor: E,
+        change_descriptor: E,
+        db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+    ) -> Result<Self, NewOrLoadError> {
+        let genesis_hash = testnet_genesis_block().block_hash();
+        Self::new_or_load_with_genesis_hash(
+            descriptor,
+            change_descriptor,
+            db,
+            Network::Prod,
             genesis_hash,
         )
     }
@@ -1646,7 +1675,7 @@ impl Wallet {
     /// let mut psbt =  {
     ///     let mut builder = wallet.build_fee_bump(tx.txid())?;
     ///     builder
-    ///         .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"));
+    ///         .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"));
     ///     builder.finish()?
     /// };
     ///
@@ -2215,15 +2244,7 @@ impl Wallet {
                     psbt_input: foreign_psbt_input,
                     ..
                 } => {
-                    let is_taproot = foreign_psbt_input
-                        .witness_utxo
-                        .as_ref()
-                        .map(|txout| txout.script_pubkey.is_p2tr())
-                        .unwrap_or(false);
-                    if !is_taproot
-                        && !params.only_witness_utxo
-                        && foreign_psbt_input.non_witness_utxo.is_none()
-                    {
+                    if foreign_psbt_input.non_witness_utxo.is_none() {
                         return Err(CreateTxError::MissingNonWitnessUtxo(outpoint));
                     }
                     *psbt_input = *foreign_psbt_input;
@@ -2241,7 +2262,7 @@ impl Wallet {
         &self,
         utxo: LocalOutput,
         sighash_type: Option<psbt::PsbtSighashType>,
-        only_witness_utxo: bool,
+        _only_witness_utxo: bool,
     ) -> Result<psbt::Input, CreateTxError> {
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
@@ -2267,12 +2288,7 @@ impl Wallet {
 
         let prev_output = utxo.outpoint;
         if let Some(prev_tx) = self.indexed_graph.graph().get_tx(prev_output.txid) {
-            if desc.is_witness() || desc.is_taproot() {
-                psbt_input.witness_utxo = Some(prev_tx.output[prev_output.vout as usize].clone());
-            }
-            if !desc.is_taproot() && (!desc.is_witness() || !only_witness_utxo) {
-                psbt_input.non_witness_utxo = Some(prev_tx.as_ref().clone());
-            }
+            psbt_input.non_witness_utxo = Some(prev_tx.as_ref().clone());
         }
         Ok(psbt_input)
     }

@@ -16,8 +16,8 @@ use crate::descriptor::DescriptorError;
 use crate::wallet::coin_selection;
 use crate::{descriptor, KeychainKind};
 use alloc::string::String;
-use tapyrus::{absolute, psbt, Amount, OutPoint, Sequence, Txid};
 use core::fmt;
+use tapyrus::{absolute, psbt, Amount, OutPoint, Sequence, Txid};
 
 /// Errors returned by miniscript when updating inconsistent PSBTs
 #[derive(Debug, Clone)]

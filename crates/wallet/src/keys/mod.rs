@@ -45,12 +45,7 @@ pub type ValidNetworks = HashSet<Network>;
 
 /// Create a set containing mainnet, testnet, signet, and regtest
 pub fn any_network() -> ValidNetworks {
-    vec![
-        Network::Prod,
-        Network::Dev,
-    ]
-    .into_iter()
-    .collect()
+    vec![Network::Prod, Network::Dev].into_iter().collect()
 }
 /// Create a set only containing mainnet
 pub fn mainnet_network() -> ValidNetworks {
@@ -58,9 +53,7 @@ pub fn mainnet_network() -> ValidNetworks {
 }
 /// Create a set containing testnet and regtest
 pub fn test_networks() -> ValidNetworks {
-    vec![Network::Prod, Network::Dev]
-        .into_iter()
-        .collect()
+    vec![Network::Prod, Network::Dev].into_iter().collect()
 }
 /// Compute the intersection of two sets
 pub fn merge_networks(a: &ValidNetworks, b: &ValidNetworks) -> ValidNetworks {
@@ -137,16 +130,6 @@ impl ScriptContextEnum {
     pub fn is_legacy(&self) -> bool {
         self == &ScriptContextEnum::Legacy
     }
-
-    /// Returns whether the script context is [`ScriptContextEnum::Segwitv0`]
-    pub fn is_segwit_v0(&self) -> bool {
-        self == &ScriptContextEnum::Segwitv0
-    }
-
-    /// Returns whether the script context is [`ScriptContextEnum::Tap`]
-    pub fn is_taproot(&self) -> bool {
-        self == &ScriptContextEnum::Tap
-    }
 }
 
 /// Trait that adds extra useful methods to [`ScriptContext`]s
@@ -157,16 +140,6 @@ pub trait ExtScriptContext: ScriptContext {
     /// Returns whether the script context is [`Legacy`](miniscript::Legacy)
     fn is_legacy() -> bool {
         Self::as_enum().is_legacy()
-    }
-
-    /// Returns whether the script context is [`Segwitv0`](miniscript::Segwitv0)
-    fn is_segwit_v0() -> bool {
-        Self::as_enum().is_segwit_v0()
-    }
-
-    /// Returns whether the script context is [`Tap`](miniscript::Tap), aka Taproot or Segwit V1
-    fn is_taproot() -> bool {
-        Self::as_enum().is_taproot()
     }
 }
 
@@ -681,7 +654,7 @@ impl<Ctx: ScriptContext> GeneratableKey<Ctx> for bip32::Xpriv {
         entropy: Self::Entropy,
     ) -> Result<GeneratedKey<Self, Ctx>, Self::Error> {
         // pick a arbitrary network here, but say that we support all of them
-        let xprv = bip32::Xpriv::new_master(Network::tapyrus, entropy.as_ref())?;
+        let xprv = bip32::Xpriv::new_master(Network::Prod, entropy.as_ref())?;
         Ok(GeneratedKey::new(xprv, any_network()))
     }
 }
@@ -880,9 +853,7 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for XOnlyPublicKey {
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorSecretKey {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         let networks = match &self {
-            DescriptorSecretKey::Single(sk) if sk.key.network == Network::tapyrus => {
-                mainnet_network()
-            }
+            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Prod => mainnet_network(),
             DescriptorSecretKey::XPrv(DescriptorXKey { xkey, .. })
                 if xkey.network == Network::Prod =>
             {

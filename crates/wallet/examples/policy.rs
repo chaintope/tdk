@@ -12,8 +12,8 @@
 extern crate tdk_wallet;
 use std::error::Error;
 
-use tdk_wallet::tapyrus::Network;
 use tdk_wallet::descriptor::{policy::BuildSatisfaction, ExtractPolicy, IntoWalletDescriptor};
+use tdk_wallet::tapyrus::Network;
 use tdk_wallet::wallet::signer::SignersContainer;
 
 /// This example describes the use of the BDK's [`tdk_wallet::descriptor::policy`] module.

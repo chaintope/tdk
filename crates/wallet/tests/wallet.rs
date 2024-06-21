@@ -87,7 +87,7 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
         let wallet_spk_index = {
             let db = create_new(&file_path).expect("must create db");
             let mut wallet =
-                Wallet::new(desc, change_desc, db, Network::Prod).expect("must init wallet");
+                Wallet::new(desc, change_desc, db).expect("must init wallet");
 
             wallet.reveal_next_address(KeychainKind::External).unwrap();
             wallet.spk_index().clone()
@@ -118,7 +118,7 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
         // `new` can only be called on empty db
         {
             let db = recover(&file_path).expect("must recover db");
-            let result = Wallet::new(desc, change_desc, db, Network::Prod);
+            let result = Wallet::new(desc, change_desc, db);
             assert!(matches!(result, Err(NewError::NonEmptyDatabase)));
         }
 
@@ -153,7 +153,7 @@ fn new_or_load() -> anyhow::Result<()> {
         // init wallet when non-existent
         let wallet_keychains: BTreeMap<_, _> = {
             let db = new_or_load(&file_path).expect("must create db");
-            let wallet = Wallet::new_or_load(desc, change_desc, db, Network::Prod)
+            let wallet = Wallet::new_or_load(desc, change_desc, db)
                 .expect("must init wallet");
             wallet.keychains().map(|(k, v)| (*k, v.clone())).collect()
         };
@@ -161,7 +161,7 @@ fn new_or_load() -> anyhow::Result<()> {
         // wrong network
         {
             let db = new_or_load(&file_path).expect("must create db");
-            let err = Wallet::new_or_load(desc, change_desc, db, Network::Prod)
+            let err = Wallet::new_or_load(desc, change_desc, db)
                 .expect_err("wrong network");
             assert!(
                 matches!(
@@ -180,7 +180,7 @@ fn new_or_load() -> anyhow::Result<()> {
         {
             let exp_blockhash = BlockHash::all_zeros();
             let got_blockhash =
-                tapyrus::blockdata::constants::genesis_block(Network::Prod).block_hash();
+                tapyrus::blockdata::constants::mainnet_genesis_block().block_hash();
 
             let db = new_or_load(&file_path).expect("must open db");
             let err = Wallet::new_or_load_with_genesis_hash(
@@ -211,7 +211,7 @@ fn new_or_load() -> anyhow::Result<()> {
                 .0;
 
             let db = new_or_load(&file_path).expect("must open db");
-            let err = Wallet::new_or_load(exp_descriptor, change_desc, db, Network::Prod)
+            let err = Wallet::new_or_load(exp_descriptor, change_desc, db)
                 .expect_err("wrong external descriptor");
             assert!(
                 matches!(
@@ -233,7 +233,7 @@ fn new_or_load() -> anyhow::Result<()> {
                 .0;
 
             let db = new_or_load(&file_path).expect("must open db");
-            let err = Wallet::new_or_load(desc, exp_descriptor, db, Network::Prod)
+            let err = Wallet::new_or_load(desc, exp_descriptor, db)
                 .expect_err("wrong internal descriptor");
             assert!(
                 matches!(
@@ -249,7 +249,7 @@ fn new_or_load() -> anyhow::Result<()> {
         // all parameters match
         {
             let db = new_or_load(&file_path).expect("must open db");
-            let wallet = Wallet::new_or_load(desc, change_desc, db, Network::Prod)
+            let wallet = Wallet::new_or_load(desc, change_desc, db)
                 .expect("must recover wallet");
             assert_eq!(wallet.network(), Network::Prod);
             assert!(wallet
@@ -371,7 +371,7 @@ fn test_get_funded_wallet_tx_fee_rate() {
     // fee_rate (sats per kwu) = fee / weight = 1000sat / 0.452kwu = 2212
     // fee_rate (sats per vbyte ceil) = fee / vsize = 1000sat / 113vb = 9
     assert_eq!(tx_fee_rate.to_tap_per_kwu(), 2212);
-    assert_eq!(tx_fee_rate.to_sat_per_vb_ceil(), 9);
+    assert_eq!(tx_fee_rate.to_tap_per_vb_ceil(), 9);
 }
 
 #[test]
@@ -803,11 +803,11 @@ fn test_create_tx_custom_fee_rate() {
     let mut builder = wallet.build_tx();
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(5));
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(5));
     let psbt = builder.finish().unwrap();
     let fee = check_fee!(wallet, psbt);
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_sat_per_vb_unchecked(5), @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(5), @add_signature);
 }
 
 #[test]
@@ -908,7 +908,7 @@ fn test_create_tx_drain_to_dust_amount() {
     builder
         .drain_to(addr.script_pubkey())
         .drain_wallet()
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(454));
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(454));
     builder.finish().unwrap();
 }
 
@@ -962,8 +962,8 @@ fn test_create_tx_custom_sighash() {
 
 #[test]
 fn test_create_tx_input_hd_keypaths() {
-    use tapyrus::bip32::{DerivationPath, Fingerprint};
     use core::str::FromStr;
+    use tapyrus::bip32::{DerivationPath, Fingerprint};
 
     let (mut wallet, _) = get_funded_wallet("wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)");
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -983,8 +983,8 @@ fn test_create_tx_input_hd_keypaths() {
 
 #[test]
 fn test_create_tx_output_hd_keypaths() {
-    use tapyrus::bip32::{DerivationPath, Fingerprint};
     use core::str::FromStr;
+    use tapyrus::bip32::{DerivationPath, Fingerprint};
 
     let (mut wallet, _) = get_funded_wallet("wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)");
 
@@ -1970,7 +1970,7 @@ fn test_bump_fee_drain_wallet() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder
         .drain_wallet()
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(5));
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(5));
     let psbt = builder.finish().unwrap();
     let sent_received = wallet.sent_and_received(&psbt.extract_tx().expect("failed to extract tx"));
 
@@ -2036,7 +2036,7 @@ fn test_bump_fee_remove_output_manually_selected_only() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder
         .manually_selected_only()
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(255));
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(255));
     builder.finish().unwrap();
 }
 
@@ -2080,7 +2080,7 @@ fn test_bump_fee_add_input() {
         .unwrap();
 
     let mut builder = wallet.build_fee_bump(txid).unwrap();
-    builder.fee_rate(FeeRate::from_sat_per_vb_unchecked(50));
+    builder.fee_rate(FeeRate::from_tap_per_vb_unchecked(50));
     let psbt = builder.finish().unwrap();
     let sent_received =
         wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"));
@@ -2114,7 +2114,7 @@ fn test_bump_fee_add_input() {
         sent_received.1
     );
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_sat_per_vb_unchecked(50), @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(50), @add_signature);
 }
 
 #[test]
@@ -2205,7 +2205,7 @@ fn test_bump_fee_no_change_add_input_and_change() {
     // Now bump the fees, the wallet should add an extra input and a change output, and leave
     // the original output untouched.
     let mut builder = wallet.build_fee_bump(txid).unwrap();
-    builder.fee_rate(FeeRate::from_sat_per_vb_unchecked(50));
+    builder.fee_rate(FeeRate::from_tap_per_vb_unchecked(50));
     let psbt = builder.finish().unwrap();
     let sent_received =
         wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"));
@@ -2241,7 +2241,7 @@ fn test_bump_fee_no_change_add_input_and_change() {
         Amount::from_tap(75_000) - original_send_all_amount - fee.unwrap_or(Amount::ZERO)
     );
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_sat_per_vb_unchecked(50), @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(50), @add_signature);
 }
 
 #[test]
@@ -2317,7 +2317,7 @@ fn test_bump_fee_add_input_change_dust() {
         Amount::from_tap(45_000)
     );
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_sat_per_vb_unchecked(140), @dust_change, @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(140), @dust_change, @add_signature);
 }
 
 #[test]
@@ -2348,7 +2348,7 @@ fn test_bump_fee_force_add_input() {
     builder
         .add_utxo(incoming_op)
         .unwrap()
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(5));
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(5));
     let psbt = builder.finish().unwrap();
     let sent_received =
         wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"));
@@ -2383,7 +2383,7 @@ fn test_bump_fee_force_add_input() {
         sent_received.1
     );
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_sat_per_vb_unchecked(5), @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(5), @add_signature);
 }
 
 #[test]
@@ -2489,7 +2489,7 @@ fn test_bump_fee_unconfirmed_inputs_only() {
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
     let mut builder = wallet.build_fee_bump(txid).unwrap();
-    builder.fee_rate(FeeRate::from_sat_per_vb_unchecked(25));
+    builder.fee_rate(FeeRate::from_tap_per_vb_unchecked(25));
     builder.finish().unwrap();
 }
 
@@ -2524,7 +2524,7 @@ fn test_bump_fee_unconfirmed_input() {
 
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder
-        .fee_rate(FeeRate::from_sat_per_vb_unchecked(15))
+        .fee_rate(FeeRate::from_tap_per_vb_unchecked(15))
         // remove original tx drain_to address and amount
         .set_recipients(Vec::new())
         // set back original drain_to address
@@ -3042,11 +3042,11 @@ fn test_sending_to_bip350_bech32m_address() {
 
 #[test]
 fn test_get_address() {
-    use tdk_wallet::descriptor::template::Bip84;
+    use tdk_wallet::descriptor::template::Bip44;
     let key = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let wallet = Wallet::new_no_persist(
-        Bip84(key, KeychainKind::External),
-        Bip84(key, KeychainKind::Internal),
+        Bip44(key, KeychainKind::External),
+        Bip44(key, KeychainKind::Internal),
         Network::Dev,
     )
     .unwrap();
@@ -3077,7 +3077,7 @@ fn test_get_address() {
 #[test]
 fn test_reveal_addresses() {
     let (desc, change_desc) = get_test_tr_single_sig_xprv_with_change_desc();
-    let mut wallet = Wallet::new_no_persist(desc, change_desc, Network::Signet).unwrap();
+    let mut wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
     let keychain = KeychainKind::External;
 
     let last_revealed_addr = wallet
@@ -3099,12 +3099,12 @@ fn test_reveal_addresses() {
 #[test]
 fn test_get_address_no_reuse() {
     use std::collections::HashSet;
-    use tdk_wallet::descriptor::template::Bip84;
+    use tdk_wallet::descriptor::template::Bip44;
 
     let key = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
     let mut wallet = Wallet::new_no_persist(
-        Bip84(key, KeychainKind::External),
-        Bip84(key, KeychainKind::Internal),
+        Bip44(key, KeychainKind::External),
+        Bip44(key, KeychainKind::Internal),
         Network::Dev,
     )
     .unwrap();
@@ -3849,7 +3849,7 @@ fn test_fee_rate_sign_no_grinding_high_r() {
     // alright.
     let (mut wallet, _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
-    let fee_rate = FeeRate::from_sat_per_vb_unchecked(1);
+    let fee_rate = FeeRate::from_tap_per_vb_unchecked(1);
     let mut builder = wallet.build_tx();
     let mut data = PushBytesBuf::try_from(vec![0]).unwrap();
     builder
@@ -3915,7 +3915,7 @@ fn test_fee_rate_sign_grinding_low_r() {
     // signature is 70 bytes.
     let (mut wallet, _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
-    let fee_rate = FeeRate::from_sat_per_vb_unchecked(1);
+    let fee_rate = FeeRate::from_tap_per_vb_unchecked(1);
     let mut builder = wallet.build_tx();
     builder
         .drain_to(addr.script_pubkey())

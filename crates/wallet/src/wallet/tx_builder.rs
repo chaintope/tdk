@@ -30,7 +30,7 @@
 //!     // Create a transaction with one output to `to_address` of 50_000 satoshi
 //!     .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
 //!     // With a custom fee rate of 5.0 satoshi/vbyte
-//!     .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"))
+//!     .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"))
 //!     // Only spend non-change outputs
 //!     .do_not_spend_change()
 //!     // Turn on RBF signaling
@@ -652,7 +652,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     ///     .drain_wallet()
     ///     // Send the excess (which is all the coins minus the fee) to this address.
     ///     .drain_to(to_address.script_pubkey())
-    ///     .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"))
+    ///     .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"))
     ///     .enable_rbf();
     /// let psbt = tx_builder.finish()?;
     /// # Ok::<(), anyhow::Error>(())

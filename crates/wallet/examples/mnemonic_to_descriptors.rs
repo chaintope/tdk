@@ -8,14 +8,14 @@
 
 use anyhow::anyhow;
 use std::str::FromStr;
-use tdk_wallet::tapyrus::bip32::DerivationPath;
-use tdk_wallet::tapyrus::secp256k1::Secp256k1;
-use tdk_wallet::tapyrus::Network;
 use tdk_wallet::descriptor;
 use tdk_wallet::descriptor::IntoWalletDescriptor;
 use tdk_wallet::keys::bip39::{Language, Mnemonic, WordCount};
 use tdk_wallet::keys::{GeneratableKey, GeneratedKey};
 use tdk_wallet::miniscript::Tap;
+use tdk_wallet::tapyrus::bip32::DerivationPath;
+use tdk_wallet::tapyrus::secp256k1::Secp256k1;
+use tdk_wallet::tapyrus::Network;
 
 /// This example demonstrates how to generate a mnemonic phrase
 /// using BDK and use that to generate a descriptor string.

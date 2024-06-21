@@ -423,7 +423,7 @@ macro_rules! apply_modifier {
 ///
 /// ```
 /// # use std::str::FromStr;
-/// let (my_descriptor, my_keys_map, networks) = tdk_wallet::descriptor!(sh(wsh(and_v(v:pk("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy"),older(50)))))?;
+/// let (my_descriptor, my_keys_map, networks) = tdk_wallet::descriptor!(sh(and_v(v:pk("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy"),older(50))))?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
@@ -433,19 +433,19 @@ macro_rules! apply_modifier {
 /// syntax is more suitable for a fixed number of items known at compile time, while the other accepts a
 /// [`Vec`] of items, which makes it more suitable for writing dynamic descriptors.
 ///
-/// They both produce the descriptor: `wsh(thresh(2,pk(...),s:pk(...),sndv:older(...)))`
+/// They both produce the descriptor: `sh(thresh(2,pk(...),s:pk(...),sndv:older(...)))`
 ///
 /// ```
 /// # use std::str::FromStr;
-/// let my_key_1 = bitcoin::PublicKey::from_str(
+/// let my_key_1 = tapyrus::PublicKey::from_str(
 ///     "02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c",
 /// )?;
 /// let my_key_2 =
-///     bitcoin::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
+///     tapyrus::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
 /// let my_timelock = 50;
 ///
 /// let (descriptor_a, key_map_a, networks) = tdk_wallet::descriptor! {
-///     wsh (
+///     sh (
 ///         thresh(2, pk(my_key_1), s:pk(my_key_2), s:n:d:v:older(my_timelock))
 ///     )
 /// }?;
@@ -457,7 +457,7 @@ macro_rules! apply_modifier {
 ///     tdk_wallet::fragment!(s:n:d:v:older(my_timelock))?,
 /// ];
 /// let (descriptor_b, mut key_map_b, networks) =
-///     tdk_wallet::descriptor!(wsh(thresh_vec(2, b_items)))?;
+///     tdk_wallet::descriptor!(sh(thresh_vec(2, b_items)))?;
 ///
 /// assert_eq!(descriptor_a, descriptor_b);
 /// assert_eq!(key_map_a.len(), key_map_b.len());
@@ -466,18 +466,18 @@ macro_rules! apply_modifier {
 ///
 /// ------
 ///
-/// Simple 2-of-2 multi-signature, equivalent to: `wsh(multi(2, ...))`
+/// Simple 2-of-2 multi-signature, equivalent to: `sh(multi(2, ...))`
 ///
 /// ```
 /// # use std::str::FromStr;
-/// let my_key_1 = bitcoin::PublicKey::from_str(
+/// let my_key_1 = tapyrus::PublicKey::from_str(
 ///     "02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c",
 /// )?;
 /// let my_key_2 =
-///     bitcoin::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
+///     tapyrus::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
 ///
 /// let (descriptor, key_map, networks) = tdk_wallet::descriptor! {
-///     wsh (
+///     sh (
 ///         multi(2, my_key_1, my_key_2)
 ///     )
 /// }?;
@@ -490,9 +490,9 @@ macro_rules! apply_modifier {
 ///
 /// ```
 /// let my_key =
-///     bitcoin::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
+///     tapyrus::PrivateKey::from_wif("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy")?;
 ///
-/// let (descriptor, key_map, networks) = tdk_wallet::descriptor!(wpkh(my_key))?;
+/// let (descriptor, key_map, networks) = tdk_wallet::descriptor!(pkh(my_key))?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
@@ -501,12 +501,6 @@ macro_rules! apply_modifier {
 macro_rules! descriptor {
     ( bare ( $( $minisc:tt )* ) ) => ({
         $crate::impl_top_level_sh!(Bare, new, new, Legacy, $( $minisc )*)
-    });
-    ( sh ( wsh ( $( $minisc:tt )* ) ) ) => ({
-        $crate::descriptor!(shwsh ($( $minisc )*))
-    });
-    ( shwsh ( $( $minisc:tt )* ) ) => ({
-        $crate::impl_top_level_sh!(Sh, new_wsh, new_wsh_sortedmulti, Segwitv0, $( $minisc )*)
     });
     ( pk ( $key:expr ) ) => ({
         // `pk()` is actually implemented as `bare(pk())`
@@ -519,37 +513,8 @@ macro_rules! descriptor {
             .and_then(|(a, b, c)| Ok((a.map_err(|e| miniscript::Error::from(e))?, b, c)))
             .map(|(a, b, c)| (Descriptor::<DescriptorPublicKey>::Pkh(a), b, c))
     });
-    ( wpkh ( $key:expr ) ) => ({
-        use $crate::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
-
-        $crate::impl_top_level_pk!(Wpkh, $crate::miniscript::Segwitv0, $key)
-            .and_then(|(a, b, c)| Ok((a.map_err(|e| miniscript::Error::from(e))?, b, c)))
-            .map(|(a, b, c)| (Descriptor::<DescriptorPublicKey>::Wpkh(a), b, c))
-    });
-    ( sh ( wpkh ( $key:expr ) ) ) => ({
-        $crate::descriptor!(shwpkh ( $key ))
-    });
-    ( shwpkh ( $key:expr ) ) => ({
-        use $crate::miniscript::descriptor::{Descriptor, DescriptorPublicKey, Sh};
-
-        $crate::impl_top_level_pk!(Wpkh, $crate::miniscript::Segwitv0, $key)
-            .and_then(|(a, b, c)| Ok((a.map_err(|e| miniscript::Error::from(e))?, b, c)))
-            .and_then(|(a, b, c)| Ok((Descriptor::<DescriptorPublicKey>::Sh(Sh::new_wpkh(a.into_inner())?), b, c)))
-    });
     ( sh ( $( $minisc:tt )* ) ) => ({
         $crate::impl_top_level_sh!(Sh, new, new_sortedmulti, Legacy, $( $minisc )*)
-    });
-    ( wsh ( $( $minisc:tt )* ) ) => ({
-        $crate::impl_top_level_sh!(Wsh, new, new_sortedmulti, Segwitv0, $( $minisc )*)
-    });
-
-    ( tr ( $internal_key:expr ) ) => ({
-        $crate::impl_top_level_tr!($internal_key, None)
-    });
-    ( tr ( $internal_key:expr, $( $taptree:tt )* ) ) => ({
-        let tap_tree = $crate::parse_tap_tree!( $( $taptree )* );
-        tap_tree
-            .and_then(|tap_tree| $crate::impl_top_level_tr!($internal_key, Some(tap_tree)))
     });
 }
 
@@ -797,16 +762,16 @@ macro_rules! fragment {
 #[cfg(test)]
 mod test {
     use alloc::string::ToString;
-    use tapyrus::secp256k1::Secp256k1;
     use miniscript::descriptor::{DescriptorPublicKey, KeyMap};
     use miniscript::{Descriptor, Legacy, Segwitv0};
+    use tapyrus::secp256k1::Secp256k1;
 
     use core::str::FromStr;
 
     use crate::descriptor::{DescriptorError, DescriptorMeta};
     use crate::keys::{DescriptorKey, IntoDescriptorKey, ValidNetworks};
     use tapyrus::bip32;
-    use tapyrus::Network::{Bitcoin, Regtest, Signet, Testnet};
+    use tapyrus::Network::{Dev, Prod};
     use tapyrus::PrivateKey;
 
     // test the descriptor!() macro
@@ -819,13 +784,12 @@ mod test {
         expected: &[&str],
     ) {
         let (desc, _key_map, _networks) = desc.unwrap();
-        assert_eq!(desc.is_witness(), is_witness);
         assert_eq!(!desc.has_wildcard(), is_fixed);
         for i in 0..expected.len() {
             let child_desc = desc
                 .at_derivation_index(i as u32)
                 .expect("i is not hardened");
-            let address = child_desc.address(Regtest);
+            let address = child_desc.address(Dev);
             if let Ok(address) = address {
                 assert_eq!(address.to_string(), *expected.get(i).unwrap());
             } else {
@@ -879,43 +843,6 @@ mod test {
     }
 
     #[test]
-    fn test_fixed_segwitv0_descriptors() {
-        let pubkey1 = tapyrus::PublicKey::from_str(
-            "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
-        )
-        .unwrap();
-        let pubkey2 = tapyrus::PublicKey::from_str(
-            "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
-        )
-        .unwrap();
-
-        check(
-            descriptor!(wpkh(pubkey1)),
-            true,
-            true,
-            &["bcrt1qngw83fg8dz0k749cg7k3emc7v98wy0c7azaa6h"],
-        );
-        check(
-            descriptor!(sh(wpkh(pubkey1))),
-            true,
-            true,
-            &["2N5LiC3CqzxDamRTPG1kiNv1FpNJQ7x28sb"],
-        );
-        check(
-            descriptor!(wsh(multi(1, pubkey1, pubkey2))),
-            true,
-            true,
-            &["bcrt1qgw8jvv2hsrvjfa6q66rk6har7d32lrqm5unnf5cl63q9phxfvgps5fyfqe"],
-        );
-        check(
-            descriptor!(sh(wsh(multi(1, pubkey1, pubkey2)))),
-            true,
-            true,
-            &["2NCidRJysy7apkmE6JF5mLLaJFkrN3Ub9iy"],
-        );
-    }
-
-    #[test]
     fn test_fixed_threeop_descriptors() {
         let redeem_key = tapyrus::PublicKey::from_str(
             "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
@@ -927,7 +854,7 @@ mod test {
         .unwrap();
 
         check(
-            descriptor!(sh(wsh(and_or(pk(redeem_key), older(1000), pk(move_key))))),
+            descriptor!(sh(and_or(pk(redeem_key), older(1000), pk(move_key)))),
             true,
             true,
             &["2MypGwr5eQWAWWJtiJgUEToVxc4zuokjQRe"],
@@ -980,63 +907,6 @@ mod test {
     }
 
     #[test]
-    fn test_bip32_segwitv0_descriptors() {
-        let xprv = bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
-
-        let path = bip32::DerivationPath::from_str("m/0").unwrap();
-        let desc_key = (xprv, path.clone()).into_descriptor_key().unwrap();
-        check(
-            descriptor!(wpkh(desc_key)),
-            true,
-            false,
-            &[
-                "bcrt1qnhm8w9fhc8cxzgqsmqdf9fyjccyvc0gltnymu0",
-                "bcrt1qhylfd55rn75w9fj06zspctad5w4hz33rf0ttad",
-                "bcrt1qq5sq3a6k9av9d8cne0k9wcldy4nqey5yt6889r",
-            ],
-        );
-
-        let desc_key = (xprv, path.clone()).into_descriptor_key().unwrap();
-        check(
-            descriptor!(sh(wpkh(desc_key))),
-            true,
-            false,
-            &[
-                "2MxvjQCaLqZ5QxZ7XotZDQ63hZw3NPss763",
-                "2NDUoevN4QMzhvHDMGhKuiT2fN9HXbFRMwn",
-                "2NF4BEAY2jF1Fu8vqfN3NVKoFtom77pUxrx",
-            ],
-        );
-
-        let path2 = bip32::DerivationPath::from_str("m/2147483647'/0").unwrap();
-        let desc_key1 = (xprv, path.clone()).into_descriptor_key().unwrap();
-        let desc_key2 = (xprv, path2.clone()).into_descriptor_key().unwrap();
-        check(
-            descriptor!(wsh(multi(1, desc_key1, desc_key2))),
-            true,
-            false,
-            &[
-                "bcrt1qfxv8mxmlv5sz8q2mnuyaqdfe9jr4vvmx0csjhn092p6f4qfygfkq2hng49",
-                "bcrt1qerj85g243e6jlcdxpmn9spk0gefcwvu7nw7ee059d5ydzpdhkm2qwfkf5k",
-                "bcrt1qxkl2qss3k58q9ktc8e89pwr4gnptfpw4hju4xstxcjc0hkcae3jstluty7",
-            ],
-        );
-
-        let desc_key1 = (xprv, path).into_descriptor_key().unwrap();
-        let desc_key2 = (xprv, path2).into_descriptor_key().unwrap();
-        check(
-            descriptor!(sh(wsh(multi(1, desc_key1, desc_key2)))),
-            true,
-            false,
-            &[
-                "2NFCtXvx9q4ci2kvKub17iSTgvRXGctCGhz",
-                "2NB2PrFPv5NxWCpygas8tPrGJG2ZFgeuwJw",
-                "2N79ZAGo5cMi5Jt7Wo9L5YmF5GkEw7sjWdC",
-            ],
-        );
-    }
-
-    #[test]
     fn test_dsl_sortedmulti() {
         let key_1 = bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
         let path_1 = bip32::DerivationPath::from_str("m/0").unwrap();
@@ -1062,11 +932,11 @@ mod test {
         );
 
         check(
-            descriptor!(sh(wsh(sortedmulti(
+            descriptor!(sh(sortedmulti(
                 1,
                 desc_key1.clone(),
                 desc_key2.clone()
-            )))),
+            ))),
             true,
             false,
             &[
@@ -1080,7 +950,7 @@ mod test {
         );
 
         check(
-            descriptor!(wsh(sortedmulti_vec(1, vec![desc_key1, desc_key2]))),
+            descriptor!(sh(sortedmulti_vec(1, vec![desc_key1, desc_key2]))),
             true,
             false,
             &[
@@ -1104,15 +974,15 @@ mod test {
         let (_desc, _key_map, valid_networks) = descriptor!(pkh(desc_key)).unwrap();
         assert_eq!(
             valid_networks,
-            [Testnet, Regtest, Signet].iter().cloned().collect()
+            [Prod, Dev].iter().cloned().collect()
         );
 
         let xprv = bip32::Xpriv::from_str("xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi").unwrap();
         let path = bip32::DerivationPath::from_str("m/10/20/30/40").unwrap();
         let desc_key = (xprv, path).into_descriptor_key().unwrap();
 
-        let (_desc, _key_map, valid_networks) = descriptor!(wpkh(desc_key)).unwrap();
-        assert_eq!(valid_networks, [tapyrus].iter().cloned().collect());
+        let (_desc, _key_map, valid_networks) = descriptor!(pkh(desc_key)).unwrap();
+        assert_eq!(valid_networks, [Prod].iter().cloned().collect());
     }
 
     // - verify the key_maps are correctly merged together
@@ -1133,7 +1003,7 @@ mod test {
         let desc_key3 = (xprv3, path3.clone()).into_descriptor_key().unwrap();
 
         let (_desc, key_map, _valid_networks) =
-            descriptor!(sh(wsh(multi(2, desc_key1, desc_key2, desc_key3)))).unwrap();
+            descriptor!(sh(multi(2, desc_key1, desc_key2, desc_key3))).unwrap();
         assert_eq!(key_map.len(), 3);
 
         let desc_key1: DescriptorKey<Segwitv0> = (xprv1, path1).into_descriptor_key().unwrap();
@@ -1169,9 +1039,9 @@ mod test {
         let private_key =
             PrivateKey::from_wif("cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR").unwrap();
         let (descriptor, _, _) =
-            descriptor!(wsh(thresh(2,n:d:v:older(1),s:pk(private_key),s:pk(private_key)))).unwrap();
+            descriptor!(sh(thresh(2,n:d:v:older(1),s:pk(private_key),s:pk(private_key)))).unwrap();
 
-        assert_eq!(descriptor.to_string(), "wsh(thresh(2,ndv:older(1),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)))#zzk3ux8g")
+        assert_eq!(descriptor.to_string(), "sh(thresh(2,ndv:older(1),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)))#qjzsvw99")
     }
 
     #[test]
@@ -1181,37 +1051,6 @@ mod test {
             PrivateKey::from_wif("L5EZftvrYaSudiozVRzTqLcHLNDoVn7H5HSfM9BAN6tMJX8oTWz6").unwrap();
         uncompressed_pk.compressed = false;
 
-        descriptor!(wsh(v: pk(uncompressed_pk))).unwrap();
-    }
-
-    #[test]
-    fn test_dsl_tr_only_key() {
-        let private_key =
-            PrivateKey::from_wif("cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR").unwrap();
-        let (descriptor, _, _) = descriptor!(tr(private_key)).unwrap();
-
-        assert_eq!(
-            descriptor.to_string(),
-            "tr(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)#heq9m95v"
-        )
-    }
-
-    #[test]
-    fn test_dsl_tr_simple_tree() {
-        let private_key =
-            PrivateKey::from_wif("cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR").unwrap();
-        let (descriptor, _, _) =
-            descriptor!(tr(private_key, { pk(private_key), pk(private_key) })).unwrap();
-
-        assert_eq!(descriptor.to_string(), "tr(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c,{pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c),pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)})#xy5fjw6d")
-    }
-
-    #[test]
-    fn test_dsl_tr_single_leaf() {
-        let private_key =
-            PrivateKey::from_wif("cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR").unwrap();
-        let (descriptor, _, _) = descriptor!(tr(private_key, pk(private_key))).unwrap();
-
-        assert_eq!(descriptor.to_string(), "tr(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c,pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c))#lzl2vmc7")
+        descriptor!(sh(v: pk(uncompressed_pk))).unwrap();
     }
 }
