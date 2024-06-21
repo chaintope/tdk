@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, io::Write, str::FromStr};
 
 use tdk_esplora::{esplora_client, EsploraAsyncExt};
-use bdk_wallet::{
+use tdk_wallet::{
     bitcoin::{Address, Amount, Network, Script},
     KeychainKind, SignOptions, Wallet,
 };

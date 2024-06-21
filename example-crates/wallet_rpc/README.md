@@ -4,7 +4,7 @@
 $ cargo run --bin wallet_rpc -- --help
 
 wallet_rpc 0.1.0
-Bitcoind RPC example using `bdk_wallet::Wallet`
+Bitcoind RPC example using `tdk_wallet::Wallet`
 
 USAGE:
     wallet_rpc [OPTIONS] <DESCRIPTOR> [CHANGE_DESCRIPTOR]
@@ -15,7 +15,7 @@ ARGS:
 
 OPTIONS:
         --db-path <DB_PATH>
-            Where to store wallet data [env: BDK_DB_PATH=] [default: .bdk_wallet_rpc_example.db]
+            Where to store wallet data [env: BDK_DB_PATH=] [default: .tdk_wallet_rpc_example.db]
 
     -h, --help
             Print help information

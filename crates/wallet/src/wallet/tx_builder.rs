@@ -16,9 +16,9 @@
 //! ```
 //! # use std::str::FromStr;
 //! # use bitcoin::*;
-//! # use bdk_wallet::*;
-//! # use bdk_wallet::wallet::ChangeSet;
-//! # use bdk_wallet::wallet::error::CreateTxError;
+//! # use tdk_wallet::*;
+//! # use tdk_wallet::wallet::ChangeSet;
+//! # use tdk_wallet::wallet::error::CreateTxError;
 //! # use tdk_persist::PersistBackend;
 //! # use anyhow::Error;
 //! # let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap().assume_checked();
@@ -62,12 +62,12 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 /// as in the following example:
 ///
 /// ```
-/// # use bdk_wallet::*;
-/// # use bdk_wallet::wallet::tx_builder::*;
+/// # use tdk_wallet::*;
+/// # use tdk_wallet::wallet::tx_builder::*;
 /// # use bitcoin::*;
 /// # use core::str::FromStr;
-/// # use bdk_wallet::wallet::ChangeSet;
-/// # use bdk_wallet::wallet::error::CreateTxError;
+/// # use tdk_wallet::wallet::ChangeSet;
+/// # use tdk_wallet::wallet::error::CreateTxError;
 /// # use tdk_persist::PersistBackend;
 /// # use anyhow::Error;
 /// # let mut wallet = doctest_wallet!();
@@ -245,7 +245,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// # use std::str::FromStr;
     /// # use std::collections::BTreeMap;
     /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
+    /// # use tdk_wallet::*;
     /// # let to_address =
     /// Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt")
     ///     .unwrap()
@@ -635,9 +635,9 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// ```
     /// # use std::str::FromStr;
     /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let to_address =

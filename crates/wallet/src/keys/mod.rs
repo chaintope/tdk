@@ -97,7 +97,7 @@ impl<Ctx: ScriptContext> DescriptorKey<Ctx> {
         }
     }
 
-    // This method is used internally by `bdk_wallet::fragment!` and `bdk_wallet::descriptor!`. It has to be
+    // This method is used internally by `tdk_wallet::fragment!` and `tdk_wallet::descriptor!`. It has to be
     // public because it is effectively called by external crates once the macros are expanded,
     // but since it is not meant to be part of the public api we hide it from the docs.
     #[doc(hidden)]
@@ -206,9 +206,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type valid in any context:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError, ScriptContext};
+/// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError, ScriptContext};
 ///
 /// pub struct MyKeyType {
 ///     pubkey: PublicKey,
@@ -224,9 +224,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type that is only valid on mainnet:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::keys::{
 ///     mainnet_network, DescriptorKey, DescriptorPublicKey, IntoDescriptorKey, KeyError,
 ///     ScriptContext, SinglePub, SinglePubKey,
 /// };
@@ -251,9 +251,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type that internally encodes in which context it's valid. The context is checked at runtime:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::keys::{
 ///     DescriptorKey, ExtScriptContext, IntoDescriptorKey, KeyError, ScriptContext,
 /// };
 ///
@@ -281,17 +281,17 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// makes the compiler (correctly) fail.
 ///
 /// ```compile_fail
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 /// use core::str::FromStr;
 ///
-/// use bdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError};
+/// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError};
 ///
 /// pub struct MySegwitOnlyKeyType {
 ///     pubkey: PublicKey,
 /// }
 ///
-/// impl IntoDescriptorKey<bdk_wallet::miniscript::Segwitv0> for MySegwitOnlyKeyType {
-///     fn into_descriptor_key(self) -> Result<DescriptorKey<bdk_wallet::miniscript::Segwitv0>, KeyError> {
+/// impl IntoDescriptorKey<tdk_wallet::miniscript::Segwitv0> for MySegwitOnlyKeyType {
+///     fn into_descriptor_key(self) -> Result<DescriptorKey<tdk_wallet::miniscript::Segwitv0>, KeyError> {
 ///         self.pubkey.into_descriptor_key()
 ///     }
 /// }
@@ -299,7 +299,7 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// let key = MySegwitOnlyKeyType {
 ///     pubkey: PublicKey::from_str("...")?,
 /// };
-/// let (descriptor, _, _) = bdk_wallet::descriptor!(pkh(key))?;
+/// let (descriptor, _, _) = tdk_wallet::descriptor!(pkh(key))?;
 /// //                                               ^^^^^ changing this to `wpkh` would make it compile
 ///
 /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -389,9 +389,9 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// an [`Xpub`] can implement only the required `into_extended_key()` method.
 ///
 /// ```
-/// use bdk_wallet::bitcoin;
-/// use bdk_wallet::bitcoin::bip32;
-/// use bdk_wallet::keys::{DerivableKey, ExtendedKey, KeyError, ScriptContext};
+/// use tdk_wallet::bitcoin;
+/// use tdk_wallet::bitcoin::bip32;
+/// use tdk_wallet::keys::{DerivableKey, ExtendedKey, KeyError, ScriptContext};
 ///
 /// struct MyCustomKeyType {
 ///     key_data: bitcoin::PrivateKey,
@@ -420,9 +420,9 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// [`Xpriv`] or [`Xpub`] will be considered valid.
 ///
 /// ```
-/// use bdk_wallet::bitcoin;
-/// use bdk_wallet::bitcoin::bip32;
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::bitcoin;
+/// use tdk_wallet::bitcoin::bip32;
+/// use tdk_wallet::keys::{
 ///     any_network, DerivableKey, DescriptorKey, ExtendedKey, KeyError, ScriptContext,
 /// };
 ///
@@ -471,9 +471,9 @@ pub trait DerivableKey<Ctx: ScriptContext = miniscript::Legacy>: Sized {
 This can be used to get direct access to `xprv`s and `xpub`s for types that implement this trait,
 like [`Mnemonic`](bip39::Mnemonic) when the `keys-bip39` feature is enabled.
 ```rust
-use bdk_wallet::bitcoin::Network;
-use bdk_wallet::keys::{DerivableKey, ExtendedKey};
-use bdk_wallet::keys::bip39::{Mnemonic, Language};
+use tdk_wallet::bitcoin::Network;
+use tdk_wallet::keys::{DerivableKey, ExtendedKey};
+use tdk_wallet::keys::bip39::{Mnemonic, Language};
 
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
 let xkey: ExtendedKey =
@@ -766,7 +766,7 @@ fn expand_multi_keys<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((pks, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `pk_k()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `pk_k()` fragments
 #[doc(hidden)]
 pub fn make_pk<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     descriptor_key: Pk,
@@ -780,7 +780,7 @@ pub fn make_pk<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `pk_h()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `pk_h()` fragments
 #[doc(hidden)]
 pub fn make_pkh<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     descriptor_key: Pk,
@@ -794,7 +794,7 @@ pub fn make_pkh<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `multi()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `multi()` fragments
 #[doc(hidden)]
 pub fn make_multi<
     Pk: IntoDescriptorKey<Ctx>,
@@ -814,7 +814,7 @@ pub fn make_multi<
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::descriptor!` to build `sortedmulti()` fragments
+// Used internally by `tdk_wallet::descriptor!` to build `sortedmulti()` fragments
 #[doc(hidden)]
 pub fn make_sortedmulti<Pk, Ctx, F>(
     thresh: usize,
@@ -836,7 +836,7 @@ where
     Ok((descriptor, key_map, valid_networks))
 }
 
-/// The "identity" conversion is used internally by some `bdk_wallet::fragment`s
+/// The "identity" conversion is used internally by some `tdk_wallet::fragment`s
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorKey<Ctx> {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         Ok(self)

@@ -465,11 +465,11 @@ impl Wallet {
     /// manually to the [`Wallet`]:
     ///
     /// ```rust,no_run
-    /// # use bdk_wallet::Wallet;
-    /// # use bdk_wallet::signer::{SignersContainer, SignerOrdering};
-    /// # use bdk_wallet::descriptor::Descriptor;
+    /// # use tdk_wallet::Wallet;
+    /// # use tdk_wallet::signer::{SignersContainer, SignerOrdering};
+    /// # use tdk_wallet::descriptor::Descriptor;
     /// # use bitcoin::key::Secp256k1;
-    /// # use bdk_wallet::KeychainKind;
+    /// # use tdk_wallet::KeychainKind;
     /// # use tdk_sqlite::{Store, rusqlite::Connection};
     /// #
     /// # fn main() -> Result<(), anyhow::Error> {
@@ -976,7 +976,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
@@ -985,7 +985,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1007,7 +1007,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
@@ -1016,7 +1016,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1037,7 +1037,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("tx exists").tx_node.tx;
@@ -1046,7 +1046,7 @@ impl Wallet {
     ///
     /// ```rust, no_run
     /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1067,8 +1067,8 @@ impl Wallet {
     ///   the transaction was last seen in the mempool is provided.
     ///
     /// ```rust, no_run
-    /// use bdk_wallet::{chain::ChainPosition, Wallet};
     /// use tdk_chain::Anchor;
+    /// use tdk_wallet::{chain::ChainPosition, Wallet};
     /// # let wallet: Wallet = todo!();
     /// # let my_txid: bitcoin::Txid = todo!();
     ///
@@ -1234,8 +1234,8 @@ impl Wallet {
     /// ## Example
     ///
     /// ```
-    /// # use bdk_wallet::{Wallet, KeychainKind};
-    /// # use bdk_wallet::bitcoin::Network;
+    /// # use tdk_wallet::{Wallet, KeychainKind};
+    /// # use tdk_wallet::bitcoin::Network;
     /// let descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/0/*)";
     /// let change_descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/1/*)";
     /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Testnet)?;
@@ -1262,9 +1262,9 @@ impl Wallet {
     /// ```
     /// # use std::str::FromStr;
     /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
@@ -1616,9 +1616,9 @@ impl Wallet {
     /// # // TODO: remove norun -- bumping fee seems to need the tx in the wallet database first.
     /// # use std::str::FromStr;
     /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
@@ -1792,9 +1792,9 @@ impl Wallet {
     /// ```
     /// # use std::str::FromStr;
     /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
     /// # let mut wallet = doctest_wallet!();

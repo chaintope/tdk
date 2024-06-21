@@ -1,6 +1,6 @@
-use bdk_wallet::bitcoin::{Amount, FeeRate, Psbt, TxIn};
-use bdk_wallet::{psbt, KeychainKind, SignOptions};
 use core::str::FromStr;
+use tdk_wallet::bitcoin::{Amount, FeeRate, Psbt, TxIn};
+use tdk_wallet::{psbt, KeychainKind, SignOptions};
 mod common;
 use common::*;
 
@@ -158,13 +158,13 @@ fn test_psbt_fee_rate_with_missing_txout() {
 
 #[test]
 fn test_psbt_multiple_internalkey_signers() {
-    use bdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
-    use bdk_wallet::KeychainKind;
     use bitcoin::key::TapTweak;
     use bitcoin::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
     use bitcoin::sighash::{Prevouts, SighashCache, TapSighashType};
     use bitcoin::{PrivateKey, TxOut};
     use std::sync::Arc;
+    use tdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
+    use tdk_wallet::KeychainKind;
 
     let secp = Secp256k1::new();
     let wif = "cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG";
