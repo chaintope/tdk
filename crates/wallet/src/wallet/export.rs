@@ -58,7 +58,7 @@ use core::fmt;
 use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
-use miniscript::descriptor::{ShInner, WshInner};
+use miniscript::descriptor::ShInner;
 use miniscript::{Descriptor, ScriptContext, Terminal};
 
 use crate::types::KeychainKind;
@@ -173,21 +173,11 @@ impl FullyNodedExport {
 
         // pkh(), wpkh(), sh(wpkh()) are always fine, as well as multi() and sortedmulti()
         match Descriptor::<String>::from_str(descriptor).map_err(|_| "Invalid descriptor")? {
-            Descriptor::Pkh(_) | Descriptor::Wpkh(_) => Ok(()),
+            Descriptor::Pkh(_) => Ok(()),
             Descriptor::Sh(sh) => match sh.as_inner() {
-                ShInner::Wpkh(_) => Ok(()),
                 ShInner::SortedMulti(_) => Ok(()),
-                ShInner::Wsh(wsh) => match wsh.as_inner() {
-                    WshInner::SortedMulti(_) => Ok(()),
-                    WshInner::Ms(ms) => check_ms(&ms.node),
-                },
                 ShInner::Ms(ms) => check_ms(&ms.node),
             },
-            Descriptor::Wsh(wsh) => match wsh.as_inner() {
-                WshInner::SortedMulti(_) => Ok(()),
-                WshInner::Ms(ms) => check_ms(&ms.node),
-            },
-            Descriptor::Tr(_) => Ok(()),
             _ => Err("The descriptor is not compatible with Bitcoin Core"),
         }
     }

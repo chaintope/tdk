@@ -1,11 +1,11 @@
 #![allow(unused)]
 
+use std::str::FromStr;
 use tapyrus::hashes::Hash;
 use tapyrus::{
     transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
     Txid,
 };
-use std::str::FromStr;
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
 use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
@@ -182,7 +182,7 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 
 /// Construct a new [`FeeRate`] from the given raw `sat_vb` feerate. This is
 /// useful in cases where we want to create a feerate from a `f64`, as the
-/// traditional [`FeeRate::from_sat_per_vb`] method will only accept an integer.
+/// traditional [`FeeRate::from_tap_per_vb`] method will only accept an integer.
 ///
 /// **Note** this 'quick and dirty' conversion should only be used when the input
 /// parameter has units of `satoshis/vbyte` **AND** is not expected to overflow,

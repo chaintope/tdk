@@ -142,15 +142,7 @@ impl IntoWalletDescriptor for (ExtendedDescriptor, KeyMap) {
             fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<String, DescriptorError> {
                 let secp = &self.secp;
 
-                let (_, _, networks) = if self.descriptor.is_taproot() {
-                    let descriptor_key: DescriptorKey<miniscript::Tap> =
-                        pk.clone().into_descriptor_key()?;
-                    descriptor_key.extract(secp)?
-                } else if self.descriptor.is_witness() {
-                    let descriptor_key: DescriptorKey<miniscript::Segwitv0> =
-                        pk.clone().into_descriptor_key()?;
-                    descriptor_key.extract(secp)?
-                } else {
+                let (_, _, networks) = {
                     let descriptor_key: DescriptorKey<miniscript::Legacy> =
                         pk.clone().into_descriptor_key()?;
                     descriptor_key.extract(secp)?
@@ -375,8 +367,6 @@ where
 }
 
 pub(crate) trait DescriptorMeta {
-    fn is_witness(&self) -> bool;
-    fn is_taproot(&self) -> bool;
     fn get_extended_keys(&self) -> Vec<DescriptorXKey<Xpub>>;
     fn derive_from_hd_keypaths(
         &self,
@@ -402,22 +392,6 @@ pub(crate) trait DescriptorMeta {
 }
 
 impl DescriptorMeta for ExtendedDescriptor {
-    fn is_witness(&self) -> bool {
-        matches!(
-            self.desc_type(),
-            DescriptorType::Wpkh
-                | DescriptorType::ShWpkh
-                | DescriptorType::Wsh
-                | DescriptorType::ShWsh
-                | DescriptorType::ShWshSortedMulti
-                | DescriptorType::WshSortedMulti
-        )
-    }
-
-    fn is_taproot(&self) -> bool {
-        self.desc_type() == DescriptorType::Tr
-    }
-
     fn get_extended_keys(&self) -> Vec<DescriptorXKey<Xpub>> {
         let mut answer = Vec::new();
 
@@ -568,9 +542,6 @@ impl DescriptorMeta for ExtendedDescriptor {
         match descriptor.desc_type() {
             // TODO: add pk() here
             DescriptorType::Pkh
-            | DescriptorType::Wpkh
-            | DescriptorType::ShWpkh
-            | DescriptorType::Tr
                 if utxo.is_some()
                     && descriptor.script_pubkey() == utxo.as_ref().unwrap().script_pubkey =>
             {
@@ -580,16 +551,6 @@ impl DescriptorMeta for ExtendedDescriptor {
                 if psbt_input.redeem_script.is_some()
                     && &descriptor.explicit_script().unwrap()
                         == psbt_input.redeem_script.as_ref().unwrap() =>
-            {
-                Some(descriptor)
-            }
-            DescriptorType::Wsh
-            | DescriptorType::ShWsh
-            | DescriptorType::ShWshSortedMulti
-            | DescriptorType::WshSortedMulti
-                if psbt_input.witness_script.is_some()
-                    && &descriptor.explicit_script().unwrap()
-                        == psbt_input.witness_script.as_ref().unwrap() =>
             {
                 Some(descriptor)
             }
@@ -736,11 +697,9 @@ mod test {
         let key = key.override_valid_networks(any_network());
 
         // make a descriptor out of it
-        let desc = crate::descriptor!(wpkh(key)).unwrap();
+        let desc = crate::descriptor!(pkh(key)).unwrap();
         // this should convert the key that supports "any_network" to the right network (testnet)
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Prod)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Prod).unwrap();
 
         let mut xprv_testnet = xprv;
         xprv_testnet.network = Network::Prod;
@@ -840,11 +799,9 @@ mod test {
         let key = (tpub, path).into_descriptor_key().unwrap();
 
         // make a descriptor out of it
-        let desc = crate::descriptor!(wpkh(key)).unwrap();
+        let desc = crate::descriptor!(pkh(key)).unwrap();
 
-        let (wallet_desc, _) = desc
-            .into_wallet_descriptor(&secp, Network::Prod)
-            .unwrap();
+        let (wallet_desc, _) = desc.into_wallet_descriptor(&secp, Network::Prod).unwrap();
         let wallet_desc_str = wallet_desc.to_string();
         assert_eq!(wallet_desc_str, "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw");
 

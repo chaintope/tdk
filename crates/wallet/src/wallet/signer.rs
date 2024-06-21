@@ -92,7 +92,7 @@ use tapyrus::hashes::hash160;
 use tapyrus::secp256k1::Message;
 use tapyrus::sighash::{EcdsaSighashType, TapSighash, TapSighashType};
 use tapyrus::{ecdsa, psbt, sighash, taproot};
-use tapyrus::{key::TapTweak, key::XOnlyPublicKey, secp256k1};
+use tapyrus::{key::XOnlyPublicKey, secp256k1};
 use tapyrus::{PrivateKey, Psbt, PublicKey};
 
 use miniscript::descriptor::{
@@ -102,7 +102,7 @@ use miniscript::descriptor::{
 use miniscript::{Legacy, Segwitv0, SigType, Tap, ToPublicKey};
 
 use super::utils::SecpCtx;
-use crate::descriptor::{DescriptorMeta, XKeyUtils};
+use crate::descriptor::XKeyUtils;
 use crate::psbt::PsbtUtils;
 use crate::wallet::error::MiniscriptPsbtError;
 
@@ -206,13 +206,6 @@ impl std::error::Error for SignerError {}
 pub enum SignerContext {
     /// Legacy context
     Legacy,
-    /// Segwit v0 context (BIP 143)
-    Segwitv0,
-    /// Taproot context (BIP 340)
-    Tap {
-        /// Whether the signer can sign for the internal key or not
-        is_internal_key: bool,
-    },
 }
 
 /// Wrapper to pair a signer with its context
@@ -454,82 +447,15 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         }
 
         let pubkey = PublicKey::from_private_key(secp, self);
-        let x_only_pubkey = XOnlyPublicKey::from(pubkey.inner);
-
-        if let SignerContext::Tap { is_internal_key } = self.ctx {
-            if let Some(psbt_internal_key) = psbt.inputs[input_index].tap_internal_key {
-                if is_internal_key
-                    && psbt.inputs[input_index].tap_key_sig.is_none()
-                    && sign_options.sign_with_tap_internal_key
-                    && x_only_pubkey == psbt_internal_key
-                {
-                    let (hash, hash_ty) = Tap::sighash(psbt, input_index, None)?;
-                    sign_psbt_schnorr(
-                        &self.inner,
-                        x_only_pubkey,
-                        None,
-                        &mut psbt.inputs[input_index],
-                        hash,
-                        hash_ty,
-                        secp,
-                    );
-                }
-            }
-
-            if let Some((leaf_hashes, _)) =
-                psbt.inputs[input_index].tap_key_origins.get(&x_only_pubkey)
-            {
-                let leaf_hashes = leaf_hashes
-                    .iter()
-                    .filter(|lh| {
-                        // Removing the leaves we shouldn't sign for
-                        let should_sign = match &sign_options.tap_leaves_options {
-                            TapLeavesOptions::All => true,
-                            TapLeavesOptions::Include(v) => v.contains(lh),
-                            TapLeavesOptions::Exclude(v) => !v.contains(lh),
-                            TapLeavesOptions::None => false,
-                        };
-                        // Filtering out the leaves without our key
-                        should_sign
-                            && !psbt.inputs[input_index]
-                                .tap_script_sigs
-                                .contains_key(&(x_only_pubkey, **lh))
-                    })
-                    .cloned()
-                    .collect::<Vec<_>>();
-                for lh in leaf_hashes {
-                    let (hash, hash_ty) = Tap::sighash(psbt, input_index, Some(lh))?;
-                    sign_psbt_schnorr(
-                        &self.inner,
-                        x_only_pubkey,
-                        Some(lh),
-                        &mut psbt.inputs[input_index],
-                        hash,
-                        hash_ty,
-                        secp,
-                    );
-                }
-            }
-
-            return Ok(());
-        }
 
         if psbt.inputs[input_index].partial_sigs.contains_key(&pubkey) {
             return Ok(());
         }
 
         let (hash, hash_ty) = match self.ctx {
-            SignerContext::Segwitv0 => {
-                let (h, t) = Segwitv0::sighash(psbt, input_index, ())?;
-                let h = h.to_raw_hash();
-                (h, t)
-            }
             SignerContext::Legacy => {
-                let (h, t) = Legacy::sighash(psbt, input_index, ())?;
-                let h = h.to_raw_hash();
-                (h, t)
+                Legacy::sighash(psbt, input_index, ())?
             }
-            _ => return Ok(()), // handled above
         };
         sign_psbt_ecdsa(
             &self.inner,
@@ -565,40 +491,6 @@ fn sign_psbt_ecdsa(
 
     let final_signature = ecdsa::Signature { sig, hash_ty };
     psbt_input.partial_sigs.insert(pubkey, final_signature);
-}
-
-// Calling this with `leaf_hash` = `None` will sign for key-spend
-fn sign_psbt_schnorr(
-    secret_key: &secp256k1::SecretKey,
-    pubkey: XOnlyPublicKey,
-    leaf_hash: Option<taproot::TapLeafHash>,
-    psbt_input: &mut psbt::Input,
-    hash: TapSighash,
-    hash_ty: TapSighashType,
-    secp: &SecpCtx,
-) {
-    let keypair = secp256k1::Keypair::from_seckey_slice(secp, secret_key.as_ref()).unwrap();
-    let keypair = match leaf_hash {
-        None => keypair
-            .tap_tweak(secp, psbt_input.tap_merkle_root)
-            .to_inner(),
-        Some(_) => keypair, // no tweak for script spend
-    };
-
-    let msg = &Message::from(hash);
-    let sig = secp.sign_schnorr(msg, &keypair);
-    secp.verify_schnorr(&sig, msg, &XOnlyPublicKey::from_keypair(&keypair).0)
-        .expect("invalid or corrupted schnorr signature");
-
-    let final_signature = taproot::Signature { sig, hash_ty };
-
-    if let Some(lh) = leaf_hash {
-        psbt_input
-            .tap_script_sigs
-            .insert((pubkey, lh), final_signature);
-    } else {
-        psbt_input.tap_key_sig = Some(final_signature);
-    }
 }
 
 /// Defines the order in which signers are called
@@ -650,19 +542,13 @@ impl SignersContainer {
     /// the signers
     pub fn build(
         keymap: KeyMap,
-        descriptor: &Descriptor<DescriptorPublicKey>,
+        _descriptor: &Descriptor<DescriptorPublicKey>,
         secp: &SecpCtx,
     ) -> SignersContainer {
         let mut container = SignersContainer::new();
 
-        for (pubkey, secret) in keymap {
-            let ctx = match descriptor {
-                Descriptor::Tr(tr) => SignerContext::Tap {
-                    is_internal_key: tr.internal_key() == &pubkey,
-                },
-                _ if descriptor.is_witness() => SignerContext::Segwitv0,
-                _ => SignerContext::Legacy,
-            };
+        for (_pubkey, secret) in keymap {
+            let ctx = SignerContext::Legacy;
 
             match secret {
                 DescriptorSecretKey::Single(private_key) => container.add_external(
@@ -1069,11 +955,11 @@ mod signers_container_tests {
     use crate::descriptor::IntoWalletDescriptor;
     use crate::keys::{DescriptorKey, IntoDescriptorKey};
     use assert_matches::assert_matches;
+    use core::str::FromStr;
+    use miniscript::ScriptContext;
     use tapyrus::bip32;
     use tapyrus::secp256k1::{All, Secp256k1};
     use tapyrus::Network;
-    use core::str::FromStr;
-    use miniscript::ScriptContext;
 
     fn is_equal(this: &Arc<dyn TransactionSigner>, that: &Arc<DummySigner>) -> bool {
         let secp = Secp256k1::new();
@@ -1090,9 +976,7 @@ mod signers_container_tests {
         let (prvkey1, _, _) = setup_keys(TPRV0_STR);
         let (prvkey2, _, _) = setup_keys(TPRV1_STR);
         let desc = descriptor!(sh(multi(2, prvkey1, prvkey2))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Prod)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Prod).unwrap();
 
         let signers = SignersContainer::build(keymap, &wallet_desc, &secp);
         assert_eq!(signers.ids().len(), 2);

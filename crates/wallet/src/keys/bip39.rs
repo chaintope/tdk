@@ -170,8 +170,8 @@ mod test {
         let path = bip32::DerivationPath::from_str("m/44'/0'/0'/0").unwrap();
 
         let key = (mnemonic, path);
-        let (desc, keys, networks) = crate::descriptor!(wpkh(key)).unwrap();
-        assert_eq!(desc.to_string(), "wpkh([be83839f/44'/0'/0']xpub6DCQ1YcqvZtSwGWMrwHELPehjWV3f2MGZ69yBADTxFEUAoLwb5Mp5GniQK6tTp3AgbngVz9zEFbBJUPVnkG7LFYt8QMTfbrNqs6FNEwAPKA/0/*)#0r8v4nkv");
+        let (desc, keys, networks) = crate::descriptor!(pkh(key)).unwrap();
+        assert_eq!(desc.to_string(), "pkh([be83839f/44'/0'/0']xpub6DCQ1YcqvZtSwGWMrwHELPehjWV3f2MGZ69yBADTxFEUAoLwb5Mp5GniQK6tTp3AgbngVz9zEFbBJUPVnkG7LFYt8QMTfbrNqs6FNEwAPKA/0/*)#0r8v4nkv");
         assert_eq!(keys.len(), 1);
         assert_eq!(networks.len(), 4);
     }
@@ -184,8 +184,8 @@ mod test {
         let path = bip32::DerivationPath::from_str("m/44'/0'/0'/0").unwrap();
 
         let key = ((mnemonic, Some("passphrase".into())), path);
-        let (desc, keys, networks) = crate::descriptor!(wpkh(key)).unwrap();
-        assert_eq!(desc.to_string(), "wpkh([8f6cb80c/44'/0'/0']xpub6DWYS8bbihFevy29M4cbw4ZR3P5E12jB8R88gBDWCTCNpYiDHhYWNywrCF9VZQYagzPmsZpxXpytzSoxynyeFr4ZyzheVjnpLKuse4fiwZw/0/*)#h0j0tg5m");
+        let (desc, keys, networks) = crate::descriptor!(pkh(key)).unwrap();
+        assert_eq!(desc.to_string(), "pkh([8f6cb80c/44'/0'/0']xpub6DWYS8bbihFevy29M4cbw4ZR3P5E12jB8R88gBDWCTCNpYiDHhYWNywrCF9VZQYagzPmsZpxXpytzSoxynyeFr4ZyzheVjnpLKuse4fiwZw/0/*)#h0j0tg5m");
         assert_eq!(keys.len(), 1);
         assert_eq!(networks.len(), 4);
     }

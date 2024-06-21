@@ -158,11 +158,11 @@ fn test_psbt_fee_rate_with_missing_txout() {
 
 #[test]
 fn test_psbt_multiple_internalkey_signers() {
+    use std::sync::Arc;
     use tapyrus::key::TapTweak;
     use tapyrus::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
     use tapyrus::sighash::{Prevouts, SighashCache, TapSighashType};
     use tapyrus::{PrivateKey, TxOut};
-    use std::sync::Arc;
     use tdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
     use tdk_wallet::KeychainKind;
 
@@ -172,7 +172,7 @@ fn test_psbt_multiple_internalkey_signers() {
     let prv = PrivateKey::from_wif(wif).unwrap();
     let keypair = Keypair::from_secret_key(&secp, &prv.inner);
 
-    let change_desc = "tr(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)";
+    let change_desc = "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)";
     let (mut wallet, _) = get_funded_wallet_with_change(&desc, change_desc);
     let to_spend = wallet.balance().total();
     let send_to = wallet.peek_address(KeychainKind::External, 0);
@@ -188,9 +188,7 @@ fn test_psbt_multiple_internalkey_signers() {
         SignerOrdering(0),
         Arc::new(SignerWrapper::new(
             PrivateKey::from_wif("5J5PZqvCe1uThJ3FZeUUFLCh2FuK9pZhtEK4MzhNmugqTmxCdwE").unwrap(),
-            SignerContext::Tap {
-                is_internal_key: true,
-            },
+            SignerContext::Legacy,
         )),
     );
     let finalized = wallet.sign(&mut psbt, SignOptions::default()).unwrap();
