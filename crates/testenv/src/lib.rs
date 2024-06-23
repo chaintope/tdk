@@ -1,22 +1,21 @@
+pub use electrsd;
+pub use electrsd::electrum_client;
+use electrsd::electrum_client::ElectrumApi;
+pub use electrsd::tapyrusd;
+pub use electrsd::tapyrusd::anyhow;
+pub use electrsd::tapyrusd::tapyruscore_rpc;
+use std::time::Duration;
 use tapyruscore_rpc::{
     tapyruscore_rpc_json::{GetBlockTemplateModes, GetBlockTemplateRules},
     RpcApi,
 };
-pub use electrsd;
-pub use electrsd::tapyrusd;
-pub use electrsd::tapyrusd::anyhow;
-pub use electrsd::tapyrusd::tapyruscore_rpc;
-pub use electrsd::electrum_client;
-use electrsd::electrum_client::ElectrumApi;
-use std::time::Duration;
 use tdk_chain::{
-    tapyrus::{
-        address::NetworkChecked, block::Header, hash_types::TxMerkleNode, hashes::Hash,
-        secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash,
-        ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
-        block::XField
-    },
     local_chain::CheckPoint,
+    tapyrus::{
+        address::NetworkChecked, block::Header, block::XField, hash_types::TxMerkleNode,
+        hashes::Hash, secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash,
+        ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
+    },
     BlockId,
 };
 
@@ -97,16 +96,13 @@ impl TestEnv {
     ) -> anyhow::Result<Vec<BlockHash>> {
         let coinbase_address = match address {
             Some(address) => address,
-            None => self
-                .tapyrusd
-                .client
-                .get_new_address(None)?
-                .assume_checked(),
+            None => self.tapyrusd.client.get_new_address(None)?.assume_checked(),
         };
-        let block_hashes = self
-            .tapyrusd
-            .client
-            .generate_to_address(count as _, &coinbase_address, tapyrusd::get_private_key())?;
+        let block_hashes = self.tapyrusd.client.generate_to_address(
+            count as _,
+            &coinbase_address,
+            tapyrusd::get_private_key(),
+        )?;
         Ok(block_hashes)
     }
 
