@@ -1,4 +1,7 @@
-use bdk_chain::{
+use core::str::FromStr;
+use electrum_client::{ElectrumApi, Error, HeaderNotification};
+use std::sync::{Arc, Mutex};
+use tdk_chain::{
     bitcoin::{OutPoint, ScriptBuf, Transaction, Txid},
     collections::{BTreeMap, HashMap, HashSet},
     local_chain::CheckPoint,
@@ -6,9 +9,6 @@ use bdk_chain::{
     tx_graph::TxGraph,
     BlockId, ConfirmationHeightAnchor, ConfirmationTimeHeightAnchor,
 };
-use core::str::FromStr;
-use electrum_client::{ElectrumApi, Error, HeaderNotification};
-use std::sync::{Arc, Mutex};
 
 /// We include a chain suffix of a certain length for the purpose of robustness.
 const CHAIN_SUFFIX_LENGTH: u32 = 8;
@@ -73,7 +73,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
     }
 
     /// Full scan the keychain scripts specified with the blockchain (via an Electrum client) and
-    /// returns updates for [`bdk_chain`] data structures.
+    /// returns updates for [`tdk_chain`] data structures.
     ///
     /// - `request`: struct with data required to perform a spk-based blockchain client full scan,
     ///              see [`FullScanRequest`]
@@ -172,7 +172,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
     }
 
     /// Sync a set of scripts with the blockchain (via an Electrum client) for the data specified
-    /// and returns updates for [`bdk_chain`] data structures.
+    /// and returns updates for [`tdk_chain`] data structures.
     ///
     /// - `request`: struct with data required to perform a spk-based blockchain client sync,
     ///              see [`SyncRequest`]

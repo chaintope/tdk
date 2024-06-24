@@ -1,16 +1,16 @@
 use std::collections::BTreeSet;
 
 use async_trait::async_trait;
-use bdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
-use bdk_chain::Anchor;
-use bdk_chain::{
+use esplora_client::{Amount, TxStatus};
+use futures::{stream::FuturesOrdered, TryStreamExt};
+use tdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
+use tdk_chain::Anchor;
+use tdk_chain::{
     bitcoin::{BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     collections::BTreeMap,
     local_chain::CheckPoint,
     BlockId, ConfirmationTimeHeightAnchor, TxGraph,
 };
-use esplora_client::{Amount, TxStatus};
-use futures::{stream::FuturesOrdered, TryStreamExt};
 
 use crate::anchor_from_status;
 
@@ -231,7 +231,7 @@ async fn chain_update<A: Anchor>(
 }
 
 /// This performs a full scan to get an update for the [`TxGraph`] and
-/// [`KeychainTxOutIndex`](bdk_chain::keychain::KeychainTxOutIndex).
+/// [`KeychainTxOutIndex`](tdk_chain::keychain::KeychainTxOutIndex).
 async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
     client: &esplora_client::AsyncClient,
     keychain_spks: BTreeMap<
@@ -406,19 +406,19 @@ async fn sync_for_index_and_graph(
 mod test {
     use std::{collections::BTreeSet, time::Duration};
 
-    use bdk_chain::{
+    use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+    use esplora_client::Builder;
+    use tdk_chain::{
         bitcoin::{hashes::Hash, Txid},
         local_chain::LocalChain,
         BlockId,
     };
-    use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
-    use esplora_client::Builder;
 
     use crate::async_ext::{chain_update, fetch_latest_blocks};
 
     macro_rules! h {
         ($index:literal) => {{
-            bdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
+            tdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
         }};
     }
 

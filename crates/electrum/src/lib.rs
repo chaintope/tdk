@@ -1,4 +1,4 @@
-//! This crate is used for updating structures of [`bdk_chain`] with data from an Electrum server.
+//! This crate is used for updating structures of [`tdk_chain`] with data from an Electrum server.
 //!
 //! The two primary methods are [`BdkElectrumClient::sync`] and [`BdkElectrumClient::full_scan`]. In most cases
 //! [`BdkElectrumClient::sync`] is used to sync the transaction histories of scripts that the application
@@ -7,7 +7,7 @@
 //! keychain where the range of possibly used scripts is not known. In this case it is necessary to
 //! scan all keychain scripts until a number (the "stop gap") of unused scripts is discovered. For a
 //! sync or full scan the user receives relevant blockchain data and output updates for
-//! [`bdk_chain`].
+//! [`tdk_chain`].
 //!
 //! Refer to [`example_electrum`] for a complete example.
 //!
@@ -18,5 +18,5 @@
 mod bdk_electrum_client;
 pub use bdk_electrum_client::*;
 
-pub use bdk_chain;
 pub use electrum_client;
+pub use tdk_chain;

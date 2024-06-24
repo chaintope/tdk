@@ -19,19 +19,6 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
-pub use bdk_chain::keychain::Balance;
-use bdk_chain::{
-    indexed_tx_graph,
-    keychain::KeychainTxOutIndex,
-    local_chain::{
-        self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
-    },
-    spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
-    tx_graph::{CanonicalTx, TxGraph},
-    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, FullTxOut,
-    IndexedTxGraph,
-};
-use bdk_persist::{Persist, PersistBackend};
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::sighash::{EcdsaSighashType, TapSighashType};
 use bitcoin::{
@@ -44,8 +31,21 @@ use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
 use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
+pub use tdk_chain::keychain::Balance;
+use tdk_chain::{
+    indexed_tx_graph,
+    keychain::KeychainTxOutIndex,
+    local_chain::{
+        self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
+    },
+    spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
+    tx_graph::{CanonicalTx, TxGraph},
+    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, FullTxOut,
+    IndexedTxGraph,
+};
+use tdk_persist::{Persist, PersistBackend};
 
-use bdk_chain::tx_graph::CalculateFeeError;
+use tdk_chain::tx_graph::CalculateFeeError;
 
 pub mod coin_selection;
 pub mod export;
@@ -99,7 +99,7 @@ pub struct Wallet {
 
 /// An update to [`Wallet`].
 ///
-/// It updates [`bdk_chain::keychain::KeychainTxOutIndex`], [`bdk_chain::TxGraph`] and [`local_chain::LocalChain`] atomically.
+/// It updates [`tdk_chain::keychain::KeychainTxOutIndex`], [`tdk_chain::TxGraph`] and [`local_chain::LocalChain`] atomically.
 #[derive(Debug, Clone, Default)]
 pub struct Update {
     /// Contains the last active derivation indices per keychain (`K`), which is used to update the
@@ -136,7 +136,7 @@ impl From<SyncResult> for Update {
 }
 
 /// The changes made to a wallet by applying an [`Update`].
-pub type ChangeSet = bdk_persist::CombinedChangeSet<KeychainKind, ConfirmationTimeHeightAnchor>;
+pub type ChangeSet = tdk_persist::CombinedChangeSet<KeychainKind, ConfirmationTimeHeightAnchor>;
 
 /// A derived address and the index it was found at.
 /// For convenience this automatically derefs to `Address`
@@ -1067,8 +1067,8 @@ impl Wallet {
     ///   the transaction was last seen in the mempool is provided.
     ///
     /// ```rust, no_run
-    /// use bdk_chain::Anchor;
     /// use bdk_wallet::{chain::ChainPosition, Wallet};
+    /// use tdk_chain::Anchor;
     /// # let wallet: Wallet = todo!();
     /// # let my_txid: bitcoin::Txid = todo!();
     ///
@@ -1098,7 +1098,7 @@ impl Wallet {
     /// }
     /// ```
     ///
-    /// [`Anchor`]: bdk_chain::Anchor
+    /// [`Anchor`]: tdk_chain::Anchor
     pub fn get_tx(
         &self,
         txid: Txid,
@@ -1265,7 +1265,7 @@ impl Wallet {
     /// # use bdk_wallet::*;
     /// # use bdk_wallet::wallet::ChangeSet;
     /// # use bdk_wallet::wallet::error::CreateTxError;
-    /// # use bdk_persist::PersistBackend;
+    /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
     /// # let mut wallet = doctest_wallet!();
@@ -1619,7 +1619,7 @@ impl Wallet {
     /// # use bdk_wallet::*;
     /// # use bdk_wallet::wallet::ChangeSet;
     /// # use bdk_wallet::wallet::error::CreateTxError;
-    /// # use bdk_persist::PersistBackend;
+    /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
     /// # let mut wallet = doctest_wallet!();
@@ -1795,7 +1795,7 @@ impl Wallet {
     /// # use bdk_wallet::*;
     /// # use bdk_wallet::wallet::ChangeSet;
     /// # use bdk_wallet::wallet::error::CreateTxError;
-    /// # use bdk_persist::PersistBackend;
+    /// # use tdk_persist::PersistBackend;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
     /// # let mut wallet = doctest_wallet!();
     /// # let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap().assume_checked();
@@ -2474,8 +2474,8 @@ impl Wallet {
     }
 }
 
-impl AsRef<bdk_chain::tx_graph::TxGraph<ConfirmationTimeHeightAnchor>> for Wallet {
-    fn as_ref(&self) -> &bdk_chain::tx_graph::TxGraph<ConfirmationTimeHeightAnchor> {
+impl AsRef<tdk_chain::tx_graph::TxGraph<ConfirmationTimeHeightAnchor>> for Wallet {
+    fn as_ref(&self) -> &tdk_chain::tx_graph::TxGraph<ConfirmationTimeHeightAnchor> {
         self.indexed_graph.graph()
     }
 }

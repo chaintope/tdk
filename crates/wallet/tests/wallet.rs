@@ -2,10 +2,6 @@ use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
-use bdk_chain::collections::BTreeMap;
-use bdk_chain::COINBASE_MATURITY;
-use bdk_chain::{BlockId, ConfirmationTime};
-use bdk_persist::PersistBackend;
 use bdk_sqlite::rusqlite::Connection;
 use bdk_wallet::descriptor::{calc_checksum, DescriptorError, IntoWalletDescriptor};
 use bdk_wallet::psbt::PsbtUtils;
@@ -26,6 +22,10 @@ use bitcoin::{
     absolute, transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, ScriptBuf,
     Sequence, Transaction, TxIn, TxOut, Txid, Weight,
 };
+use tdk_chain::collections::BTreeMap;
+use tdk_chain::COINBASE_MATURITY;
+use tdk_chain::{BlockId, ConfirmationTime};
+use tdk_persist::PersistBackend;
 
 mod common;
 use common::*;

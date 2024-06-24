@@ -1,6 +1,6 @@
-use bdk_chain::{bitcoin, miniscript};
 use bitcoin::locktime::absolute;
 use miniscript::Terminal;
+use tdk_chain::{bitcoin, miniscript};
 
 use super::*;
 

@@ -27,7 +27,7 @@
 # BDK Wallet
 
 The `bdk_wallet` crate provides the [`Wallet`] type which is a simple, high-level
-interface built from the low-level components of [`bdk_chain`]. `Wallet` is a good starting point
+interface built from the low-level components of [`tdk_chain`]. `Wallet` is a good starting point
 for many simple applications as well as a good demonstration of how to use the other mechanisms to
 construct a wallet. It has two keychains (external and internal) which are defined by
 [miniscript descriptors][`rust-miniscript`] and uses them to generate addresses. When you give it
@@ -220,8 +220,8 @@ license, shall be dual licensed as above, without any additional terms or
 conditions.
 
 [`Wallet`]: https://docs.rs/bdk_wallet/latest/bdk_wallet/wallet/struct.Wallet.html
-[`PersistBackend`]: https://docs.rs/bdk_chain/latest/bdk_chain/trait.PersistBackend.html
-[`bdk_chain`]: https://docs.rs/bdk_chain/latest
+[`PersistBackend`]: https://docs.rs/tdk_chain/latest/tdk_chain/trait.PersistBackend.html
+[`tdk_chain`]: https://docs.rs/tdk_chain/latest
 [`bdk_file_store`]: https://docs.rs/bdk_file_store/latest
 [`bdk_electrum`]: https://docs.rs/bdk_electrum/latest
 [`bdk_esplora`]: https://docs.rs/bdk_esplora/latest

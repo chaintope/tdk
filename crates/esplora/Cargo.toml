@@ -12,7 +12,7 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bdk_chain = { path = "../chain", version = "0.15.0", default-features = false }
+tdk_chain = { path = "../chain", version = "0.15.0", default-features = false }
 esplora-client = { version = "0.7.0", default-features = false }
 async-trait = { version = "0.1.66", optional = true }
 futures = { version = "0.3.26", optional = true }
@@ -27,7 +27,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [features]
 default = ["std", "async-https", "blocking-https-rustls"]
-std = ["bdk_chain/std"]
+std = ["tdk_chain/std"]
 async = ["async-trait", "futures", "esplora-client/async"]
 async-https = ["async", "esplora-client/async-https"]
 async-https-rustls = ["async", "esplora-client/async-https-rustls"]

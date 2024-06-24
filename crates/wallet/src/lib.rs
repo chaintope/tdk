@@ -43,5 +43,5 @@ pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION", "unknown")
 }
 
-pub use bdk_chain as chain;
-pub(crate) use bdk_chain::collections;
+pub use tdk_chain as chain;
+pub(crate) use tdk_chain::collections;

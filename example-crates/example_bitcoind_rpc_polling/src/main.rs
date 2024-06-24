@@ -11,16 +11,16 @@ use bdk_bitcoind_rpc::{
     bitcoincore_rpc::{Auth, Client, RpcApi},
     Emitter,
 };
-use bdk_chain::{
-    bitcoin::{constants::genesis_block, Block, Transaction},
-    indexed_tx_graph, keychain,
-    local_chain::{self, LocalChain},
-    ConfirmationTimeHeightAnchor, IndexedTxGraph,
-};
 use example_cli::{
     anyhow,
     clap::{self, Args, Subcommand},
     Keychain,
+};
+use tdk_chain::{
+    bitcoin::{constants::genesis_block, Block, Transaction},
+    indexed_tx_graph, keychain,
+    local_chain::{self, LocalChain},
+    ConfirmationTimeHeightAnchor, IndexedTxGraph,
 };
 
 const DB_MAGIC: &[u8] = b"bdk_example_rpc";

@@ -48,9 +48,9 @@
 //! conflicting blocks (by nature of the Bitcoin network).
 //!
 //! ```
-//! # use bdk_chain::BlockId;
-//! # use bdk_chain::tx_graph::TxGraph;
-//! # use bdk_chain::example_utils::*;
+//! # use tdk_chain::BlockId;
+//! # use tdk_chain::tx_graph::TxGraph;
+//! # use tdk_chain::example_utils::*;
 //! # use tapyrus::Transaction;
 //! # let tx_a = tx_from_hex(RAW_TX_1);
 //! let mut tx_graph: TxGraph = TxGraph::default();
@@ -69,9 +69,9 @@
 //! A [`TxGraph`] can also be updated with another [`TxGraph`] which merges them together.
 //!
 //! ```
-//! # use bdk_chain::{Append, BlockId};
-//! # use bdk_chain::tx_graph::TxGraph;
-//! # use bdk_chain::example_utils::*;
+//! # use tdk_chain::{Append, BlockId};
+//! # use tdk_chain::tx_graph::TxGraph;
+//! # use tdk_chain::example_utils::*;
 //! # use tapyrus::Transaction;
 //! # let tx_a = tx_from_hex(RAW_TX_1);
 //! # let tx_b = tx_from_hex(RAW_TX_2);
@@ -582,10 +582,10 @@ impl<A: Clone + Ord> TxGraph<A> {
     /// # Example
     ///
     /// ```rust
-    /// # use bdk_chain::example_utils::*;
+    /// # use tdk_chain::example_utils::*;
     /// # use std::time::UNIX_EPOCH;
     /// # let tx = tx_from_hex(RAW_TX_1);
-    /// # let mut tx_graph = bdk_chain::TxGraph::<()>::new([tx]);
+    /// # let mut tx_graph = tdk_chain::TxGraph::<()>::new([tx]);
     /// let now = std::time::SystemTime::now()
     ///     .duration_since(UNIX_EPOCH)
     ///     .expect("valid duration")

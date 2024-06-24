@@ -16,7 +16,7 @@ pub const BIP32_MAX_INDEX: u32 = (1 << 31) - 1;
 /// ## Examples
 ///
 /// ```
-/// use bdk_chain::SpkIterator;
+/// use tdk_chain::SpkIterator;
 /// # use miniscript::{Descriptor, DescriptorPublicKey};
 /// # use tapyrus::{secp256k1::Secp256k1};
 /// # use std::str::FromStr;

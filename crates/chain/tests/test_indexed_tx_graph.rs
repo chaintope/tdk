@@ -6,15 +6,15 @@ mod common;
 use std::{collections::BTreeSet, sync::Arc};
 
 use crate::common::DESCRIPTORS;
-use bdk_chain::{
+use miniscript::Descriptor;
+use tapyrus::{
+    secp256k1::Secp256k1, Amount, OutPoint, Script, ScriptBuf, Transaction, TxIn, TxOut,
+};
+use tdk_chain::{
     indexed_tx_graph::{self, IndexedTxGraph},
     keychain::{self, Balance, KeychainTxOutIndex},
     local_chain::LocalChain,
     tx_graph, ChainPosition, ConfirmationHeightAnchor, DescriptorExt,
-};
-use miniscript::Descriptor;
-use tapyrus::{
-    secp256k1::Secp256k1, Amount, OutPoint, Script, ScriptBuf, Transaction, TxIn, TxOut,
 };
 
 /// Ensure [`IndexedTxGraph::insert_relevant_txs`] can successfully index transactions NOT presented

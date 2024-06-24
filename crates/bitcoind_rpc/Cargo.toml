@@ -16,12 +16,12 @@ readme = "README.md"
 # For no-std, remember to enable the bitcoin/no-std feature
 bitcoin = { version = "0.31", default-features = false }
 bitcoincore-rpc = { version = "0.18" }
-bdk_chain = { path = "../chain", version = "0.15", default-features = false }
+tdk_chain = { path = "../chain", version = "0.15", default-features = false }
 
 [dev-dependencies]
 bdk_testenv = { path = "../testenv", default-features = false }
 
 [features]
 default = ["std"]
-std = ["bitcoin/std", "bdk_chain/std"]
-serde = ["bitcoin/serde", "bdk_chain/serde"]
+std = ["bitcoin/std", "tdk_chain/std"]
+serde = ["bitcoin/serde", "tdk_chain/serde"]

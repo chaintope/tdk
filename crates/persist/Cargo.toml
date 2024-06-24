@@ -1,9 +1,9 @@
 [package]
-name = "bdk_persist"
+name = "tdk_persist"
 homepage = "https://bitcoindevkit.org"
 version = "0.3.0"
 repository = "https://github.com/bitcoindevkit/bdk"
-documentation = "https://docs.rs/bdk_persist"
+documentation = "https://docs.rs/tdk_persist"
 description = "Types that define data persistence of a BDK wallet"
 keywords = ["bitcoin", "wallet", "persistence", "database"]
 readme = "README.md"
@@ -14,9 +14,9 @@ rust-version = "1.63"
 
 [dependencies]
 anyhow = { version = "1", default-features = false }
-bdk_chain = { path = "../chain", version = "0.15.0", default-features = false }
+tdk_chain = { path = "../chain", version = "0.15.0", default-features = false }
 
 [features]
-default = ["bdk_chain/std", "miniscript"]
-serde = ["bdk_chain/serde"]
-miniscript = ["bdk_chain/miniscript"]
+default = ["tdk_chain/std", "miniscript"]
+serde = ["tdk_chain/serde"]
+miniscript = ["tdk_chain/miniscript"]

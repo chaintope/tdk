@@ -1,7 +1,7 @@
-use bdk_chain::{indexed_tx_graph::Indexer, SpkTxOutIndex};
 use tapyrus::{
     absolute, transaction, Amount, OutPoint, ScriptBuf, SignedAmount, Transaction, TxIn, TxOut,
 };
+use tdk_chain::{indexed_tx_graph::Indexer, SpkTxOutIndex};
 
 #[test]
 fn spk_txout_sent_and_received() {

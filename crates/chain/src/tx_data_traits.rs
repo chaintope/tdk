@@ -17,12 +17,12 @@ use alloc::vec::Vec;
 ///
 /// The example shows different types of anchors:
 /// ```
-/// # use bdk_chain::local_chain::LocalChain;
-/// # use bdk_chain::tx_graph::TxGraph;
-/// # use bdk_chain::BlockId;
-/// # use bdk_chain::ConfirmationHeightAnchor;
-/// # use bdk_chain::ConfirmationTimeHeightAnchor;
-/// # use bdk_chain::example_utils::*;
+/// # use tdk_chain::local_chain::LocalChain;
+/// # use tdk_chain::tx_graph::TxGraph;
+/// # use tdk_chain::BlockId;
+/// # use tdk_chain::ConfirmationHeightAnchor;
+/// # use tdk_chain::ConfirmationTimeHeightAnchor;
+/// # use tdk_chain::example_utils::*;
 /// # use tapyrus::hashes::Hash;
 /// // Initialize the local chain with two blocks.
 /// let chain = LocalChain::from_blocks(

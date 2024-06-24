@@ -43,8 +43,8 @@ The project is split up into several crates in the `/crates` directory:
 - [`chain`](./crates/chain): Tools for storing and indexing chain data
 - [`persist`](./crates/persist): Types that define data persistence of a BDK wallet
 - [`file_store`](./crates/file_store): A (experimental) persistence backend for storing chain data in a single file.
-- [`esplora`](./crates/esplora): Extends the [`esplora-client`] crate with methods to fetch chain data from an esplora HTTP server in the form that [`bdk_chain`] and `Wallet` can consume.
-- [`electrum`](./crates/electrum): Extends the [`electrum-client`] crate with methods to fetch chain data from an electrum server in the form that [`bdk_chain`] and `Wallet` can consume.
+- [`esplora`](./crates/esplora): Extends the [`esplora-client`] crate with methods to fetch chain data from an esplora HTTP server in the form that [`tdk_chain`] and `Wallet` can consume.
+- [`electrum`](./crates/electrum): Extends the [`electrum-client`] crate with methods to fetch chain data from an electrum server in the form that [`tdk_chain`] and `Wallet` can consume.
 
 Fully working examples of how to use these components are in `/example-crates`:
 - [`example_cli`](./example-crates/example_cli): Library used by the `example_*` crates. Provides utilities for syncing, showing the balance, generating addresses and creating transactions without using the bdk_wallet `Wallet`.
@@ -60,7 +60,7 @@ Fully working examples of how to use these components are in `/example-crates`:
 [`rust-bitcoin`]: https://github.com/rust-bitcoin/rust-bitcoin
 [`esplora-client`]: https://docs.rs/esplora-client/
 [`electrum-client`]: https://docs.rs/electrum-client/
-[`bdk_chain`]: https://docs.rs/bdk-chain/
+[`tdk_chain`]: https://docs.rs/bdk-chain/
 
 ## Minimum Supported Rust Version (MSRV)
 This library should compile with any combination of features with Rust 1.63.0.

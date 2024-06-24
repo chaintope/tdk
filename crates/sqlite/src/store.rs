@@ -1,8 +1,3 @@
-use bdk_chain::bitcoin::consensus::{deserialize, serialize};
-use bdk_chain::bitcoin::hashes::Hash;
-use bdk_chain::bitcoin::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
-use bdk_chain::bitcoin::{BlockHash, Txid};
-use bdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
 use rusqlite::{named_params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -10,12 +5,17 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use tdk_chain::bitcoin::consensus::{deserialize, serialize};
+use tdk_chain::bitcoin::hashes::Hash;
+use tdk_chain::bitcoin::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
+use tdk_chain::bitcoin::{BlockHash, Txid};
+use tdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
 
 use crate::Error;
-use bdk_chain::{
+use tdk_chain::{
     indexed_tx_graph, keychain, local_chain, tx_graph, Anchor, Append, DescriptorExt, DescriptorId,
 };
-use bdk_persist::CombinedChangeSet;
+use tdk_persist::CombinedChangeSet;
 
 /// Persists data in to a relational schema based [SQLite] database file.
 ///
@@ -57,7 +57,7 @@ where
     }
 }
 
-impl<K, A, C> bdk_persist::PersistBackend<C> for Store<K, A>
+impl<K, A, C> tdk_persist::PersistBackend<C> for Store<K, A>
 where
     K: Ord + for<'de> Deserialize<'de> + Serialize + Send,
     A: Anchor + for<'de> Deserialize<'de> + Serialize + Send,
@@ -554,20 +554,20 @@ where
 mod test {
     use super::*;
     use crate::store::Append;
-    use bdk_chain::bitcoin::consensus::encode::deserialize;
-    use bdk_chain::bitcoin::constants::genesis_block;
-    use bdk_chain::bitcoin::hashes::hex::FromHex;
-    use bdk_chain::bitcoin::transaction::Transaction;
-    use bdk_chain::bitcoin::Network::Testnet;
-    use bdk_chain::bitcoin::{secp256k1, BlockHash, OutPoint};
-    use bdk_chain::miniscript::Descriptor;
-    use bdk_chain::{
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use tdk_chain::bitcoin::consensus::encode::deserialize;
+    use tdk_chain::bitcoin::constants::genesis_block;
+    use tdk_chain::bitcoin::hashes::hex::FromHex;
+    use tdk_chain::bitcoin::transaction::Transaction;
+    use tdk_chain::bitcoin::Network::Testnet;
+    use tdk_chain::bitcoin::{secp256k1, BlockHash, OutPoint};
+    use tdk_chain::miniscript::Descriptor;
+    use tdk_chain::{
         indexed_tx_graph, keychain, tx_graph, BlockId, ConfirmationHeightAnchor,
         ConfirmationTimeHeightAnchor, DescriptorExt,
     };
-    use bdk_persist::PersistBackend;
-    use std::str::FromStr;
-    use std::sync::Arc;
+    use tdk_persist::PersistBackend;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug, Serialize, Deserialize)]
     enum Keychain {

@@ -9,10 +9,10 @@
 //! mempool.
 #![warn(missing_docs)]
 
-use bdk_chain::{local_chain::CheckPoint, BlockId};
 use bitcoin::{block::Header, Block, BlockHash, Transaction};
 pub use bitcoincore_rpc;
 use bitcoincore_rpc::bitcoincore_rpc_json;
+use tdk_chain::{local_chain::CheckPoint, BlockId};
 
 /// The [`Emitter`] is used to emit data sourced from [`bitcoincore_rpc::Client`].
 ///

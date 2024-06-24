@@ -28,7 +28,7 @@
 //! # use bitcoin::*;
 //! # use bdk_wallet::wallet::{self, ChangeSet, coin_selection::*, coin_selection};
 //! # use bdk_wallet::wallet::error::CreateTxError;
-//! # use bdk_persist::PersistBackend;
+//! # use tdk_persist::PersistBackend;
 //! # use bdk_wallet::*;
 //! # use bdk_wallet::wallet::coin_selection::decide_change;
 //! # use anyhow::Error;
@@ -742,8 +742,8 @@ mod test {
     use assert_matches::assert_matches;
     use core::str::FromStr;
 
-    use bdk_chain::ConfirmationTime;
     use bitcoin::{Amount, ScriptBuf, TxIn, TxOut};
+    use tdk_chain::ConfirmationTime;
 
     use super::*;
     use crate::types::*;

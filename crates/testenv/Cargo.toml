@@ -13,10 +13,10 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bdk_chain = { path = "../chain", version = "0.15", default-features = false }
+tdk_chain = { path = "../chain", version = "0.15", default-features = false }
 electrsd = { version= "0.27.1", features = ["bitcoind_25_0", "esplora_a33e97e1", "legacy"] }
 
 [features]
 default = ["std"]
-std = ["bdk_chain/std"]
-serde = ["bdk_chain/serde"]
+std = ["tdk_chain/std"]
+serde = ["tdk_chain/serde"]
