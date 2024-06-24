@@ -397,7 +397,6 @@ fn sync_for_index_and_graph_blocking(
 #[cfg(test)]
 mod test {
     use crate::blocking_ext::{chain_update, fetch_latest_blocks};
-    use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
     use esplora_client::{BlockHash, Builder};
     use std::collections::{BTreeMap, BTreeSet};
     use std::time::Duration;
@@ -405,6 +404,7 @@ mod test {
     use tdk_chain::bitcoin::Txid;
     use tdk_chain::local_chain::LocalChain;
     use tdk_chain::BlockId;
+    use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 
     macro_rules! h {
         ($index:literal) => {{

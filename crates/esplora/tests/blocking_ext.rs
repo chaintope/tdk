@@ -6,8 +6,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
 
-use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 use tdk_chain::bitcoin::{Address, Amount, Txid};
+use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 
 #[test]
 pub fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {

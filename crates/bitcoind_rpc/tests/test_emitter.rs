@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bdk_bitcoind_rpc::Emitter;
-use bdk_testenv::{anyhow, TestEnv};
 use bitcoin::{hashes::Hash, Block, OutPoint, ScriptBuf, WScriptHash};
 use bitcoincore_rpc::RpcApi;
 use tdk_chain::{
@@ -10,6 +9,7 @@ use tdk_chain::{
     local_chain::{CheckPoint, LocalChain},
     Append, BlockId, IndexedTxGraph, SpkTxOutIndex,
 };
+use tdk_testenv::{anyhow, TestEnv};
 
 /// Ensure that blocks are emitted in order even after reorg.
 ///

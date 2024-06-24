@@ -1,5 +1,4 @@
 use bdk_electrum::BdkElectrumClient;
-use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 use tdk_chain::{
     bitcoin::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     keychain::Balance,
@@ -7,6 +6,7 @@ use tdk_chain::{
     spk_client::SyncRequest,
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
+use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 
 fn get_balance(
     recv_chain: &LocalChain,
