@@ -12,8 +12,8 @@
 use alloc::boxed::Box;
 use core::convert::AsRef;
 
-use bitcoin::blockdata::transaction::{OutPoint, Sequence, TxOut};
-use bitcoin::psbt;
+use tapyrus::blockdata::transaction::{OutPoint, Sequence, TxOut};
+use tapyrus::psbt;
 use tdk_chain::ConfirmationTime;
 
 use serde::{Deserialize, Serialize};

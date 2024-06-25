@@ -20,10 +20,10 @@ use core::marker::PhantomData;
 use core::ops::Deref;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{self, Secp256k1, Signing};
+use tapyrus::secp256k1::{self, Secp256k1, Signing};
 
-use bitcoin::bip32;
-use bitcoin::{key::XOnlyPublicKey, Network, PrivateKey, PublicKey};
+use tapyrus::bip32;
+use tapyrus::{key::XOnlyPublicKey, Network, PrivateKey, PublicKey};
 
 use miniscript::descriptor::{Descriptor, DescriptorXKey, Wildcard};
 pub use miniscript::descriptor::{
@@ -45,24 +45,15 @@ pub type ValidNetworks = HashSet<Network>;
 
 /// Create a set containing mainnet, testnet, signet, and regtest
 pub fn any_network() -> ValidNetworks {
-    vec![
-        Network::Bitcoin,
-        Network::Testnet,
-        Network::Regtest,
-        Network::Signet,
-    ]
-    .into_iter()
-    .collect()
+    vec![Network::Prod, Network::Dev].into_iter().collect()
 }
 /// Create a set only containing mainnet
 pub fn mainnet_network() -> ValidNetworks {
-    vec![Network::Bitcoin].into_iter().collect()
+    vec![Network::Prod].into_iter().collect()
 }
 /// Create a set containing testnet and regtest
 pub fn test_networks() -> ValidNetworks {
-    vec![Network::Testnet, Network::Regtest, Network::Signet]
-        .into_iter()
-        .collect()
+    vec![Network::Prod, Network::Dev].into_iter().collect()
 }
 /// Compute the intersection of two sets
 pub fn merge_networks(a: &ValidNetworks, b: &ValidNetworks) -> ValidNetworks {
@@ -97,7 +88,7 @@ impl<Ctx: ScriptContext> DescriptorKey<Ctx> {
         }
     }
 
-    // This method is used internally by `bdk_wallet::fragment!` and `bdk_wallet::descriptor!`. It has to be
+    // This method is used internally by `tdk_wallet::fragment!` and `tdk_wallet::descriptor!`. It has to be
     // public because it is effectively called by external crates once the macros are expanded,
     // but since it is not meant to be part of the public api we hide it from the docs.
     #[doc(hidden)]
@@ -139,16 +130,6 @@ impl ScriptContextEnum {
     pub fn is_legacy(&self) -> bool {
         self == &ScriptContextEnum::Legacy
     }
-
-    /// Returns whether the script context is [`ScriptContextEnum::Segwitv0`]
-    pub fn is_segwit_v0(&self) -> bool {
-        self == &ScriptContextEnum::Segwitv0
-    }
-
-    /// Returns whether the script context is [`ScriptContextEnum::Tap`]
-    pub fn is_taproot(&self) -> bool {
-        self == &ScriptContextEnum::Tap
-    }
 }
 
 /// Trait that adds extra useful methods to [`ScriptContext`]s
@@ -159,16 +140,6 @@ pub trait ExtScriptContext: ScriptContext {
     /// Returns whether the script context is [`Legacy`](miniscript::Legacy)
     fn is_legacy() -> bool {
         Self::as_enum().is_legacy()
-    }
-
-    /// Returns whether the script context is [`Segwitv0`](miniscript::Segwitv0)
-    fn is_segwit_v0() -> bool {
-        Self::as_enum().is_segwit_v0()
-    }
-
-    /// Returns whether the script context is [`Tap`](miniscript::Tap), aka Taproot or Segwit V1
-    fn is_taproot() -> bool {
-        Self::as_enum().is_taproot()
     }
 }
 
@@ -206,9 +177,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type valid in any context:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError, ScriptContext};
+/// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError, ScriptContext};
 ///
 /// pub struct MyKeyType {
 ///     pubkey: PublicKey,
@@ -224,9 +195,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type that is only valid on mainnet:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::keys::{
 ///     mainnet_network, DescriptorKey, DescriptorPublicKey, IntoDescriptorKey, KeyError,
 ///     ScriptContext, SinglePub, SinglePubKey,
 /// };
@@ -251,9 +222,9 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// Key type that internally encodes in which context it's valid. The context is checked at runtime:
 ///
 /// ```
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 ///
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::keys::{
 ///     DescriptorKey, ExtScriptContext, IntoDescriptorKey, KeyError, ScriptContext,
 /// };
 ///
@@ -281,17 +252,17 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// makes the compiler (correctly) fail.
 ///
 /// ```compile_fail
-/// use bdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::bitcoin::PublicKey;
 /// use core::str::FromStr;
 ///
-/// use bdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError};
+/// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError};
 ///
 /// pub struct MySegwitOnlyKeyType {
 ///     pubkey: PublicKey,
 /// }
 ///
-/// impl IntoDescriptorKey<bdk_wallet::miniscript::Segwitv0> for MySegwitOnlyKeyType {
-///     fn into_descriptor_key(self) -> Result<DescriptorKey<bdk_wallet::miniscript::Segwitv0>, KeyError> {
+/// impl IntoDescriptorKey<tdk_wallet::miniscript::Segwitv0> for MySegwitOnlyKeyType {
+///     fn into_descriptor_key(self) -> Result<DescriptorKey<tdk_wallet::miniscript::Segwitv0>, KeyError> {
 ///         self.pubkey.into_descriptor_key()
 ///     }
 /// }
@@ -299,7 +270,7 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// let key = MySegwitOnlyKeyType {
 ///     pubkey: PublicKey::from_str("...")?,
 /// };
-/// let (descriptor, _, _) = bdk_wallet::descriptor!(pkh(key))?;
+/// let (descriptor, _, _) = tdk_wallet::descriptor!(pkh(key))?;
 /// //                                               ^^^^^ changing this to `wpkh` would make it compile
 ///
 /// # Ok::<_, Box<dyn std::error::Error>>(())
@@ -347,7 +318,7 @@ impl<Ctx: ScriptContext> ExtendedKey<Ctx> {
     /// given [`Network`]
     pub fn into_xpub<C: Signing>(
         self,
-        network: bitcoin::Network,
+        network: tapyrus::Network,
         secp: &Secp256k1<C>,
     ) -> bip32::Xpub {
         let mut xpub = match self {
@@ -389,9 +360,9 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// an [`Xpub`] can implement only the required `into_extended_key()` method.
 ///
 /// ```
-/// use bdk_wallet::bitcoin;
-/// use bdk_wallet::bitcoin::bip32;
-/// use bdk_wallet::keys::{DerivableKey, ExtendedKey, KeyError, ScriptContext};
+/// use tdk_wallet::bitcoin;
+/// use tdk_wallet::bitcoin::bip32;
+/// use tdk_wallet::keys::{DerivableKey, ExtendedKey, KeyError, ScriptContext};
 ///
 /// struct MyCustomKeyType {
 ///     key_data: bitcoin::PrivateKey,
@@ -420,9 +391,9 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// [`Xpriv`] or [`Xpub`] will be considered valid.
 ///
 /// ```
-/// use bdk_wallet::bitcoin;
-/// use bdk_wallet::bitcoin::bip32;
-/// use bdk_wallet::keys::{
+/// use tdk_wallet::bitcoin;
+/// use tdk_wallet::bitcoin::bip32;
+/// use tdk_wallet::keys::{
 ///     any_network, DerivableKey, DescriptorKey, ExtendedKey, KeyError, ScriptContext,
 /// };
 ///
@@ -434,7 +405,7 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// impl<Ctx: ScriptContext> DerivableKey<Ctx> for MyCustomKeyType {
 ///     fn into_extended_key(self) -> Result<ExtendedKey<Ctx>, KeyError> {
 ///         let xprv = bip32::Xpriv {
-///             network: bitcoin::Network::Bitcoin, // pick an arbitrary network here
+///             network: bitcoin::Network::Prod, // pick an arbitrary network here
 ///             depth: 0,
 ///             parent_fingerprint: bip32::Fingerprint::default(),
 ///             private_key: self.key_data.inner,
@@ -471,9 +442,9 @@ pub trait DerivableKey<Ctx: ScriptContext = miniscript::Legacy>: Sized {
 This can be used to get direct access to `xprv`s and `xpub`s for types that implement this trait,
 like [`Mnemonic`](bip39::Mnemonic) when the `keys-bip39` feature is enabled.
 ```rust
-use bdk_wallet::bitcoin::Network;
-use bdk_wallet::keys::{DerivableKey, ExtendedKey};
-use bdk_wallet::keys::bip39::{Mnemonic, Language};
+use tdk_wallet::tapyrus::Network;
+use tdk_wallet::keys::{DerivableKey, ExtendedKey};
+use tdk_wallet::keys::bip39::{Mnemonic, Language};
 
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
 let xkey: ExtendedKey =
@@ -482,7 +453,7 @@ let xkey: ExtendedKey =
         "jelly crash boy whisper mouse ecology tuna soccer memory million news short",
     )?
     .into_extended_key()?;
-let xprv = xkey.into_xprv(Network::Bitcoin).unwrap();
+let xprv = xkey.into_xprv(Network::Prod).unwrap();
 # Ok(()) }
 ```
 "##
@@ -683,7 +654,7 @@ impl<Ctx: ScriptContext> GeneratableKey<Ctx> for bip32::Xpriv {
         entropy: Self::Entropy,
     ) -> Result<GeneratedKey<Self, Ctx>, Self::Error> {
         // pick a arbitrary network here, but say that we support all of them
-        let xprv = bip32::Xpriv::new_master(Network::Bitcoin, entropy.as_ref())?;
+        let xprv = bip32::Xpriv::new_master(Network::Prod, entropy.as_ref())?;
         Ok(GeneratedKey::new(xprv, any_network()))
     }
 }
@@ -717,7 +688,7 @@ impl<Ctx: ScriptContext> GeneratableKey<Ctx> for PrivateKey {
         let inner = secp256k1::SecretKey::from_slice(&entropy)?;
         let private_key = PrivateKey {
             compressed: options.compressed,
-            network: Network::Bitcoin,
+            network: Network::Prod,
             inner,
         };
 
@@ -766,7 +737,7 @@ fn expand_multi_keys<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((pks, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `pk_k()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `pk_k()` fragments
 #[doc(hidden)]
 pub fn make_pk<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     descriptor_key: Pk,
@@ -780,7 +751,7 @@ pub fn make_pk<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `pk_h()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `pk_h()` fragments
 #[doc(hidden)]
 pub fn make_pkh<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     descriptor_key: Pk,
@@ -794,7 +765,7 @@ pub fn make_pkh<Pk: IntoDescriptorKey<Ctx>, Ctx: ScriptContext>(
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::fragment!` to build `multi()` fragments
+// Used internally by `tdk_wallet::fragment!` to build `multi()` fragments
 #[doc(hidden)]
 pub fn make_multi<
     Pk: IntoDescriptorKey<Ctx>,
@@ -814,7 +785,7 @@ pub fn make_multi<
     Ok((minisc, key_map, valid_networks))
 }
 
-// Used internally by `bdk_wallet::descriptor!` to build `sortedmulti()` fragments
+// Used internally by `tdk_wallet::descriptor!` to build `sortedmulti()` fragments
 #[doc(hidden)]
 pub fn make_sortedmulti<Pk, Ctx, F>(
     thresh: usize,
@@ -836,7 +807,7 @@ where
     Ok((descriptor, key_map, valid_networks))
 }
 
-/// The "identity" conversion is used internally by some `bdk_wallet::fragment`s
+/// The "identity" conversion is used internally by some `tdk_wallet::fragment`s
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorKey<Ctx> {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         Ok(self)
@@ -848,7 +819,7 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorPublicKey {
         let networks = match self {
             DescriptorPublicKey::Single(_) => any_network(),
             DescriptorPublicKey::XPub(DescriptorXKey { xkey, .. })
-                if xkey.network == Network::Bitcoin =>
+                if xkey.network == Network::Prod =>
             {
                 mainnet_network()
             }
@@ -882,11 +853,9 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for XOnlyPublicKey {
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorSecretKey {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         let networks = match &self {
-            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Bitcoin => {
-                mainnet_network()
-            }
+            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Prod => mainnet_network(),
             DescriptorSecretKey::XPrv(DescriptorXKey { xkey, .. })
-                if xkey.network == Network::Bitcoin =>
+                if xkey.network == Network::Prod =>
             {
                 mainnet_network()
             }
@@ -929,7 +898,7 @@ pub enum KeyError {
     Message(String),
 
     /// BIP32 error
-    Bip32(bitcoin::bip32::Error),
+    Bip32(tapyrus::bip32::Error),
     /// Miniscript error
     Miniscript(miniscript::Error),
 }
@@ -964,7 +933,7 @@ impl std::error::Error for KeyError {}
 
 #[cfg(test)]
 pub mod test {
-    use bitcoin::bip32;
+    use tapyrus::bip32;
 
     use super::*;
 
@@ -982,7 +951,7 @@ pub mod test {
     #[test]
     fn test_keys_generate_wif() {
         let generated_wif: GeneratedKey<_, miniscript::Segwitv0> =
-            bitcoin::PrivateKey::generate_with_entropy_default(TEST_ENTROPY).unwrap();
+            tapyrus::PrivateKey::generate_with_entropy_default(TEST_ENTROPY).unwrap();
 
         assert_eq!(generated_wif.valid_networks, any_network());
         assert_eq!(
@@ -1001,8 +970,8 @@ pub mod test {
         .unwrap()
         .into_extended_key()
         .unwrap();
-        let xprv = xkey.into_xprv(Network::Testnet).unwrap();
+        let xprv = xkey.into_xprv(Network::Prod).unwrap();
 
-        assert_eq!(xprv.network, Network::Testnet);
+        assert_eq!(xprv.network, Network::Prod);
     }
 }

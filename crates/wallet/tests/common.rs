@@ -1,31 +1,31 @@
 #![allow(unused)]
 
-use bdk_wallet::{KeychainKind, LocalOutput, Wallet};
-use bitcoin::hashes::Hash;
-use bitcoin::{
+use std::str::FromStr;
+use tapyrus::hashes::Hash;
+use tapyrus::{
     transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
     Txid,
 };
-use std::str::FromStr;
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
+use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 
 /// Return a fake wallet that appears to be funded for testing.
 ///
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
 /// to a foreign address and one returning 50_000 back to the wallet. The remaining 1000
 /// sats are the transaction fee.
-pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, bitcoin::Txid) {
-    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Regtest).unwrap();
+pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, tapyrus::Txid) {
+    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address = Address::from_str("bcrt1q3qtze4ys45tgdvguj66zrk4fu6hq3a3v9pfly5")
         .expect("address")
-        .require_network(Network::Regtest)
+        .require_network(Network::Dev)
         .unwrap();
 
     let tx0 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: Txid::all_zeros(),
@@ -36,14 +36,14 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
             witness: Default::default(),
         }],
         output: vec![TxOut {
-            value: Amount::from_sat(76_000),
+            value: Amount::from_tap(76_000),
             script_pubkey: receive_address.script_pubkey(),
         }],
     };
 
     let tx1 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: tx0.txid(),
@@ -55,11 +55,11 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         }],
         output: vec![
             TxOut {
-                value: Amount::from_sat(50_000),
+                value: Amount::from_tap(50_000),
                 script_pubkey: receive_address.script_pubkey(),
             },
             TxOut {
-                value: Amount::from_sat(25_000),
+                value: Amount::from_tap(25_000),
                 script_pubkey: sendto_address.script_pubkey(),
             },
         ],
@@ -108,12 +108,12 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 /// Note: the change descriptor will have script type `p2wpkh`. If passing some other script type
 /// as argument, make sure you're ok with getting a wallet where the keychains have potentially
 /// different script types. Otherwise, use `get_funded_wallet_with_change`.
-pub fn get_funded_wallet(descriptor: &str) -> (Wallet, bitcoin::Txid) {
+pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::Txid) {
     let change = get_test_wpkh_change();
     get_funded_wallet_with_change(descriptor, change)
 }
 
-pub fn get_funded_wallet_wpkh() -> (Wallet, bitcoin::Txid) {
+pub fn get_funded_wallet_wpkh() -> (Wallet, tapyrus::Txid) {
     get_funded_wallet_with_change(get_test_wpkh(), get_test_wpkh_change())
 }
 
@@ -182,7 +182,7 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 
 /// Construct a new [`FeeRate`] from the given raw `sat_vb` feerate. This is
 /// useful in cases where we want to create a feerate from a `f64`, as the
-/// traditional [`FeeRate::from_sat_per_vb`] method will only accept an integer.
+/// traditional [`FeeRate::from_tap_per_vb`] method will only accept an integer.
 ///
 /// **Note** this 'quick and dirty' conversion should only be used when the input
 /// parameter has units of `satoshis/vbyte` **AND** is not expected to overflow,
@@ -190,5 +190,5 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 pub fn feerate_unchecked(sat_vb: f64) -> FeeRate {
     // 1 sat_vb / 4wu_vb * 1000kwu_wu = 250 sat_kwu
     let sat_kwu = (sat_vb * 250.0).ceil() as u64;
-    FeeRate::from_sat_per_kwu(sat_kwu)
+    FeeRate::from_tap_per_kwu(sat_kwu)
 }

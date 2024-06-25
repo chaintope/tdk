@@ -339,7 +339,7 @@ Timelocks are considered (optionally) in building the `satisfaction` field
 
 ### Wallet
 #### Changed
-- `FeeRate` constructors `from_sat_per_vb` and `default_min_relay_fee` are now `const` functions
+- `FeeRate` constructors `from_tap_per_vb` and `default_min_relay_fee` are now `const` functions
 
 ## [v0.4.0]
 

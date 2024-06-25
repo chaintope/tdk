@@ -1,6 +1,6 @@
-use bdk_wallet::bitcoin::{Amount, FeeRate, Psbt, TxIn};
-use bdk_wallet::{psbt, KeychainKind, SignOptions};
 use core::str::FromStr;
+use tdk_wallet::tapyrus::{Amount, FeeRate, Psbt, TxIn};
+use tdk_wallet::{psbt, KeychainKind, SignOptions};
 mod common;
 use common::*;
 
@@ -14,7 +14,7 @@ fn test_psbt_malformed_psbt_input_legacy() {
     let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
-    builder.add_recipient(send_to.script_pubkey(), Amount::from_sat(10_000));
+    builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
     let mut psbt = builder.finish().unwrap();
     psbt.inputs.push(psbt_bip.inputs[0].clone());
     let options = SignOptions {
@@ -31,7 +31,7 @@ fn test_psbt_malformed_psbt_input_segwit() {
     let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
-    builder.add_recipient(send_to.script_pubkey(), Amount::from_sat(10_000));
+    builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
     let mut psbt = builder.finish().unwrap();
     psbt.inputs.push(psbt_bip.inputs[1].clone());
     let options = SignOptions {
@@ -47,7 +47,7 @@ fn test_psbt_malformed_tx_input() {
     let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
-    builder.add_recipient(send_to.script_pubkey(), Amount::from_sat(10_000));
+    builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
     let mut psbt = builder.finish().unwrap();
     psbt.unsigned_tx.input.push(TxIn::default());
     let options = SignOptions {
@@ -63,7 +63,7 @@ fn test_psbt_sign_with_finalized() {
     let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
-    builder.add_recipient(send_to.script_pubkey(), Amount::from_sat(10_000));
+    builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
     let mut psbt = builder.finish().unwrap();
 
     // add a finalized input
@@ -79,7 +79,7 @@ fn test_psbt_sign_with_finalized() {
 fn test_psbt_fee_rate_with_witness_utxo() {
     use psbt::PsbtUtils;
 
-    let expected_fee_rate = FeeRate::from_sat_per_kwu(310);
+    let expected_fee_rate = FeeRate::from_tap_per_kwu(310);
 
     let (mut wallet, _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wallet.peek_address(KeychainKind::External, 0);
@@ -104,7 +104,7 @@ fn test_psbt_fee_rate_with_witness_utxo() {
 fn test_psbt_fee_rate_with_nonwitness_utxo() {
     use psbt::PsbtUtils;
 
-    let expected_fee_rate = FeeRate::from_sat_per_kwu(310);
+    let expected_fee_rate = FeeRate::from_tap_per_kwu(310);
 
     let (mut wallet, _) = get_funded_wallet("pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wallet.peek_address(KeychainKind::External, 0);
@@ -128,7 +128,7 @@ fn test_psbt_fee_rate_with_nonwitness_utxo() {
 fn test_psbt_fee_rate_with_missing_txout() {
     use psbt::PsbtUtils;
 
-    let expected_fee_rate = FeeRate::from_sat_per_kwu(310);
+    let expected_fee_rate = FeeRate::from_tap_per_kwu(310);
 
     let (mut wpkh_wallet,  _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wpkh_wallet.peek_address(KeychainKind::External, 0);
@@ -158,13 +158,13 @@ fn test_psbt_fee_rate_with_missing_txout() {
 
 #[test]
 fn test_psbt_multiple_internalkey_signers() {
-    use bdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
-    use bdk_wallet::KeychainKind;
-    use bitcoin::key::TapTweak;
-    use bitcoin::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
-    use bitcoin::sighash::{Prevouts, SighashCache, TapSighashType};
-    use bitcoin::{PrivateKey, TxOut};
     use std::sync::Arc;
+    use tapyrus::key::TapTweak;
+    use tapyrus::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
+    use tapyrus::sighash::{Prevouts, SighashCache, TapSighashType};
+    use tapyrus::{PrivateKey, TxOut};
+    use tdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
+    use tdk_wallet::KeychainKind;
 
     let secp = Secp256k1::new();
     let wif = "cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG";
@@ -172,7 +172,7 @@ fn test_psbt_multiple_internalkey_signers() {
     let prv = PrivateKey::from_wif(wif).unwrap();
     let keypair = Keypair::from_secret_key(&secp, &prv.inner);
 
-    let change_desc = "tr(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)";
+    let change_desc = "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)";
     let (mut wallet, _) = get_funded_wallet_with_change(&desc, change_desc);
     let to_spend = wallet.balance().total();
     let send_to = wallet.peek_address(KeychainKind::External, 0);
@@ -188,9 +188,7 @@ fn test_psbt_multiple_internalkey_signers() {
         SignerOrdering(0),
         Arc::new(SignerWrapper::new(
             PrivateKey::from_wif("5J5PZqvCe1uThJ3FZeUUFLCh2FuK9pZhtEK4MzhNmugqTmxCdwE").unwrap(),
-            SignerContext::Tap {
-                is_internal_key: true,
-            },
+            SignerContext::Legacy,
         )),
     );
     let finalized = wallet.sign(&mut psbt, SignOptions::default()).unwrap();
