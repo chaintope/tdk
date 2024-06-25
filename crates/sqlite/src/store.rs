@@ -561,7 +561,7 @@ mod test {
     use tdk_chain::tapyrus::constants::testnet_genesis_block;
     use tdk_chain::tapyrus::hashes::hex::FromHex;
     use tdk_chain::tapyrus::transaction::Transaction;
-    use tdk_chain::tapyrus::Network::Dev;
+    use tdk_chain::tapyrus::Network::Prod;
     use tdk_chain::tapyrus::{secp256k1, BlockHash, OutPoint};
     use tdk_chain::{
         indexed_tx_graph, keychain, tx_graph, BlockId, ConfirmationHeightAnchor,
@@ -648,7 +648,7 @@ mod test {
     ) {
         let secp = &secp256k1::Secp256k1::signing_only();
 
-        let network_changeset = Some(Dev);
+        let network_changeset = Some(Prod);
 
         let block_hash_0: BlockHash = testnet_genesis_block().block_hash();
         let block_hash_1 =
