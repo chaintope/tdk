@@ -41,7 +41,7 @@ jobs:
       - name: Install python dependencies
         run: pip install hwi==2.1.1 protobuf==3.20.1
       - name: Test Chain
-        run: cargo test -p "tdk_*" --all-features
+        run: cargo test -p "tdk_*" --all-features --features miniscript/std
       - name: Make coverage directory
         run: mkdir coverage
       - name: Run grcov

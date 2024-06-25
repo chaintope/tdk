@@ -18,7 +18,7 @@ async-trait = { version = "0.1.66", optional = true }
 futures = { version = "0.3.26", optional = true }
 
 # use these dependencies if you need to enable their /no-std features
-tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", default-features = false }
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", optional = true, default-features = false }
 miniscript = { version = "11.0.0", optional = true, default-features = false }
 
 [dev-dependencies]
