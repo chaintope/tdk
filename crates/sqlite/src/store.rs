@@ -5,11 +5,11 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use tdk_chain::bitcoin::consensus::{deserialize, serialize};
-use tdk_chain::bitcoin::hashes::Hash;
-use tdk_chain::bitcoin::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
-use tdk_chain::bitcoin::{BlockHash, Txid};
 use tdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
+use tdk_chain::tapyrus::consensus::{deserialize, serialize};
+use tdk_chain::tapyrus::hashes::Hash;
+use tdk_chain::tapyrus::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
+use tdk_chain::tapyrus::{BlockHash, Txid};
 
 use crate::Error;
 use tdk_chain::{
@@ -369,7 +369,7 @@ impl<K, A> Store<K, A> {
                 .expect("insert txout statement");
             let txid = txout.0.txid.to_string();
             let vout = txout.0.vout;
-            let value = txout.1.value.to_sat();
+            let value = txout.1.value.to_tap();
             let script = txout.1.script_pubkey.as_bytes();
             insert_txout_stmt.execute(named_params! {":txid": txid, ":vout": vout, ":value": value, ":script": script })
                 .map_err(Error::Sqlite)?;
@@ -396,7 +396,7 @@ impl<K, A> Store<K, A> {
                 let script_pubkey = row.get_unwrap::<usize, Vec<u8>>(3);
                 let script_pubkey = ScriptBuf::from_bytes(script_pubkey);
                 let txout = TxOut {
-                    value: Amount::from_sat(value),
+                    value: Amount::from_tap(value),
                     script_pubkey,
                 };
                 Ok((outpoint, txout))
@@ -556,13 +556,13 @@ mod test {
     use crate::store::Append;
     use std::str::FromStr;
     use std::sync::Arc;
-    use tdk_chain::bitcoin::consensus::encode::deserialize;
-    use tdk_chain::bitcoin::constants::genesis_block;
-    use tdk_chain::bitcoin::hashes::hex::FromHex;
-    use tdk_chain::bitcoin::transaction::Transaction;
-    use tdk_chain::bitcoin::Network::Testnet;
-    use tdk_chain::bitcoin::{secp256k1, BlockHash, OutPoint};
     use tdk_chain::miniscript::Descriptor;
+    use tdk_chain::tapyrus::consensus::encode::deserialize;
+    use tdk_chain::tapyrus::constants::testnet_genesis_block;
+    use tdk_chain::tapyrus::hashes::hex::FromHex;
+    use tdk_chain::tapyrus::transaction::Transaction;
+    use tdk_chain::tapyrus::Network::Dev;
+    use tdk_chain::tapyrus::{secp256k1, BlockHash, OutPoint};
     use tdk_chain::{
         indexed_tx_graph, keychain, tx_graph, BlockId, ConfirmationHeightAnchor,
         ConfirmationTimeHeightAnchor, DescriptorExt,
@@ -648,9 +648,9 @@ mod test {
     ) {
         let secp = &secp256k1::Secp256k1::signing_only();
 
-        let network_changeset = Some(Testnet);
+        let network_changeset = Some(Dev);
 
-        let block_hash_0: BlockHash = genesis_block(Testnet).block_hash();
+        let block_hash_0: BlockHash = testnet_genesis_block().block_hash();
         let block_hash_1 =
             BlockHash::from_str("00000000b873e79784647a6c82962c70d228557d24a747ea4d1b8bbe878e1206")
                 .unwrap();
@@ -669,13 +669,13 @@ mod test {
             account: 0,
             name: "ext test".to_string(),
         };
-        let (ext_desc, _ext_keymap) = Descriptor::parse_descriptor(secp, "wpkh(tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy/0/*)").unwrap();
+        let (ext_desc, _ext_keymap) = Descriptor::parse_descriptor(secp, "pkh(tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy/0/*)").unwrap();
         let ext_desc_id = ext_desc.descriptor_id();
         let int_keychain = Keychain::Internal {
             account: 0,
             name: "int test".to_string(),
         };
-        let (int_desc, _int_keymap) = Descriptor::parse_descriptor(secp, "wpkh(tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy/1/*)").unwrap();
+        let (int_desc, _int_keymap) = Descriptor::parse_descriptor(secp, "pkh(tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy/1/*)").unwrap();
         let int_desc_id = int_desc.descriptor_id();
 
         let tx0_hex = Vec::<u8>::from_hex("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000").unwrap();

@@ -6,11 +6,11 @@ const PARALLEL_REQUESTS: usize = 1;
 use std::{collections::BTreeSet, io::Write, str::FromStr};
 
 use bdk_esplora::{esplora_client, EsploraExt};
-use bdk_file_store::Store;
 use bdk_wallet::{
     bitcoin::{Address, Amount, Network},
     KeychainKind, SignOptions, Wallet,
 };
+use tdk_file_store::Store;
 
 fn main() -> Result<(), anyhow::Error> {
     let db_path = std::env::temp_dir().join("bdk-esplora-example");

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 tdk_chain = { path = "../../crates/chain", features = ["serde", "miniscript"]}
 tdk_persist = { path = "../../crates/persist" }
-bdk_file_store = { path = "../../crates/file_store" }
+tdk_file_store = { path = "../../crates/file_store" }
 bdk_tmp_plan = { path = "../../nursery/tmp_plan" }
 bdk_coin_select = { path = "../../nursery/coin_select" }
 

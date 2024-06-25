@@ -2,13 +2,13 @@ use bdk_bitcoind_rpc::{
     bitcoincore_rpc::{Auth, Client, RpcApi},
     Emitter,
 };
-use bdk_file_store::Store;
 use bdk_wallet::{
     bitcoin::{Block, Network, Transaction},
     wallet::Wallet,
 };
 use clap::{self, Parser};
 use std::{path::PathBuf, sync::mpsc::sync_channel, thread::spawn, time::Instant};
+use tdk_file_store::Store;
 
 const DB_MAGIC: &str = "bdk-rpc-wallet-example";
 

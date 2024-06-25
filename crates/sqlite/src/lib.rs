@@ -7,7 +7,7 @@ mod store;
 
 pub use rusqlite;
 pub use store::Store;
-use tdk_chain::bitcoin::Network;
+use tdk_chain::tapyrus::Network;
 
 /// Error that occurs while reading or writing change sets with the SQLite database.
 #[derive(Debug)]

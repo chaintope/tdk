@@ -2,7 +2,6 @@ use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
-use bdk_sqlite::rusqlite::Connection;
 use bdk_wallet::descriptor::{calc_checksum, DescriptorError, IntoWalletDescriptor};
 use bdk_wallet::psbt::PsbtUtils;
 use bdk_wallet::signer::{SignOptions, SignerError};
@@ -26,6 +25,7 @@ use tdk_chain::collections::BTreeMap;
 use tdk_chain::COINBASE_MATURITY;
 use tdk_chain::{BlockId, ConfirmationTime};
 use tdk_persist::PersistBackend;
+use tdk_sqlite::rusqlite::Connection;
 
 mod common;
 use common::*;
@@ -127,13 +127,13 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
 
     run(
         "store.db",
-        |path| Ok(bdk_file_store::Store::create_new(DB_MAGIC, path)?),
-        |path| Ok(bdk_file_store::Store::open(DB_MAGIC, path)?),
+        |path| Ok(tdk_file_store::Store::create_new(DB_MAGIC, path)?),
+        |path| Ok(tdk_file_store::Store::open(DB_MAGIC, path)?),
     )?;
     run(
         "store.sqlite",
-        |path| Ok(bdk_sqlite::Store::new(Connection::open(path)?)?),
-        |path| Ok(bdk_sqlite::Store::new(Connection::open(path)?)?),
+        |path| Ok(tdk_sqlite::Store::new(Connection::open(path)?)?),
+        |path| Ok(tdk_sqlite::Store::new(Connection::open(path)?)?),
     )?;
 
     Ok(())
@@ -261,10 +261,10 @@ fn new_or_load() -> anyhow::Result<()> {
     }
 
     run("store.db", |path| {
-        Ok(bdk_file_store::Store::open_or_create_new(DB_MAGIC, path)?)
+        Ok(tdk_file_store::Store::open_or_create_new(DB_MAGIC, path)?)
     })?;
     run("store.sqlite", |path| {
-        Ok(bdk_sqlite::Store::new(Connection::open(path)?)?)
+        Ok(tdk_sqlite::Store::new(Connection::open(path)?)?)
     })?;
 
     Ok(())

@@ -8,11 +8,11 @@ use std::str::FromStr;
 
 use bdk_electrum::electrum_client;
 use bdk_electrum::BdkElectrumClient;
-use bdk_file_store::Store;
 use bdk_wallet::bitcoin::{Address, Amount};
 use bdk_wallet::chain::collections::HashSet;
 use bdk_wallet::{bitcoin::Network, Wallet};
 use bdk_wallet::{KeychainKind, SignOptions};
+use tdk_file_store::Store;
 
 fn main() -> Result<(), anyhow::Error> {
     let db_path = std::env::temp_dir().join("bdk-electrum-example");

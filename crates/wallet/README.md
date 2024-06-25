@@ -61,7 +61,7 @@ To persist the `Wallet` on disk, it must be constructed with a [`PersistBackend`
 
 **Implementations**
 
-* [`bdk_file_store`]: A simple flat-file implementation of [`PersistBackend`].
+* [`tdk_file_store`]: A simple flat-file implementation of [`PersistBackend`].
 
 **Example**
 
@@ -71,7 +71,7 @@ use bdk_wallet::{bitcoin::Network, wallet::{ChangeSet, Wallet}};
 
 fn main() {
     // Create a new file `Store`.
-    let db = bdk_file_store::Store::<ChangeSet>::open_or_create_new(b"magic_bytes", "path/to/my_wallet.db").expect("create store");
+    let db = tdk_file_store::Store::<ChangeSet>::open_or_create_new(b"magic_bytes", "path/to/my_wallet.db").expect("create store");
 
     let descriptor = "wpkh(tprv8ZgxMBicQKsPdcAqYBpzAFwU5yxBUo88ggoBqu1qPcHUfSbKK1sKMLmC7EAk438btHQrSdu3jGGQa6PA71nvH5nkDexhLteJqkM4dQmWF9g/84'/1'/0'/0/*)";
     let change_descriptor = "wpkh(tprv8ZgxMBicQKsPdcAqYBpzAFwU5yxBUo88ggoBqu1qPcHUfSbKK1sKMLmC7EAk438btHQrSdu3jGGQa6PA71nvH5nkDexhLteJqkM4dQmWF9g/84'/1'/0'/1/*)";
@@ -222,7 +222,7 @@ conditions.
 [`Wallet`]: https://docs.rs/bdk_wallet/latest/bdk_wallet/wallet/struct.Wallet.html
 [`PersistBackend`]: https://docs.rs/tdk_chain/latest/tdk_chain/trait.PersistBackend.html
 [`tdk_chain`]: https://docs.rs/tdk_chain/latest
-[`bdk_file_store`]: https://docs.rs/bdk_file_store/latest
+[`tdk_file_store`]: https://docs.rs/tdk_file_store/latest
 [`bdk_electrum`]: https://docs.rs/bdk_electrum/latest
 [`bdk_esplora`]: https://docs.rs/bdk_esplora/latest
 [`bdk_bitcoind_rpc`]: https://docs.rs/bdk_bitcoind_rpc/latest
