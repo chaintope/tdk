@@ -406,13 +406,13 @@ async fn sync_for_index_and_graph(
 mod test {
     use std::{collections::BTreeSet, time::Duration};
 
-    use bdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
     use esplora_client::Builder;
     use tdk_chain::{
         bitcoin::{hashes::Hash, Txid},
         local_chain::LocalChain,
         BlockId,
     };
+    use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 
     use crate::async_ext::{chain_update, fetch_latest_blocks};
 

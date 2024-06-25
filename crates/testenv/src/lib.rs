@@ -1,44 +1,44 @@
-use bitcoincore_rpc::{
-    bitcoincore_rpc_json::{GetBlockTemplateModes, GetBlockTemplateRules},
-    RpcApi,
-};
 pub use electrsd;
-pub use electrsd::bitcoind;
-pub use electrsd::bitcoind::anyhow;
-pub use electrsd::bitcoind::bitcoincore_rpc;
 pub use electrsd::electrum_client;
 use electrsd::electrum_client::ElectrumApi;
+pub use electrsd::tapyrusd;
+pub use electrsd::tapyrusd::anyhow;
+pub use electrsd::tapyrusd::tapyruscore_rpc;
 use std::time::Duration;
+use tapyruscore_rpc::{
+    tapyruscore_rpc_json::{GetBlockTemplateModes, GetBlockTemplateRules},
+    RpcApi,
+};
 use tdk_chain::{
-    bitcoin::{
-        address::NetworkChecked, block::Header, hash_types::TxMerkleNode, hashes::Hash,
-        secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash, CompactTarget,
+    local_chain::CheckPoint,
+    tapyrus::{
+        address::NetworkChecked, block::Header, block::XField, hash_types::TxMerkleNode,
+        hashes::Hash, secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash,
         ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
     },
-    local_chain::CheckPoint,
     BlockId,
 };
 
-/// Struct for running a regtest environment with a single `bitcoind` node with an `electrs`
+/// Struct for running a regtest environment with a single `tapyrusd` node with an `electrs`
 /// instance connected to it.
 pub struct TestEnv {
-    pub bitcoind: electrsd::bitcoind::BitcoinD,
+    pub tapyrusd: electrsd::tapyrusd::TapyrusD,
     pub electrsd: electrsd::ElectrsD,
 }
 
 impl TestEnv {
     /// Construct a new [`TestEnv`] instance with default configurations.
     pub fn new() -> anyhow::Result<Self> {
-        let bitcoind = match std::env::var_os("BITCOIND_EXE") {
-            Some(bitcoind_path) => electrsd::bitcoind::BitcoinD::new(bitcoind_path),
+        let tapyrusd = match std::env::var_os("TAPYRUSD_EXE") {
+            Some(tapyrusd_path) => electrsd::tapyrusd::TapyrusD::new(tapyrusd_path),
             None => {
-                let bitcoind_exe = electrsd::bitcoind::downloaded_exe_path()
+                let tapyrusd_exe = electrsd::tapyrusd::downloaded_exe_path()
                     .expect(
-                "you need to provide an env var BITCOIND_EXE or specify a bitcoind version feature",
+                "you need to provide an env var TAPYRUSD_EXE or specify a tapyrsud version feature",
                 );
-                electrsd::bitcoind::BitcoinD::with_conf(
-                    bitcoind_exe,
-                    &electrsd::bitcoind::Conf::default(),
+                electrsd::tapyrusd::TapyrusD::with_conf(
+                    tapyrusd_exe,
+                    &electrsd::tapyrusd::Conf::default(),
                 )
             }
         }?;
@@ -47,16 +47,16 @@ impl TestEnv {
         electrsd_conf.http_enabled = true;
         let electrsd = match std::env::var_os("ELECTRS_EXE") {
             Some(env_electrs_exe) => {
-                electrsd::ElectrsD::with_conf(env_electrs_exe, &bitcoind, &electrsd_conf)
+                electrsd::ElectrsD::with_conf(env_electrs_exe, &tapyrusd, &electrsd_conf)
             }
             None => {
                 let electrs_exe = electrsd::downloaded_exe_path()
                     .expect("electrs version feature must be enabled");
-                electrsd::ElectrsD::with_conf(electrs_exe, &bitcoind, &electrsd_conf)
+                electrsd::ElectrsD::with_conf(electrs_exe, &tapyrusd, &electrsd_conf)
             }
         }?;
 
-        Ok(Self { bitcoind, electrsd })
+        Ok(Self { tapyrusd, electrsd })
     }
 
     /// Exposes the [`ElectrumApi`] calls from the Electrum client.
@@ -64,9 +64,9 @@ impl TestEnv {
         &self.electrsd.client
     }
 
-    /// Exposes the [`RpcApi`] calls from [`bitcoincore_rpc`].
+    /// Exposes the [`RpcApi`] calls from [`tapyruscore_rpc`].
     pub fn rpc_client(&self) -> &impl RpcApi {
-        &self.bitcoind.client
+        &self.tapyrusd.client
     }
 
     // Reset `electrsd` so that new blocks can be seen.
@@ -75,12 +75,12 @@ impl TestEnv {
         electrsd_conf.http_enabled = true;
         let electrsd = match std::env::var_os("ELECTRS_EXE") {
             Some(env_electrs_exe) => {
-                electrsd::ElectrsD::with_conf(env_electrs_exe, &self.bitcoind, &electrsd_conf)
+                electrsd::ElectrsD::with_conf(env_electrs_exe, &self.tapyrusd, &electrsd_conf)
             }
             None => {
                 let electrs_exe = electrsd::downloaded_exe_path()
                     .expect("electrs version feature must be enabled");
-                electrsd::ElectrsD::with_conf(electrs_exe, &self.bitcoind, &electrsd_conf)
+                electrsd::ElectrsD::with_conf(electrs_exe, &self.tapyrusd, &electrsd_conf)
             }
         }?;
         self.electrsd = electrsd;
@@ -96,22 +96,19 @@ impl TestEnv {
     ) -> anyhow::Result<Vec<BlockHash>> {
         let coinbase_address = match address {
             Some(address) => address,
-            None => self
-                .bitcoind
-                .client
-                .get_new_address(None, None)?
-                .assume_checked(),
+            None => self.tapyrusd.client.get_new_address(None)?.assume_checked(),
         };
-        let block_hashes = self
-            .bitcoind
-            .client
-            .generate_to_address(count as _, &coinbase_address)?;
+        let block_hashes = self.tapyrusd.client.generate_to_address(
+            count as _,
+            &coinbase_address,
+            tapyrusd::get_private_key(),
+        )?;
         Ok(block_hashes)
     }
 
     /// Mine a block that is guaranteed to be empty even with transactions in the mempool.
     pub fn mine_empty_block(&self) -> anyhow::Result<(usize, BlockHash)> {
-        let bt = self.bitcoind.client.get_block_template(
+        let bt = self.tapyrusd.client.get_block_template(
             GetBlockTemplateModes::Template,
             &[GetBlockTemplateRules::SegWit],
             &[],
@@ -119,16 +116,16 @@ impl TestEnv {
 
         let txdata = vec![Transaction {
             version: transaction::Version::ONE,
-            lock_time: tdk_chain::bitcoin::absolute::LockTime::from_height(0)?,
+            lock_time: tdk_chain::tapyrus::absolute::LockTime::from_height(0)?,
             input: vec![TxIn {
-                previous_output: tdk_chain::bitcoin::OutPoint::default(),
+                previous_output: tdk_chain::tapyrus::OutPoint::default(),
                 script_sig: ScriptBuf::builder()
                     .push_int(bt.height as _)
                     // randomn number so that re-mining creates unique block
                     .push_int(random())
                     .into_script(),
-                sequence: tdk_chain::bitcoin::Sequence::default(),
-                witness: tdk_chain::bitcoin::Witness::new(),
+                sequence: tdk_chain::tapyrus::Sequence::default(),
+                witness: tdk_chain::tapyrus::Witness::new(),
             }],
             output: vec![TxOut {
                 value: Amount::ZERO,
@@ -136,34 +133,21 @@ impl TestEnv {
             }],
         }];
 
-        let bits: [u8; 4] = bt
-            .bits
-            .clone()
-            .try_into()
-            .expect("rpc provided us with invalid bits");
-
         let mut block = Block {
             header: Header {
-                version: tdk_chain::bitcoin::block::Version::default(),
+                version: tdk_chain::tapyrus::block::Version::default(),
                 prev_blockhash: bt.previous_block_hash,
                 merkle_root: TxMerkleNode::all_zeros(),
+                im_merkle_root: TxMerkleNode::all_zeros(),
                 time: Ord::max(bt.min_time, std::time::UNIX_EPOCH.elapsed()?.as_secs()) as u32,
-                bits: CompactTarget::from_consensus(u32::from_be_bytes(bits)),
-                nonce: 0,
+                xfield: XField::None,
+                proof: None,
             },
             txdata,
         };
 
         block.header.merkle_root = block.compute_merkle_root().expect("must compute");
-
-        for nonce in 0..=u32::MAX {
-            block.header.nonce = nonce;
-            if block.header.target().is_met_by(block.block_hash()) {
-                break;
-            }
-        }
-
-        self.bitcoind.client.submit_block(&block)?;
+        self.tapyrusd.client.submit_block(&block)?;
         Ok((bt.height as usize, block.block_hash()))
     }
 
@@ -188,14 +172,14 @@ impl TestEnv {
 
     /// Invalidate a number of blocks of a given size `count`.
     pub fn invalidate_blocks(&self, count: usize) -> anyhow::Result<()> {
-        let mut hash = self.bitcoind.client.get_best_block_hash()?;
+        let mut hash = self.tapyrusd.client.get_best_block_hash()?;
         for _ in 0..count {
             let prev_hash = self
-                .bitcoind
+                .tapyrusd
                 .client
                 .get_block_info(&hash)?
                 .previousblockhash;
-            self.bitcoind.client.invalidate_block(&hash)?;
+            self.tapyrusd.client.invalidate_block(&hash)?;
             match prev_hash {
                 Some(prev_hash) => hash = prev_hash,
                 None => break,
@@ -207,12 +191,12 @@ impl TestEnv {
     /// Reorg a number of blocks of a given size `count`.
     /// Refer to [`TestEnv::mine_empty_block`] for more information.
     pub fn reorg(&self, count: usize) -> anyhow::Result<Vec<BlockHash>> {
-        let start_height = self.bitcoind.client.get_block_count()?;
+        let start_height = self.tapyrusd.client.get_block_count()?;
         self.invalidate_blocks(count)?;
 
         let res = self.mine_blocks(count, None);
         assert_eq!(
-            self.bitcoind.client.get_block_count()?,
+            self.tapyrusd.client.get_block_count()?,
             start_height,
             "reorg should not result in height change"
         );
@@ -221,14 +205,14 @@ impl TestEnv {
 
     /// Reorg with a number of empty blocks of a given size `count`.
     pub fn reorg_empty_blocks(&self, count: usize) -> anyhow::Result<Vec<(usize, BlockHash)>> {
-        let start_height = self.bitcoind.client.get_block_count()?;
+        let start_height = self.tapyrusd.client.get_block_count()?;
         self.invalidate_blocks(count)?;
 
         let res = (0..count)
             .map(|_| self.mine_empty_block())
             .collect::<Result<Vec<_>, _>>()?;
         assert_eq!(
-            self.bitcoind.client.get_block_count()?,
+            self.tapyrusd.client.get_block_count()?,
             start_height,
             "reorg should not result in height change"
         );
@@ -238,16 +222,17 @@ impl TestEnv {
     /// Send a tx of a given `amount` to a given `address`.
     pub fn send(&self, address: &Address<NetworkChecked>, amount: Amount) -> anyhow::Result<Txid> {
         let txid = self
-            .bitcoind
+            .tapyrusd
             .client
             .send_to_address(address, amount, None, None, None, None, None, None)?;
-        Ok(txid)
+        Ok(Txid::from_slice(&txid[..]).unwrap())
+        // Ok(txid)
     }
 
     /// Create a checkpoint linked list of all the blocks in the chain.
     pub fn make_checkpoint_tip(&self) -> CheckPoint {
         CheckPoint::from_block_ids((0_u32..).map_while(|height| {
-            self.bitcoind
+            self.tapyrusd
                 .client
                 .get_block_hash(height as u64)
                 .ok()
@@ -258,7 +243,7 @@ impl TestEnv {
 
     /// Get the genesis hash of the blockchain.
     pub fn genesis_hash(&self) -> anyhow::Result<BlockHash> {
-        let hash = self.bitcoind.client.get_block_hash(0)?;
+        let hash = self.tapyrusd.client.get_block_hash(0)?;
         Ok(hash)
     }
 }
@@ -266,9 +251,9 @@ impl TestEnv {
 #[cfg(test)]
 mod test {
     use crate::TestEnv;
-    use electrsd::bitcoind::{anyhow::Result, bitcoincore_rpc::RpcApi};
+    use electrsd::tapyrusd::{anyhow::Result, tapyruscore_rpc::RpcApi};
 
-    /// This checks that reorgs initiated by `bitcoind` is detected by our `electrsd` instance.
+    /// This checks that reorgs initiated by `tapyrusd` is detected by our `electrsd` instance.
     #[test]
     fn test_reorg_is_detected_in_electrsd() -> Result<()> {
         let env = TestEnv::new()?;
@@ -276,17 +261,17 @@ mod test {
         // Mine some blocks.
         env.mine_blocks(101, None)?;
         env.wait_until_electrum_sees_block()?;
-        let height = env.bitcoind.client.get_block_count()?;
+        let height = env.tapyrusd.client.get_block_count()?;
         let blocks = (0..=height)
-            .map(|i| env.bitcoind.client.get_block_hash(i))
+            .map(|i| env.tapyrusd.client.get_block_hash(i))
             .collect::<Result<Vec<_>, _>>()?;
 
         // Perform reorg on six blocks.
         env.reorg(6)?;
         env.wait_until_electrum_sees_block()?;
-        let reorged_height = env.bitcoind.client.get_block_count()?;
+        let reorged_height = env.tapyrusd.client.get_block_count()?;
         let reorged_blocks = (0..=height)
-            .map(|i| env.bitcoind.client.get_block_hash(i))
+            .map(|i| env.tapyrusd.client.get_block_hash(i))
             .collect::<Result<Vec<_>, _>>()?;
 
         assert_eq!(height, reorged_height);

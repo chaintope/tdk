@@ -19,7 +19,7 @@ bitcoincore-rpc = { version = "0.18" }
 tdk_chain = { path = "../chain", version = "0.15", default-features = false }
 
 [dev-dependencies]
-bdk_testenv = { path = "../testenv", default-features = false }
+tdk_testenv = { path = "../testenv", default-features = false }
 
 [features]
 default = ["std"]
