@@ -855,9 +855,9 @@ mod test {
 
         check(
             descriptor!(sh(and_or(pk(redeem_key), older(1000), pk(move_key)))),
+            false,
             true,
-            true,
-            &["2MypGwr5eQWAWWJtiJgUEToVxc4zuokjQRe"],
+            &["2MxyMCxGYgkYDS3kDDqVjM1EqvF8Wfx6yDn"],
         );
     }
 
@@ -932,34 +932,16 @@ mod test {
         );
 
         check(
-            descriptor!(sh(sortedmulti(
-                1,
-                desc_key1.clone(),
-                desc_key2.clone()
-            ))),
-            true,
-            false,
-            &[
-                "2NCogc5YyM4N6ruv1hUa7WLMW1BPeCK7N9B",
-                "2N6mkSAKi1V2oaBXby7XHdvBMKEDRQcFpNe",
-                "2NFmTSttm9v6bXeoWaBvpMcgfPQcZhNn3Eh",
-                "2Mvib87RBPUHXNEpX5S5Kv1qqrhBfgBGsJM",
-                "2MtMv5mcK2EjcLsH8Txpx2JxLLzHr4ttczL",
-                "2MsWCB56rb4T6yPv8QudZGHERTwNgesE4f6",
-            ],
-        );
-
-        check(
             descriptor!(sh(sortedmulti_vec(1, vec![desc_key1, desc_key2]))),
-            true,
+            false,
             false,
             &[
-                "bcrt1qcvq0lg8q7a47ytrd7zk5y7uls7mulrenjgvflwylpppgwf8029es4vhpnj",
-                "bcrt1q80yn8sdt6l7pjvkz25lglyaqctlmsq9ugk80rmxt8yu0npdsj97sc7l4de",
-                "bcrt1qrvf6024v9s50qhffe3t2fr2q9ckdhx2g6jz32chm2pp24ymgtr5qfrdmct",
-                "bcrt1q6srfmra0ynypym35c7jvsxt2u4yrugeajq95kg2ps7lk6h2gaunsq9lzxn",
-                "bcrt1qhl8rrzzcdpu7tcup3lcg7tge52sqvwy5fcv4k78v6kxtwmqf3v6qpvyjza",
-                "bcrt1ql2elz9mhm9ll27ddpewhxs732xyl2fk2kpkqz9gdyh33wgcun4vstrd49k",
+                "2MsxzPEJDBzpGffJXPaDpfXZAUNnZhaMh2N",
+                "2My3x3DLPK3UbGWGpxrXr1RnbD8MNC4FpgS",
+                "2NByEuiQT7YLqHCTNxL5KwYjvtuCYcXNBSC",
+                "2N1TGbP81kj2VUKTSWgrwxoMfuWjvfUdyu7",
+                "2N3Bomq2fpAcLRNfZnD3bCWK9quan28CxCR",
+                "2N9nrZaEzEFDqEAU9RPvDnXGT6AVwBDKAQb",
             ],
         );
     }
@@ -1044,13 +1026,12 @@ mod test {
         assert_eq!(descriptor.to_string(), "sh(thresh(2,ndv:older(1),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c),s:pk(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)))#qjzsvw99")
     }
 
+    // Uncompressed key is allowed in Legacy Context.
     #[test]
-    #[should_panic(expected = "Miniscript(ContextError(UncompressedKeysNotAllowed))")]
     fn test_dsl_miniscript_checks() {
         let mut uncompressed_pk =
             PrivateKey::from_wif("L5EZftvrYaSudiozVRzTqLcHLNDoVn7H5HSfM9BAN6tMJX8oTWz6").unwrap();
         uncompressed_pk.compressed = false;
-
-        descriptor!(sh(v: pk(uncompressed_pk))).unwrap();
+        descriptor!(pkh(uncompressed_pk)).unwrap();
     }
 }
