@@ -7,8 +7,8 @@ use tdk_chain::collections::BTreeMap;
 use tdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
 use tdk_chain::Anchor;
 use tdk_chain::{
-    bitcoin::{Amount, BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     local_chain::CheckPoint,
+    tapyrus::{Amount, BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     BlockId, ConfirmationTimeHeightAnchor, TxGraph,
 };
 
@@ -39,7 +39,7 @@ pub trait EsploraExt {
     /// For example, with a `stop_gap` of  3, `full_scan` will keep scanning
     /// until it encounters 3 consecutive script pubkeys with no associated transactions.
     ///
-    /// This follows the same approach as other Bitcoin-related software,
+    /// This follows the same approach as other Tapyrus-related software,
     /// such as [Electrum](https://electrum.readthedocs.io/en/latest/faq.html#what-is-the-gap-limit),
     /// [BTCPay Server](https://docs.btcpayserver.org/FAQ/Wallet/#the-gap-limit-problem),
     /// and [Sparrow](https://www.sparrowwallet.com/docs/faq.html#ive-restored-my-wallet-but-some-of-my-funds-are-missing).
@@ -280,7 +280,7 @@ fn full_scan_for_index_and_graph_blocking<K: Ord + Clone>(
                             },
                             TxOut {
                                 script_pubkey: prevout.scriptpubkey.clone(),
-                                value: Amount::from_sat(prevout.value),
+                                value: Amount::from_tap(prevout.value),
                             },
                         ))
                     });
@@ -400,15 +400,15 @@ mod test {
     use esplora_client::{BlockHash, Builder};
     use std::collections::{BTreeMap, BTreeSet};
     use std::time::Duration;
-    use tdk_chain::bitcoin::hashes::Hash;
-    use tdk_chain::bitcoin::Txid;
     use tdk_chain::local_chain::LocalChain;
+    use tdk_chain::tapyrus::hashes::Hash;
+    use tdk_chain::tapyrus::Txid;
     use tdk_chain::BlockId;
-    use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+    use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
     macro_rules! h {
         ($index:literal) => {{
-            tdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
+            tdk_chain::tapyrus::hashes::Hash::hash($index.as_bytes())
         }};
     }
 
@@ -489,7 +489,7 @@ mod test {
                         Ok((
                             BlockId {
                                 height,
-                                hash: env.bitcoind.client.get_block_hash(height as _)?,
+                                hash: env.tapyrusd.client.get_block_hash(height as _)?,
                             },
                             Txid::all_zeros(),
                         ))
@@ -526,7 +526,7 @@ mod test {
                         Ok((
                             BlockId {
                                 height,
-                                hash: env.bitcoind.client.get_block_hash(height as _)?,
+                                hash: env.tapyrusd.client.get_block_hash(height as _)?,
                             },
                             txid,
                         ))
@@ -590,11 +590,11 @@ mod test {
 
         let env = TestEnv::new()?;
         let blocks = {
-            let bitcoind_client = &env.bitcoind.client;
-            assert_eq!(bitcoind_client.get_block_count()?, 1);
+            let tapyrusd_client = &env.tapyrusd.client;
+            assert_eq!(tapyrusd_client.get_block_count()?, 1);
             [
-                (0, bitcoind_client.get_block_hash(0)?),
-                (1, bitcoind_client.get_block_hash(1)?),
+                (0, tapyrusd_client.get_block_hash(0)?),
+                (1, tapyrusd_client.get_block_hash(1)?),
             ]
             .into_iter()
             .chain((2..).zip(env.mine_blocks((TIP_HEIGHT - 1) as usize, None)?))
@@ -714,10 +714,10 @@ mod test {
                 .request_heights
                 .iter()
                 .map(|&h| {
-                    let anchor_blockhash: BlockHash = tdk_chain::bitcoin::hashes::Hash::hash(
+                    let anchor_blockhash: BlockHash = tdk_chain::tapyrus::hashes::Hash::hash(
                         &format!("hash_at_height_{}", h).into_bytes(),
                     );
-                    let txid: Txid = tdk_chain::bitcoin::hashes::Hash::hash(
+                    let txid: Txid = tdk_chain::tapyrus::hashes::Hash::hash(
                         &format!("txid_at_height_{}", h).into_bytes(),
                     );
                     let anchor = BlockId {
@@ -768,7 +768,7 @@ mod test {
 
             // all requested heights must exist in the final chain
             for height in t.request_heights {
-                let exp_blockhash = blocks.get(height).expect("block must exist in bitcoind");
+                let exp_blockhash = blocks.get(height).expect("block must exist in tapyrusd");
                 assert_eq!(
                     chain.get(*height).map(|cp| cp.hash()),
                     Some(*exp_blockhash),

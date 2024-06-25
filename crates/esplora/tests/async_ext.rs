@@ -1,13 +1,13 @@
-use bdk_esplora::EsploraAsyncExt;
 use esplora_client::{self, Builder};
 use std::collections::{BTreeSet, HashSet};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
+use tdk_esplora::EsploraAsyncExt;
 
-use tdk_chain::bitcoin::{Address, Amount, Txid};
-use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+use tdk_chain::tapyrus::{Address, Amount, Txid};
+use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
 #[tokio::test]
 pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
@@ -26,9 +26,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
     ];
 
     let _block_hashes = env.mine_blocks(101, None)?;
-    let txid1 = env.bitcoind.client.send_to_address(
+    let txid1 = env.tapyrusd.client.send_to_address(
         &receive_address1,
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,
@@ -36,9 +36,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         Some(1),
         None,
     )?;
-    let txid2 = env.bitcoind.client.send_to_address(
+    let txid2 = env.tapyrusd.client.send_to_address(
         &receive_address0,
-        Amount::from_sat(20000),
+        Amount::from_tap(20000),
         None,
         None,
         None,
@@ -83,9 +83,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         // floating txouts available from the transactions' previous outputs.
         let fee = graph_update.calculate_fee(&tx.tx).expect("Fee must exist");
 
-        // Retrieve the fee in the transaction data from `bitcoind`.
+        // Retrieve the fee in the transaction data from `tapyrusd`.
         let tx_fee = env
-            .bitcoind
+            .tapyrusd
             .client
             .get_transaction(&tx.txid, None)
             .expect("Tx must exist")
@@ -139,9 +139,9 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
         .collect();
 
     // Then receive coins on the 4th address.
-    let txid_4th_addr = env.bitcoind.client.send_to_address(
+    let txid_4th_addr = env.tapyrusd.client.send_to_address(
         &addresses[3],
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,
@@ -183,9 +183,9 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
 
     // Now receive a coin on the last address.
-    let txid_last_addr = env.bitcoind.client.send_to_address(
+    let txid_last_addr = env.tapyrusd.client.send_to_address(
         &addresses[addresses.len() - 1],
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,

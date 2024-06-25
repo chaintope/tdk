@@ -6,9 +6,9 @@ use futures::{stream::FuturesOrdered, TryStreamExt};
 use tdk_chain::spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult};
 use tdk_chain::Anchor;
 use tdk_chain::{
-    bitcoin::{BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     collections::BTreeMap,
     local_chain::CheckPoint,
+    tapyrus::{BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
     BlockId, ConfirmationTimeHeightAnchor, TxGraph,
 };
 
@@ -41,7 +41,7 @@ pub trait EsploraAsyncExt {
     /// For example, with a `stop_gap` of  3, `full_scan` will keep scanning
     /// until it encounters 3 consecutive script pubkeys with no associated transactions.
     ///
-    /// This follows the same approach as other Bitcoin-related software,
+    /// This follows the same approach as other Tapyrus-related software,
     /// such as [Electrum](https://electrum.readthedocs.io/en/latest/faq.html#what-is-the-gap-limit),
     /// [BTCPay Server](https://docs.btcpayserver.org/FAQ/Wallet/#the-gap-limit-problem),
     /// and [Sparrow](https://www.sparrowwallet.com/docs/faq.html#ive-restored-my-wallet-but-some-of-my-funds-are-missing).
@@ -297,7 +297,7 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
                             },
                             TxOut {
                                 script_pubkey: prevout.scriptpubkey.clone(),
-                                value: Amount::from_sat(prevout.value),
+                                value: Amount::from_tap(prevout.value),
                             },
                         ))
                     });
@@ -408,17 +408,17 @@ mod test {
 
     use esplora_client::Builder;
     use tdk_chain::{
-        bitcoin::{hashes::Hash, Txid},
         local_chain::LocalChain,
+        tapyrus::{hashes::Hash, Txid},
         BlockId,
     };
-    use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+    use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
     use crate::async_ext::{chain_update, fetch_latest_blocks};
 
     macro_rules! h {
         ($index:literal) => {{
-            tdk_chain::bitcoin::hashes::Hash::hash($index.as_bytes())
+            tdk_chain::tapyrus::hashes::Hash::hash($index.as_bytes())
         }};
     }
 
@@ -491,7 +491,7 @@ mod test {
                         Ok((
                             BlockId {
                                 height,
-                                hash: env.bitcoind.client.get_block_hash(height as _)?,
+                                hash: env.tapyrusd.client.get_block_hash(height as _)?,
                             },
                             Txid::all_zeros(),
                         ))
@@ -529,7 +529,7 @@ mod test {
                         Ok((
                             BlockId {
                                 height,
-                                hash: env.bitcoind.client.get_block_hash(height as _)?,
+                                hash: env.tapyrusd.client.get_block_hash(height as _)?,
                             },
                             txid,
                         ))
