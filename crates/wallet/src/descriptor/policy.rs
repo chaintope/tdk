@@ -1478,7 +1478,7 @@ mod test {
             .address(Network::Prod)
             .unwrap();
         assert_eq!(
-            "tb1qg3cwv3xt50gdg875qvjjpfgaps86gtk4rz0ejvp6ttc5ldnlxuvqlcn0xk",
+            "3PG9cwzmVrMRzGZmnN5LVR2KP3oXuwvCGm",
             addr.to_string()
         );
 
@@ -1543,7 +1543,7 @@ mod test {
             .address(Network::Prod)
             .unwrap();
         assert_eq!(
-            "tb1qsydsey4hexagwkvercqsmes6yet0ndkyt6uzcphtqnygjd8hmzmsfxrv58",
+            "3PVrJReL6ZKLmTyRYkahkyXfbhVUseXbmU",
             addr.to_string()
         );
 
