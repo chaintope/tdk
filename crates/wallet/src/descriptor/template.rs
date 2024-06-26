@@ -275,9 +275,9 @@ mod test {
         }
 
         let tprvkey = tapyrus::bip32::Xpriv::from_str("tprv8ZgxMBicQKsPcx5nBGsR63Pe8KnRUqmbJNENAfGftF3yuXoMMoVJJcYeUw5eVkm9WBPjWYt6HMWYJNesB5HaNVBaFc1M6dRjWSYnmewUMYy").unwrap();
-        assert_eq!(Network::Prod, tprvkey.network);
+        assert_eq!(Network::Dev, tprvkey.network);
         let tdesc = Bip44(tprvkey, KeychainKind::Internal)
-            .build(Network::Prod)
+            .build(Network::Dev)
             .unwrap();
 
         if let ExtendedDescriptor::Pkh(pkh) = tdesc.0 {
