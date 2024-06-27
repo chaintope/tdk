@@ -43,17 +43,17 @@ pub mod bip39;
 /// Set of valid networks for a key
 pub type ValidNetworks = HashSet<Network>;
 
-/// Create a set containing mainnet, testnet, signet, and regtest
+/// Create a set containing prod and dev networks
 pub fn any_network() -> ValidNetworks {
     vec![Network::Prod, Network::Dev].into_iter().collect()
 }
-/// Create a set only containing mainnet
-pub fn mainnet_network() -> ValidNetworks {
+/// Create a set for production networks
+pub fn prod_network() -> ValidNetworks {
     vec![Network::Prod].into_iter().collect()
 }
-/// Create a set containing testnet and regtest
-pub fn test_networks() -> ValidNetworks {
-    vec![Network::Prod, Network::Dev].into_iter().collect()
+/// Create a set for dev network
+pub fn dev_networks() -> ValidNetworks {
+    vec![Network::Dev].into_iter().collect()
 }
 /// Compute the intersection of two sets
 pub fn merge_networks(a: &ValidNetworks, b: &ValidNetworks) -> ValidNetworks {
@@ -198,7 +198,7 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// use tdk_wallet::bitcoin::PublicKey;
 ///
 /// use tdk_wallet::keys::{
-///     mainnet_network, DescriptorKey, DescriptorPublicKey, IntoDescriptorKey, KeyError,
+///     prod_network, DescriptorKey, DescriptorPublicKey, IntoDescriptorKey, KeyError,
 ///     ScriptContext, SinglePub, SinglePubKey,
 /// };
 ///
@@ -213,7 +213,7 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 ///                 origin: None,
 ///                 key: SinglePubKey::FullKey(self.pubkey),
 ///             }),
-///             mainnet_network(),
+///             prod_network(),
 ///         ))
 ///     }
 /// }
@@ -821,9 +821,9 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorPublicKey {
             DescriptorPublicKey::XPub(DescriptorXKey { xkey, .. })
                 if xkey.network == Network::Prod =>
             {
-                mainnet_network()
+                prod_network()
             }
-            _ => test_networks(),
+            _ => dev_networks(),
         };
 
         Ok(DescriptorKey::from_public(self, networks))
@@ -853,13 +853,13 @@ impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for XOnlyPublicKey {
 impl<Ctx: ScriptContext> IntoDescriptorKey<Ctx> for DescriptorSecretKey {
     fn into_descriptor_key(self) -> Result<DescriptorKey<Ctx>, KeyError> {
         let networks = match &self {
-            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Prod => mainnet_network(),
+            DescriptorSecretKey::Single(sk) if sk.key.network == Network::Prod => prod_network(),
             DescriptorSecretKey::XPrv(DescriptorXKey { xkey, .. })
                 if xkey.network == Network::Prod =>
             {
-                mainnet_network()
+                prod_network()
             }
-            _ => test_networks(),
+            _ => dev_networks(),
         };
 
         Ok(DescriptorKey::from_secret(self, networks))
