@@ -1,4 +1,5 @@
 use core::str::FromStr;
+use tapyrus::ScriptBuf;
 use tdk_wallet::tapyrus::{Amount, FeeRate, Psbt, TxIn};
 use tdk_wallet::{psbt, KeychainKind, SignOptions};
 mod common;
@@ -11,7 +12,7 @@ const PSBT_STR: &str = "cHNidP8BAKACAAAAAqsJSaCMWvfEm4IS9Bfi8Vqz9cM9zxU4IagTn4d6
 #[should_panic(expected = "InputIndexOutOfRange")]
 fn test_psbt_malformed_psbt_input_legacy() {
     let psbt_bip = Psbt::from_str(PSBT_STR).unwrap();
-    let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
+    let (mut wallet, _) = get_funded_wallet(get_test_pkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
     builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
@@ -28,7 +29,7 @@ fn test_psbt_malformed_psbt_input_legacy() {
 #[should_panic(expected = "InputIndexOutOfRange")]
 fn test_psbt_malformed_psbt_input_segwit() {
     let psbt_bip = Psbt::from_str(PSBT_STR).unwrap();
-    let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
+    let (mut wallet, _) = get_funded_wallet(get_test_pkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
     builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
@@ -44,7 +45,7 @@ fn test_psbt_malformed_psbt_input_segwit() {
 #[test]
 #[should_panic(expected = "InputIndexOutOfRange")]
 fn test_psbt_malformed_tx_input() {
-    let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
+    let (mut wallet, _) = get_funded_wallet(get_test_pkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
     builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
@@ -60,7 +61,7 @@ fn test_psbt_malformed_tx_input() {
 #[test]
 fn test_psbt_sign_with_finalized() {
     let psbt_bip = Psbt::from_str(PSBT_STR).unwrap();
-    let (mut wallet, _) = get_funded_wallet(get_test_wpkh());
+    let (mut wallet, _) = get_funded_wallet(get_test_pkh());
     let send_to = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
     builder.add_recipient(send_to.script_pubkey(), Amount::from_tap(10_000));
@@ -81,7 +82,7 @@ fn test_psbt_fee_rate_with_witness_utxo() {
 
     let expected_fee_rate = FeeRate::from_tap_per_kwu(310);
 
-    let (mut wallet, _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
+    let (mut wallet, _) = get_funded_wallet("pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wallet.build_tx();
     builder.drain_to(addr.script_pubkey()).drain_wallet();
@@ -130,7 +131,7 @@ fn test_psbt_fee_rate_with_missing_txout() {
 
     let expected_fee_rate = FeeRate::from_tap_per_kwu(310);
 
-    let (mut wpkh_wallet,  _) = get_funded_wallet("wpkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
+    let (mut wpkh_wallet,  _) = get_funded_wallet("pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/*)");
     let addr = wpkh_wallet.peek_address(KeychainKind::External, 0);
     let mut builder = wpkh_wallet.build_tx();
     builder.drain_to(addr.script_pubkey()).drain_wallet();
@@ -154,69 +155,4 @@ fn test_psbt_fee_rate_with_missing_txout() {
     pkh_psbt.inputs[0].non_witness_utxo = None;
     assert!(pkh_psbt.fee_amount().is_none());
     assert!(pkh_psbt.fee_rate().is_none());
-}
-
-#[test]
-fn test_psbt_multiple_internalkey_signers() {
-    use std::sync::Arc;
-    use tapyrus::key::TapTweak;
-    use tapyrus::secp256k1::{schnorr, Keypair, Message, Secp256k1, XOnlyPublicKey};
-    use tapyrus::sighash::{Prevouts, SighashCache, TapSighashType};
-    use tapyrus::{PrivateKey, TxOut};
-    use tdk_wallet::signer::{SignerContext, SignerOrdering, SignerWrapper};
-    use tdk_wallet::KeychainKind;
-
-    let secp = Secp256k1::new();
-    let wif = "cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG";
-    let desc = format!("tr({})", wif);
-    let prv = PrivateKey::from_wif(wif).unwrap();
-    let keypair = Keypair::from_secret_key(&secp, &prv.inner);
-
-    let change_desc = "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)";
-    let (mut wallet, _) = get_funded_wallet_with_change(&desc, change_desc);
-    let to_spend = wallet.balance().total();
-    let send_to = wallet.peek_address(KeychainKind::External, 0);
-    let mut builder = wallet.build_tx();
-    builder.drain_to(send_to.script_pubkey()).drain_wallet();
-    let mut psbt = builder.finish().unwrap();
-    let unsigned_tx = psbt.unsigned_tx.clone();
-
-    // Adds a signer for the wrong internal key, bdk should not use this key to sign
-    wallet.add_signer(
-        KeychainKind::External,
-        // A signerordering lower than 100, bdk will use this signer first
-        SignerOrdering(0),
-        Arc::new(SignerWrapper::new(
-            PrivateKey::from_wif("5J5PZqvCe1uThJ3FZeUUFLCh2FuK9pZhtEK4MzhNmugqTmxCdwE").unwrap(),
-            SignerContext::Legacy,
-        )),
-    );
-    let finalized = wallet.sign(&mut psbt, SignOptions::default()).unwrap();
-    assert!(finalized);
-
-    // To verify, we need the signature, message, and pubkey
-    let witness = psbt.inputs[0].final_script_witness.as_ref().unwrap();
-    assert!(!witness.is_empty());
-    let signature = schnorr::Signature::from_slice(witness.iter().next().unwrap()).unwrap();
-
-    // the prevout we're spending
-    let prevouts = &[TxOut {
-        script_pubkey: send_to.script_pubkey(),
-        value: to_spend,
-    }];
-    let prevouts = Prevouts::All(prevouts);
-    let input_index = 0;
-    let mut sighash_cache = SighashCache::new(unsigned_tx);
-    let sighash = sighash_cache
-        .taproot_key_spend_signature_hash(input_index, &prevouts, TapSighashType::Default)
-        .unwrap();
-    let message = Message::from(sighash);
-
-    // add tweak. this was taken from `signer::sign_psbt_schnorr`
-    let keypair = keypair.tap_tweak(&secp, None).to_inner();
-    let (xonlykey, _parity) = XOnlyPublicKey::from_keypair(&keypair);
-
-    // Must verify if we used the correct key to sign
-    let verify_res = secp.verify_schnorr(&signature, &message, &xonlykey);
-    assert!(verify_res.is_ok(), "The wrong internal key was used");
 }
