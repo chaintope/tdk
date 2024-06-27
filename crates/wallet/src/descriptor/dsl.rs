@@ -956,7 +956,7 @@ mod test {
         let (_desc, _key_map, valid_networks) = descriptor!(pkh(desc_key)).unwrap();
         assert_eq!(
             valid_networks,
-            [Prod, Dev].iter().cloned().collect()
+            [Dev].iter().cloned().collect()
         );
 
         let xprv = bip32::Xpriv::from_str("xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi").unwrap();
