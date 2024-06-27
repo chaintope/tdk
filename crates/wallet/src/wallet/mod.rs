@@ -169,9 +169,9 @@ impl Wallet {
     pub fn new_no_persist<E: IntoWalletDescriptor>(
         descriptor: E,
         change_descriptor: E,
-        _network: Network,
+        network: Network,
     ) -> Result<Self, DescriptorError> {
-        Self::new(descriptor, change_descriptor, ()).map_err(|e| match e {
+        Self::new(descriptor, change_descriptor, (), network).map_err(|e| match e {
             NewError::NonEmptyDatabase => unreachable!("mock-database cannot have data"),
             NewError::Descriptor(e) => e,
             NewError::Persist(_) => unreachable!("mock-write must always succeed"),
@@ -404,13 +404,14 @@ impl Wallet {
         descriptor: E,
         change_descriptor: E,
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+        network: Network,
     ) -> Result<Self, NewError> {
         let genesis_hash = mainnet_genesis_block().block_hash();
         Self::new_with_genesis_hash(
             descriptor,
             change_descriptor,
             db,
-            Network::Prod,
+            network,
             genesis_hash,
         )
     }

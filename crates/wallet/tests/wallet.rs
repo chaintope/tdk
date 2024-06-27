@@ -87,7 +87,7 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
         let wallet_spk_index = {
             let db = create_new(&file_path).expect("must create db");
             let mut wallet =
-                Wallet::new(desc, change_desc, db).expect("must init wallet");
+                Wallet::new(desc, change_desc, db, Network::Prod).expect("must init wallet");
 
             wallet.reveal_next_address(KeychainKind::External).unwrap();
             wallet.spk_index().clone()
@@ -118,7 +118,7 @@ fn load_recovers_wallet() -> anyhow::Result<()> {
         // `new` can only be called on empty db
         {
             let db = recover(&file_path).expect("must recover db");
-            let result = Wallet::new(desc, change_desc, db);
+            let result = Wallet::new(desc, change_desc, db, Network::Prod);
             assert!(matches!(result, Err(NewError::NonEmptyDatabase)));
         }
 

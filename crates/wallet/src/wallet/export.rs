@@ -291,7 +291,7 @@ mod test {
                                        [c98b1535/48'/0'/0'/2']tpubDCDi5W4sP6zSnzJeowy8rQDVhBdRARaPhK1axABi8V1661wEPeanpEXj4ZLAUEoikVtoWcyK26TKKJSecSfeKxwHCcRrge9k1ybuiL71z4a/1/*\
                                  ))";
 
-        let wallet = get_test_wallet(descriptor, change_descriptor, Network::Prod);
+        let wallet = get_test_wallet(descriptor, change_descriptor, Network::Dev);
         let export = FullyNodedExport::export_wallet(&wallet, "Test Label", true).unwrap();
 
         assert_eq!(export.descriptor(), descriptor);
