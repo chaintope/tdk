@@ -31,6 +31,8 @@ pub use miniscript::{
     Descriptor, DescriptorPublicKey, Legacy, Miniscript, ScriptContext, Segwitv0,
 };
 use miniscript::{ForEachKey, MiniscriptKey, TranslatePk};
+use tapyrus::consensus::serialize;
+use tapyrus::hex::DisplayHex;
 
 use crate::descriptor::policy::BuildSatisfaction;
 
@@ -574,29 +576,6 @@ mod test {
     use crate::psbt::PsbtUtils;
 
     #[test]
-    fn test_derive_from_psbt_input_wpkh_wif() {
-        let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
-            "wpkh(02b4632d08485ff1df2db55b9dafd23347d1c47a457072a1e87be26896549a8737)",
-        )
-        .unwrap();
-        let psbt = Psbt::deserialize(
-            &Vec::<u8>::from_hex(
-                "70736274ff010052010000000162307be8e431fbaff807cdf9cdc3fde44d7402\
-                 11bc8342c31ffd6ec11fe35bcc0100000000ffffffff01328601000000000016\
-                 001493ce48570b55c42c2af816aeaba06cfee1224fae000000000001011fa086\
-                 01000000000016001493ce48570b55c42c2af816aeaba06cfee1224fae010304\
-                 010000000000",
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        assert!(descriptor
-            .derive_from_psbt_input(&psbt.inputs[0], psbt.get_utxo_for(0), &Secp256k1::new())
-            .is_some());
-    }
-
-    #[test]
     fn test_derive_from_psbt_input_pkh_tpub() {
         let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
             "pkh([0f056943/44h/0h/0h]tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd/10/*)",
@@ -617,30 +596,6 @@ mod test {
                  52584228ab7ec00e8b9779d0c3ffe8114fc1a7d2c80600000103040100000022\
                  0603433b83583f8c4879b329dd08bbc7da935e4cc02f637ff746e05f0466ffb2\
                  a6a2180f0569432c00008000000080000000800a000000000000000000",
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        assert!(descriptor
-            .derive_from_psbt_input(&psbt.inputs[0], psbt.get_utxo_for(0), &Secp256k1::new())
-            .is_some());
-    }
-
-    #[test]
-    fn test_derive_from_psbt_input_wsh() {
-        let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
-            "wsh(and_v(v:pk(03b6633fef2397a0a9de9d7b6f23aef8368a6e362b0581f0f0af70d5ecfd254b14),older(6)))",
-        )
-        .unwrap();
-        let psbt = Psbt::deserialize(
-            &Vec::<u8>::from_hex(
-                "70736274ff01005302000000011c8116eea34408ab6529223c9a176606742207\
-                 67a1ff1d46a6e3c4a88243ea6e01000000000600000001109698000000000017\
-                 a914ad105f61102e0d01d7af40d06d6a5c3ae2f7fde387000000000001012b80\
-                 969800000000002200203ca72f106a72234754890ca7640c43f65d2174e44d33\
-                 336030f9059345091044010304010000000105252103b6633fef2397a0a9de9d\
-                 7b6f23aef8368a6e362b0581f0f0af70d5ecfd254b14ad56b20000",
             )
             .unwrap(),
         )
@@ -712,7 +667,7 @@ mod test {
             wildcard: Wildcard::Unhardened,
         });
 
-        assert_eq!(wallet_desc.to_string(), "wpkh(tpubD6NzVbkrYhZ4XtJzoDja5snUjBNQRP5B3f4Hyn1T1x6PVPxzzVjvw6nJx2D8RBCxog9GEVjZoyStfepTz7TtKoBVdkCtnc7VCJh9dD4RAU9/0/*)#a3svx0ha");
+        assert_eq!(wallet_desc.to_string(), "pkh(xpub661MyMwAqRbcG689M2kUsxT7Q4GkRza7W2TzdDxJg3LVk7JHvGtqnf7Uhz8LtgFj1mcMcvDhGscqyUKrbFceSMjCa9Tb75TFcM6jsC2csEG/0/*)#e9nud4hk");
         assert_eq!(
             keymap
                 .get(&desc_pubkey)
@@ -726,27 +681,27 @@ mod test {
     fn test_descriptor_from_str_with_checksum() {
         let secp = Secp256k1::new();
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#tqz0nc62"
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#k97wlg6f"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw"
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)#f7fzjhga"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#67ju93jw"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#67ju93jw"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
     }
@@ -756,35 +711,35 @@ mod test {
     fn test_descriptor_from_str_with_keys_network() {
         let secp = Secp256k1::new();
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+        let desc = "pkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+        let desc = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
-        let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
+        let desc = "sh(pkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
+        let desc = "sh(pkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+        let desc = "pkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+        let desc = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
             .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
     }
