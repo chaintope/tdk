@@ -18,7 +18,7 @@ use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, tapyrus::Txid) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
-    let sendto_address = Address::from_str("bcrt1q3qtze4ys45tgdvguj66zrk4fu6hq3a3v9pfly5")
+    let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
         .expect("address")
         .require_network(Network::Dev)
         .unwrap();
@@ -109,27 +109,27 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 /// as argument, make sure you're ok with getting a wallet where the keychains have potentially
 /// different script types. Otherwise, use `get_funded_wallet_with_change`.
 pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::Txid) {
-    let change = get_test_wpkh_change();
+    let change = get_test_pkh_change();
     get_funded_wallet_with_change(descriptor, change)
 }
 
-pub fn get_funded_wallet_wpkh() -> (Wallet, tapyrus::Txid) {
-    get_funded_wallet_with_change(get_test_wpkh(), get_test_wpkh_change())
+pub fn get_funded_wallet_pkh() -> (Wallet, tapyrus::Txid) {
+    get_funded_wallet_with_change(get_test_pkh(), get_test_pkh_change())
 }
 
-pub fn get_test_wpkh() -> &'static str {
-    "wpkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)"
+pub fn get_test_pkh() -> &'static str {
+    "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)"
 }
 
-pub fn get_test_wpkh_with_change_desc() -> (&'static str, &'static str) {
+pub fn get_test_pkh_with_change_desc() -> (&'static str, &'static str) {
     (
-        "wpkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)",
-        get_test_wpkh_change(),
+        "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)",
+        get_test_pkh_change(),
     )
 }
 
-fn get_test_wpkh_change() -> &'static str {
-    "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/0)"
+fn get_test_pkh_change() -> &'static str {
+    "pkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/0)"
 }
 
 pub fn get_test_single_sig_csv() -> &'static str {
