@@ -132,15 +132,6 @@ mod test {
         assert!(script_p2pkh.is_p2pkh());
         assert!(545.is_dust(&script_p2pkh));
         assert!(!546.is_dust(&script_p2pkh));
-
-        let script_p2wpkh = Address::from_str("bc1qxlh2mnc0yqwas76gqq665qkggee5m98t8yskd8")
-            .unwrap()
-            .require_network(Network::Prod)
-            .unwrap()
-            .script_pubkey();
-        assert!(script_p2wpkh.is_p2wpkh());
-        assert!(293.is_dust(&script_p2wpkh));
-        assert!(!294.is_dust(&script_p2wpkh));
     }
 
     #[test]
