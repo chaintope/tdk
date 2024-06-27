@@ -976,7 +976,7 @@ mod signers_container_tests {
         let (prvkey1, _, _) = setup_keys(TPRV0_STR);
         let (prvkey2, _, _) = setup_keys(TPRV1_STR);
         let desc = descriptor!(sh(multi(2, prvkey1, prvkey2))).unwrap();
-        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Prod).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
 
         let signers = SignersContainer::build(keymap, &wallet_desc, &secp);
         assert_eq!(signers.ids().len(), 2);
