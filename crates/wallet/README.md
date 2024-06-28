@@ -44,7 +44,7 @@ that the `Wallet` can use to update its view of the chain.
 
 **Blockchain Data Sources**
 
-* [`bdk_esplora`]: Grabs blockchain data from Esplora for updating BDK structures.
+* [`tdk_esplora`]: Grabs blockchain data from Esplora for updating BDK structures.
 * [`bdk_electrum`]: Grabs blockchain data from Electrum for updating BDK structures.
 * [`bdk_bitcoind_rpc`]: Grabs blockchain data from Bitcoin Core for updating BDK structures.
 

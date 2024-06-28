@@ -5,7 +5,7 @@ const PARALLEL_REQUESTS: usize = 1;
 
 use std::{collections::BTreeSet, io::Write, str::FromStr};
 
-use bdk_esplora::{esplora_client, EsploraExt};
+use tdk_esplora::{esplora_client, EsploraExt};
 use bdk_wallet::{
     bitcoin::{Address, Amount, Network},
     KeychainKind, SignOptions, Wallet,

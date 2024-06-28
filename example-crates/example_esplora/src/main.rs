@@ -13,7 +13,7 @@ use tdk_chain::{
     Append, ConfirmationTimeHeightAnchor,
 };
 
-use bdk_esplora::{esplora_client, EsploraExt};
+use tdk_esplora::{esplora_client, EsploraExt};
 
 use example_cli::{
     anyhow::{self, Context},
@@ -21,8 +21,8 @@ use example_cli::{
     Keychain,
 };
 
-const DB_MAGIC: &[u8] = b"bdk_example_esplora";
-const DB_PATH: &str = ".bdk_esplora_example.db";
+const DB_MAGIC: &[u8] = b"tdk_example_esplora";
+const DB_PATH: &str = ".tdk_esplora_example.db";
 
 type ChangeSet = (
     local_chain::ChangeSet,

@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 tdk_chain = { path = "../../crates/chain", features = ["serde"] }
-bdk_esplora = { path = "../../crates/esplora", features = ["blocking"] }
+tdk_esplora = { path = "../../crates/esplora", features = ["blocking"] }
 example_cli = { path = "../example_cli" }
 

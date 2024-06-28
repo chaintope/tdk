@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bdk_wallet = { path = "../../crates/wallet" }
-bdk_esplora = { path = "../../crates/esplora", features = ["async-https"] }
+tdk_esplora = { path = "../../crates/esplora", features = ["async-https"] }
 tdk_sqlite = { path = "../../crates/sqlite" }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 anyhow = "1"

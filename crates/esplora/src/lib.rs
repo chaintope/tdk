@@ -14,7 +14,7 @@
 //! Refer to [`example_esplora`] for a complete example.
 //!
 //! [`TxGraph`]: tdk_chain::tx_graph::TxGraph
-//! [`example_esplora`]: https://github.com/bitcoindevkit/bdk/tree/master/example-crates/example_esplora
+//! [`example_esplora`]: https://github.com/chaintope/tdk/tree/master/example-crates/example_esplora
 
 use esplora_client::TxStatus;
 use tdk_chain::{BlockId, ConfirmationTimeHeightAnchor};

@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, io::Write, str::FromStr};
 
-use bdk_esplora::{esplora_client, EsploraAsyncExt};
+use tdk_esplora::{esplora_client, EsploraAsyncExt};
 use bdk_wallet::{
     bitcoin::{Address, Amount, Network, Script},
     KeychainKind, SignOptions, Wallet,

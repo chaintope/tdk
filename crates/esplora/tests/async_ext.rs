@@ -1,13 +1,14 @@
-use bdk_esplora::EsploraAsyncExt;
 use esplora_client::{self, Builder};
 use std::collections::{BTreeSet, HashSet};
 use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
+use tdk_chain::tapyrus::hashes::sha256d::Hash;
+use tdk_esplora::EsploraAsyncExt;
 
-use tdk_chain::bitcoin::{Address, Amount, Txid};
-use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+use tdk_chain::tapyrus::{Address, Amount};
+use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
 #[tokio::test]
 pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
@@ -16,9 +17,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
     let client = Builder::new(base_url.as_str()).build_async()?;
 
     let receive_address0 =
-        Address::from_str("bcrt1qc6fweuf4xjvz4x3gx3t9e0fh4hvqyu2qw4wvxm")?.assume_checked();
+        Address::from_str("msPwSfjZLCc9iqwrik87k2HDe9tHwmeA1z")?.assume_checked();
     let receive_address1 =
-        Address::from_str("bcrt1qfjg5lv3dvc9az8patec8fjddrs4aqtauadnagr")?.assume_checked();
+        Address::from_str("mqcWNTwGXxUXPqbnSoVEv3u4R9GarTjuWu")?.assume_checked();
 
     let misc_spks = [
         receive_address0.script_pubkey(),
@@ -26,9 +27,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
     ];
 
     let _block_hashes = env.mine_blocks(101, None)?;
-    let txid1 = env.bitcoind.client.send_to_address(
+    let txid1 = env.tapyrusd.client.send_to_address(
         &receive_address1,
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,
@@ -36,9 +37,9 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         Some(1),
         None,
     )?;
-    let txid2 = env.bitcoind.client.send_to_address(
+    let txid2 = env.tapyrusd.client.send_to_address(
         &receive_address0,
-        Amount::from_sat(20000),
+        Amount::from_tap(20000),
         None,
         None,
         None,
@@ -83,11 +84,11 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         // floating txouts available from the transactions' previous outputs.
         let fee = graph_update.calculate_fee(&tx.tx).expect("Fee must exist");
 
-        // Retrieve the fee in the transaction data from `bitcoind`.
+        // Retrieve the fee in the transaction data from `tapyrusd`.
         let tx_fee = env
-            .bitcoind
+            .tapyrusd
             .client
-            .get_transaction(&tx.txid, None)
+            .get_transaction(&tx.malfix_txid().into(), None)
             .expect("Tx must exist")
             .fee
             .expect("Fee must exist")
@@ -99,9 +100,10 @@ pub async fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         assert_eq!(fee, tx_fee);
     }
 
-    let mut graph_update_txids: Vec<Txid> = graph_update.full_txs().map(|tx| tx.txid).collect();
+    let mut graph_update_txids: Vec<Hash> =
+        graph_update.full_txs().map(|tx| tx.malfix_txid()).collect();
     graph_update_txids.sort();
-    let mut expected_txids = vec![txid1, txid2];
+    let mut expected_txids: Vec<Hash> = vec![txid1.into(), txid2.into()];
     expected_txids.sort();
     assert_eq!(graph_update_txids, expected_txids);
     Ok(())
@@ -117,16 +119,16 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
 
     // Now let's test the gap limit. First of all get a chain of 10 addresses.
     let addresses = [
-        "bcrt1qj9f7r8r3p2y0sqf4r3r62qysmkuh0fzep473d2ar7rcz64wqvhssjgf0z4",
-        "bcrt1qmm5t0ch7vh2hryx9ctq3mswexcugqe4atkpkl2tetm8merqkthas3w7q30",
-        "bcrt1qut9p7ej7l7lhyvekj28xknn8gnugtym4d5qvnp5shrsr4nksmfqsmyn87g",
-        "bcrt1qqz0xtn3m235p2k96f5wa2dqukg6shxn9n3txe8arlrhjh5p744hsd957ww",
-        "bcrt1q9c0t62a8l6wfytmf2t9lfj35avadk3mm8g4p3l84tp6rl66m48sqrme7wu",
-        "bcrt1qkmh8yrk2v47cklt8dytk8f3ammcwa4q7dzattedzfhqzvfwwgyzsg59zrh",
-        "bcrt1qvgrsrzy07gjkkfr5luplt0azxtfwmwq5t62gum5jr7zwcvep2acs8hhnp2",
-        "bcrt1qw57edarcg50ansq8mk3guyrk78rk0fwvrds5xvqeupteu848zayq549av8",
-        "bcrt1qvtve5ekf6e5kzs68knvnt2phfw6a0yjqrlgat392m6zt9jsvyxhqfx67ef",
-        "bcrt1qw03ddumfs9z0kcu76ln7jrjfdwam20qtffmkcral3qtza90sp9kqm787uk",
+        "moJFccx4ytWRb3hxYo1P4osHjWYX4Y3dnp",
+        "msPwSfjZLCc9iqwrik87k2HDe9tHwmeA1z",
+        "mqcWNTwGXxUXPqbnSoVEv3u4R9GarTjuWu",
+        "mr841zpk9Em1yXfobiGouX6XersQMH5EvC",
+        "n44KCWj1Ky2LhHXtaNJvJWnusZmQjU5qS3",
+        "n1uRT3pj5Yg84sQ6An1VviperzU3HvYWUb",
+        "my4sjgY6n8dQP4YephfRJasNrwxq4NaFHM",
+        "mxHWh829yfR2aF6mQpMUmTXLccyKkbwLxo",
+        "mnLQL4BqzrM3hQWYpRGKgJkibKwUk9DoTn",
+        "mtywH6R52Vhs14QRJCBkxubyGvC3kBp5fi",
     ];
     let addresses: Vec<_> = addresses
         .into_iter()
@@ -139,9 +141,9 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
         .collect();
 
     // Then receive coins on the 4th address.
-    let txid_4th_addr = env.bitcoind.client.send_to_address(
+    let txid_4th_addr = env.tapyrusd.client.send_to_address(
         &addresses[3],
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,
@@ -177,15 +179,15 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
             .full_txs()
             .next()
             .unwrap()
-            .txid,
-        txid_4th_addr
+            .malfix_txid(),
+        txid_4th_addr.into()
     );
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
 
     // Now receive a coin on the last address.
-    let txid_last_addr = env.bitcoind.client.send_to_address(
+    let txid_last_addr = env.tapyrusd.client.send_to_address(
         &addresses[addresses.len() - 1],
-        Amount::from_sat(10000),
+        Amount::from_tap(10000),
         None,
         None,
         None,
@@ -205,26 +207,28 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
             FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
         client.full_scan(request, 5, 1).await?
     };
-    let txs: HashSet<_> = full_scan_update
+    let txs: HashSet<Hash> = full_scan_update
         .graph_update
         .full_txs()
-        .map(|tx| tx.txid)
+        .map(|tx| tx.malfix_txid())
         .collect();
     assert_eq!(txs.len(), 1);
-    assert!(txs.contains(&txid_4th_addr));
+    assert!(txs.contains::<Hash>(&txid_4th_addr.into()));
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
     let full_scan_update = {
         let request =
             FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
         client.full_scan(request, 6, 1).await?
     };
-    let txs: HashSet<_> = full_scan_update
+    let txs: HashSet<Hash> = full_scan_update
         .graph_update
         .full_txs()
-        .map(|tx| tx.txid)
+        .map(|tx| tx.malfix_txid())
         .collect();
     assert_eq!(txs.len(), 2);
-    assert!(txs.contains(&txid_4th_addr) && txs.contains(&txid_last_addr));
+    assert!(
+        txs.contains::<Hash>(&txid_4th_addr.into()) && txs.contains::<Hash>(&txid_last_addr.into())
+    );
     assert_eq!(full_scan_update.last_active_indices[&0], 9);
 
     Ok(())
