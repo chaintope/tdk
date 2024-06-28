@@ -580,13 +580,14 @@ impl Wallet {
         descriptor: E,
         change_descriptor: E,
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+        network: Network,
     ) -> Result<Self, NewOrLoadError> {
         let genesis_hash = mainnet_genesis_block().block_hash();
         Self::new_or_load_with_genesis_hash(
             descriptor,
             change_descriptor,
             db,
-            Network::Prod,
+            network,
             genesis_hash,
         )
     }
