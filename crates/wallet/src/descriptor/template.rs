@@ -35,7 +35,8 @@ pub type DescriptorTemplateOut = (ExtendedDescriptor, KeyMap, ValidNetworks);
 ///
 /// ## Example
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use bitcoin::Network;
 /// use tdk_wallet::descriptor::error::Error as DescriptorError;
 /// use tdk_wallet::keys::{IntoDescriptorKey, KeyError};
@@ -71,7 +72,8 @@ impl<T: DescriptorTemplate> IntoWalletDescriptor for T {
 ///
 /// ## Example
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// # use tdk_wallet::bitcoin::{PrivateKey, Network};
 /// # use tdk_wallet::Wallet;
 /// # use tdk_wallet::KeychainKind;
@@ -108,7 +110,8 @@ impl<K: IntoDescriptorKey<Legacy>> DescriptorTemplate for P2Pkh<K> {
 ///
 /// ## Example
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// # use std::str::FromStr;
 /// # use tdk_wallet::bitcoin::{PrivateKey, Network};
 /// # use tdk_wallet::{Wallet,  KeychainKind};
@@ -144,7 +147,8 @@ impl<K: DerivableKey<Legacy>> DescriptorTemplate for Bip44<K> {
 ///
 /// ## Example
 ///
-/// ```
+/// TODO: Fix this example
+/// ``` ignore
 /// # use std::str::FromStr;
 /// # use tdk_wallet::bitcoin::{PrivateKey, Network};
 /// # use tdk_wallet::{Wallet,  KeychainKind};

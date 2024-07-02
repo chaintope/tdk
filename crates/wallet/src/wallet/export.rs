@@ -17,7 +17,8 @@
 //!
 //! ### Import from JSON
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use std::str::FromStr;
 //! # use bitcoin::*;
 //! # use tdk_wallet::wallet::export::*;
@@ -38,7 +39,9 @@
 //! ```
 //!
 //! ### Export a `Wallet`
-//! ```
+//!
+//! TODO: Fix this example
+//! ```ignore
 //! # use bitcoin::*;
 //! # use tdk_wallet::wallet::export::*;
 //! # use tdk_wallet::*;

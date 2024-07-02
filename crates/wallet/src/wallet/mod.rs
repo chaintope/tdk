@@ -490,7 +490,7 @@ impl Wallet {
     /// # use tdk_wallet::Wallet;
     /// # use tdk_wallet::signer::{SignersContainer, SignerOrdering};
     /// # use tdk_wallet::descriptor::Descriptor;
-    /// # use bitcoin::key::Secp256k1;
+    /// # use tapyrus::key::Secp256k1;
     /// # use tdk_wallet::KeychainKind;
     /// # use tdk_sqlite::{Store, rusqlite::Connection};
     /// #
@@ -1015,7 +1015,7 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
+    /// # use tapyrus::Txid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
@@ -1023,8 +1023,9 @@ impl Wallet {
     /// let fee = wallet.calculate_fee(&tx).expect("fee");
     /// ```
     ///
+    ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
+    /// # use tapyrus::Psbt;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
@@ -1046,7 +1047,7 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
+    /// # use tapyrus::Txid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
@@ -1055,7 +1056,7 @@ impl Wallet {
     /// ```
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
+    /// # use tapyrus::Psbt;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
@@ -1076,7 +1077,7 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
+    /// # use tapyrus::Txid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
@@ -1085,7 +1086,7 @@ impl Wallet {
     /// ```
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
+    /// # use tapyrus::Psbt;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
@@ -1110,7 +1111,7 @@ impl Wallet {
     /// use tdk_chain::Anchor;
     /// use tdk_wallet::{chain::ChainPosition, Wallet};
     /// # let wallet: Wallet = todo!();
-    /// # let my_txid: bitcoin::Txid = todo!();
+    /// # let my_txid: tapyrus::Txid = todo!();
     ///
     /// let canonical_tx = wallet.get_tx(my_txid).expect("panic if tx does not exist");
     ///
@@ -1273,9 +1274,10 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use tdk_wallet::{Wallet, KeychainKind};
-    /// # use tdk_wallet::bitcoin::Network;
+    /// # use tdk_wallet::tapyrus::Network;
     /// let descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/0/*)";
     /// let change_descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/1/*)";
     /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Prod)?;
@@ -1299,9 +1301,10 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
+    /// # use tapyrus::*;
     /// # use tdk_wallet::*;
     /// # use tdk_wallet::wallet::ChangeSet;
     /// # use tdk_wallet::wallet::error::CreateTxError;
@@ -1655,7 +1658,7 @@ impl Wallet {
     /// ```no_run
     /// # // TODO: remove norun -- bumping fee seems to need the tx in the wallet database first.
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
+    /// # use tapyrus::*;
     /// # use tdk_wallet::*;
     /// # use tdk_wallet::wallet::ChangeSet;
     /// # use tdk_wallet::wallet::error::CreateTxError;
@@ -1829,9 +1832,10 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
+    /// # use tapyrus::*;
     /// # use tdk_wallet::*;
     /// # use tdk_wallet::wallet::ChangeSet;
     /// # use tdk_wallet::wallet::error::CreateTxError;

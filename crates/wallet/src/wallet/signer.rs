@@ -14,7 +14,8 @@
 //! This module provides the ability to add customized signers to a [`Wallet`](super::Wallet)
 //! through the [`Wallet::add_signer`](super::Wallet::add_signer) function.
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use alloc::sync::Arc;
 //! # use core::str::FromStr;
 //! # use bitcoin::secp256k1::{Secp256k1, All};

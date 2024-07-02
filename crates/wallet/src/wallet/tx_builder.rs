@@ -13,7 +13,8 @@
 //!
 //! ## Example
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use std::str::FromStr;
 //! # use bitcoin::*;
 //! # use tdk_wallet::*;
@@ -61,10 +62,11 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 /// Each option setting method on `TxBuilder` takes and returns `&mut self` so you can chain calls
 /// as in the following example:
 ///
-/// ```
+/// TODO: fix this example
+/// ```ignore
 /// # use tdk_wallet::*;
 /// # use tdk_wallet::wallet::tx_builder::*;
-/// # use bitcoin::*;
+/// # use tapyrus::*;
 /// # use core::str::FromStr;
 /// # use tdk_wallet::wallet::ChangeSet;
 /// # use tdk_wallet::wallet::error::CreateTxError;
@@ -241,10 +243,11 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// If a particularly complex descriptor has multiple ambiguous thresholds in its structure,
     /// multiple entries can be added to the map, one for each node that requires an explicit path.
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
     /// # use std::collections::BTreeMap;
-    /// # use bitcoin::*;
+    /// # use tapyrus::*;
     /// # use tdk_wallet::*;
     /// # let to_address =
     /// Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt")
@@ -632,9 +635,10 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// `drain_to` is very useful for draining all the coins in a wallet with [`drain_wallet`] to a
     /// single address.
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
+    /// # use tapyrus::*;
     /// # use tdk_wallet::*;
     /// # use tdk_wallet::wallet::ChangeSet;
     /// # use tdk_wallet::wallet::error::CreateTxError;

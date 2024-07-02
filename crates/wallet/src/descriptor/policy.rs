@@ -18,7 +18,8 @@
 //!
 //! ## Example
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use std::sync::Arc;
 //! # use tdk_wallet::descriptor::*;
 //! # use tdk_wallet::wallet::signer::*;

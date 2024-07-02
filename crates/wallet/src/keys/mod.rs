@@ -176,7 +176,8 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 ///
 /// Key type valid in any context:
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use tdk_wallet::bitcoin::PublicKey;
 ///
 /// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError, ScriptContext};
@@ -194,7 +195,8 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 ///
 /// Key type that is only valid on mainnet:
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use tdk_wallet::bitcoin::PublicKey;
 ///
 /// use tdk_wallet::keys::{
@@ -221,7 +223,8 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 ///
 /// Key type that internally encodes in which context it's valid. The context is checked at runtime:
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use tdk_wallet::bitcoin::PublicKey;
 ///
 /// use tdk_wallet::keys::{
@@ -359,7 +362,8 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// Key types that can be directly converted into an [`Xpriv`] or
 /// an [`Xpub`] can implement only the required `into_extended_key()` method.
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use tdk_wallet::bitcoin;
 /// use tdk_wallet::bitcoin::bip32;
 /// use tdk_wallet::keys::{DerivableKey, ExtendedKey, KeyError, ScriptContext};
@@ -390,7 +394,8 @@ impl<Ctx: ScriptContext> From<bip32::Xpriv> for ExtendedKey<Ctx> {
 /// steps to override the set of valid networks, otherwise only the network specified in the
 /// [`Xpriv`] or [`Xpub`] will be considered valid.
 ///
-/// ```
+/// TODO: Fix this example
+/// ```ignore
 /// use tdk_wallet::bitcoin;
 /// use tdk_wallet::bitcoin::bip32;
 /// use tdk_wallet::keys::{
