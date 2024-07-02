@@ -1478,10 +1478,7 @@ mod test {
             .unwrap()
             .address(Network::Dev)
             .unwrap();
-        assert_eq!(
-            "2NEpMggvo7JrnC4CKTVhD7N1abQ1hjxAEDx",
-            addr.to_string()
-        );
+        assert_eq!("2NEpMggvo7JrnC4CKTVhD7N1abQ1hjxAEDx", addr.to_string());
 
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
 
@@ -1543,10 +1540,7 @@ mod test {
             .unwrap()
             .address(Network::Dev)
             .unwrap();
-        assert_eq!(
-            "2NF44NAaMi1pgyFbyDtCaNvWvp3hefKFBbn",
-            addr.to_string()
-        );
+        assert_eq!("2NF44NAaMi1pgyFbyDtCaNvWvp3hefKFBbn", addr.to_string());
 
         let psbt = Psbt::from_str(PSBT_POLICY_CONSIDER_TIMELOCK_EXPIRED).unwrap();
 

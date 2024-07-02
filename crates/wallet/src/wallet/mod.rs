@@ -407,13 +407,7 @@ impl Wallet {
         network: Network,
     ) -> Result<Self, NewError> {
         let genesis_hash = mainnet_genesis_block().block_hash();
-        Self::new_with_genesis_hash(
-            descriptor,
-            change_descriptor,
-            db,
-            network,
-            genesis_hash,
-        )
+        Self::new_with_genesis_hash(descriptor, change_descriptor, db, network, genesis_hash)
     }
 
     /// Initialize an empty [`Wallet`].

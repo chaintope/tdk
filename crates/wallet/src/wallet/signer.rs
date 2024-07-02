@@ -454,9 +454,7 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         }
 
         let (hash, hash_ty) = match self.ctx {
-            SignerContext::Legacy => {
-                Legacy::sighash(psbt, input_index, ())?
-            }
+            SignerContext::Legacy => Legacy::sighash(psbt, input_index, ())?,
         };
         sign_psbt_ecdsa(
             &self.inner,

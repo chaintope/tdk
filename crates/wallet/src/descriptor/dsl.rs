@@ -954,10 +954,7 @@ mod test {
         let desc_key = (xprv, path).into_descriptor_key().unwrap();
 
         let (_desc, _key_map, valid_networks) = descriptor!(pkh(desc_key)).unwrap();
-        assert_eq!(
-            valid_networks,
-            [Dev].iter().cloned().collect()
-        );
+        assert_eq!(valid_networks, [Dev].iter().cloned().collect());
 
         let xprv = bip32::Xpriv::from_str("xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi").unwrap();
         let path = bip32::DerivationPath::from_str("m/10/20/30/40").unwrap();

@@ -153,8 +153,8 @@ fn new_or_load() -> anyhow::Result<()> {
         // init wallet when non-existent
         let wallet_keychains: BTreeMap<_, _> = {
             let db = new_or_load(&file_path).expect("must create db");
-            let wallet = Wallet::new_or_load(desc, change_desc, db, Network::Dev)
-                .expect("must init wallet");
+            let wallet =
+                Wallet::new_or_load(desc, change_desc, db, Network::Dev).expect("must init wallet");
             wallet.keychains().map(|(k, v)| (*k, v.clone())).collect()
         };
 
@@ -179,8 +179,7 @@ fn new_or_load() -> anyhow::Result<()> {
         // wrong genesis hash
         {
             let exp_blockhash = BlockHash::all_zeros();
-            let got_blockhash =
-                tapyrus::blockdata::constants::mainnet_genesis_block().block_hash();
+            let got_blockhash = tapyrus::blockdata::constants::mainnet_genesis_block().block_hash();
 
             let db = new_or_load(&file_path).expect("must open db");
             let err = Wallet::new_or_load_with_genesis_hash(
