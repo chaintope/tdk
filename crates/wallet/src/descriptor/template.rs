@@ -253,7 +253,7 @@ mod test {
     use core::str::FromStr;
 
     use super::*;
-    use crate::descriptor::{DescriptorError, DescriptorMeta};
+    use crate::descriptor::DescriptorError;
     use crate::keys::ValidNetworks;
     use assert_matches::assert_matches;
     use miniscript::descriptor::{DescriptorPublicKey, KeyMap};

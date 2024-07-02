@@ -206,7 +206,8 @@ impl FullyNodedExport {
 mod test {
     use core::str::FromStr;
 
-    use crate::std::string::ToString;
+    // use crate::std::string::ToString;
+    use crate::alloc::string::ToString;
     use tapyrus::hashes::Hash;
     use tapyrus::{transaction, BlockHash, Network, Transaction};
     use tdk_chain::{BlockId, ConfirmationTime};

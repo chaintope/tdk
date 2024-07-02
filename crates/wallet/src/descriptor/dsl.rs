@@ -768,7 +768,7 @@ mod test {
 
     use core::str::FromStr;
 
-    use crate::descriptor::{DescriptorError, DescriptorMeta};
+    use crate::descriptor::DescriptorError;
     use crate::keys::{DescriptorKey, IntoDescriptorKey, ValidNetworks};
     use tapyrus::bip32;
     use tapyrus::Network::{Dev, Prod};
@@ -779,7 +779,7 @@ mod test {
     // verify descriptor generates expected script(s) (if bare or pk) or address(es)
     fn check(
         desc: Result<(Descriptor<DescriptorPublicKey>, KeyMap, ValidNetworks), DescriptorError>,
-        is_witness: bool,
+        _is_witness: bool,
         is_fixed: bool,
         expected: &[&str],
     ) {

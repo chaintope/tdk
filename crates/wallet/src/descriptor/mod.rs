@@ -31,8 +31,6 @@ pub use miniscript::{
     Descriptor, DescriptorPublicKey, Legacy, Miniscript, ScriptContext, Segwitv0,
 };
 use miniscript::{ForEachKey, MiniscriptKey, TranslatePk};
-use tapyrus::consensus::serialize;
-use tapyrus::hex::DisplayHex;
 
 use crate::descriptor::policy::BuildSatisfaction;
 
