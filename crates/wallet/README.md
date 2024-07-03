@@ -102,7 +102,7 @@ fn main() {
 
 <!--     wallet.sync(&blockchain, SyncOptions::default())?; -->
 
-<!--     println!("Descriptor balance: {} SAT", wallet.balance()?); -->
+<!--     println!("Descriptor balance: {} SAT", wallet.balance(ColorIdentifier::default())?); -->
 
 <!--     Ok(()) -->
 <!-- } -->

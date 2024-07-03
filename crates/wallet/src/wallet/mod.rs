@@ -1238,7 +1238,12 @@ impl Wallet {
 
     /// Return the balance, separated into available, trusted-pending, untrusted-pending and immature
     /// values.
-    pub fn balance(&self) -> Balance {
+    pub fn balance(&self, color_id: ColorIdentifier) -> Balance {
+        let balances:HashMap<ColorIdentifier, Balance> = self.balances();
+        balances.get(color_id).unwrap().to_owned()
+    }
+
+    pub fn balances(&self) -> HashMap<ColorIdentifier, Balance> {
         self.indexed_graph.graph().balance(
             &self.chain,
             self.chain.tip().block_id(),

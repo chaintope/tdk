@@ -8,7 +8,8 @@ use std::{collections::BTreeSet, sync::Arc};
 use crate::common::DESCRIPTORS;
 use miniscript::Descriptor;
 use tapyrus::{
-    secp256k1::Secp256k1, Amount, OutPoint, Script, ScriptBuf, Transaction, TxIn, TxOut,
+    script::color_identifier::ColorIdentifier, secp256k1::Secp256k1, Amount, OutPoint, Script,
+    ScriptBuf, Transaction, TxIn, TxOut,
 };
 use tdk_chain::{
     indexed_tx_graph::{self, IndexedTxGraph},
@@ -265,12 +266,16 @@ fn test_list_owned_txouts() {
                 .filter_chain_unspents(&local_chain, chain_tip, graph.index.outpoints())
                 .collect::<Vec<_>>();
 
-            let balance = graph.graph().balance(
+            let balances = graph.graph().balance(
                 &local_chain,
                 chain_tip,
                 graph.index.outpoints(),
                 |_, spk: &Script| trusted_spks.contains(&spk.to_owned()),
             );
+            let balance = balances
+                .get(&ColorIdentifier::default())
+                .unwrap()
+                .to_owned();
 
             assert_eq!(txouts.len(), 5);
             assert_eq!(utxos.len(), 4);

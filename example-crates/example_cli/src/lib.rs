@@ -20,6 +20,7 @@ use tdk_chain::{
         descriptor::{DescriptorSecretKey, KeyMap},
         Descriptor, DescriptorPublicKey,
     },
+    tapyrus::script::color_identifier::ColorIdentifier,
     Anchor, Append, ChainOracle, DescriptorExt, FullTxOut,
 };
 pub use tdk_file_store;
@@ -520,11 +521,12 @@ where
             ) {
                 println!("{}:", title_str);
                 for (name, amount) in items.into_iter() {
-                    println!("    {:<10} {:>12} sats", name, amount.to_sat())
+                    println!("    {:<10} {:>12} taps", name, amount.to_tap())
                 }
             }
 
-            let balance = graph.graph().try_balance(
+            let color_id = ColorIdentifier::default();
+            let balances = graph.graph().try_balance(
                 chain,
                 chain.get_chain_tip()?,
                 graph.index.outpoints(),
@@ -534,22 +536,24 @@ where
             let confirmed_total = balance.confirmed + balance.immature;
             let unconfirmed_total = balance.untrusted_pending + balance.trusted_pending;
 
-            print_balances(
-                "confirmed",
-                [
-                    ("total", confirmed_total),
-                    ("spendable", balance.confirmed),
-                    ("immature", balance.immature),
-                ],
-            );
-            print_balances(
-                "unconfirmed",
-                [
-                    ("total", unconfirmed_total),
-                    ("trusted", balance.trusted_pending),
-                    ("untrusted", balance.untrusted_pending),
-                ],
-            );
+            for (color_id, balance) in balances.iter() {
+                print_balances(
+                    "confirmed",
+                    [
+                        ("total", confirmed_total),
+                        ("spendable", balance.confirmed),
+                        ("immature", balance.immature),
+                    ],
+                );
+                print_balances(
+                    "unconfirmed",
+                    [
+                        ("total", unconfirmed_total),
+                        ("trusted", balance.trusted_pending),
+                        ("untrusted", balance.untrusted_pending),
+                    ],
+                );
+            }
 
             Ok(())
         }

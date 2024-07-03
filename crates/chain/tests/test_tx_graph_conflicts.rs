@@ -6,7 +6,7 @@ mod common;
 use std::collections::{BTreeSet, HashSet};
 
 use common::*;
-use tapyrus::{Amount, OutPoint, Script};
+use tapyrus::{script::color_identifier::ColorIdentifier, Amount, OutPoint, Script};
 use tdk_chain::{keychain::Balance, BlockId};
 
 #[allow(dead_code)]
@@ -656,12 +656,16 @@ fn test_tx_conflict_handling() {
             scenario.name
         );
 
-        let balance = tx_graph.balance(
+        let balances = tx_graph.balance(
             &local_chain,
             chain_tip,
             spk_index.outpoints().iter().cloned(),
             |_, spk: &Script| spk_index.index_of_spk(spk).is_some(),
         );
+        let balance = balances
+            .get(&ColorIdentifier::default())
+            .unwrap()
+            .to_owned();
         assert_eq!(
             balance, scenario.exp_balance,
             "\n[{}] 'balance' failed",

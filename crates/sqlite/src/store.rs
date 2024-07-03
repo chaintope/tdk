@@ -365,13 +365,19 @@ impl<K, A> Store<K, A> {
     ) -> Result<(), Error> {
         for txout in tx_graph_changeset.graph.txouts.iter() {
             let insert_txout_stmt = &mut db_transaction
-                .prepare_cached("INSERT INTO txout (txid, vout, value, script) VALUES (:txid, :vout, :value, :script)")
+                .prepare_cached("INSERT INTO txout (txid, vout, value, script, color_id) VALUES (:txid, :vout, :value, :script, :color_id)")
                 .expect("insert txout statement");
             let txid = txout.0.txid.to_string();
             let vout = txout.0.vout;
             let value = txout.1.value.to_tap();
             let script = txout.1.script_pubkey.as_bytes();
-            insert_txout_stmt.execute(named_params! {":txid": txid, ":vout": vout, ":value": value, ":script": script })
+            let color_id = txout
+                .1
+                .script_pubkey
+                .color_id()
+                .unwrap_or_default()
+                .to_string();
+            insert_txout_stmt.execute(named_params! {":txid": txid, ":vout": vout, ":value": value, ":script": script, ":color_id": color_id})
                 .map_err(Error::Sqlite)?;
         }
         Ok(())

@@ -317,7 +317,7 @@ fn test_get_funded_wallet_balance() {
     // The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
     // to a foreign address and one returning 50_000 back to the wallet as change. The remaining 1000
     // sats are the transaction fee.
-    assert_eq!(wallet.balance().confirmed, Amount::from_tap(50_000));
+    assert_eq!(wallet.balance(ColorIdentifier::default()).confirmed, Amount::from_tap(50_000));
 }
 
 #[test]
@@ -3765,7 +3765,7 @@ fn test_spend_coinbase() {
     let not_yet_mature_time = confirmation_height + COINBASE_MATURITY - 1;
     let maturity_time = confirmation_height + COINBASE_MATURITY;
 
-    let balance = wallet.balance();
+    let balance = wallet.balance(ColorIdentifier::default());
     assert_eq!(
         balance,
         Balance {
@@ -3816,7 +3816,7 @@ fn test_spend_coinbase() {
             hash: BlockHash::all_zeros(),
         })
         .unwrap();
-    let balance = wallet.balance();
+    let balance = wallet.balance(ColorIdentifier::default());
     assert_eq!(
         balance,
         Balance {

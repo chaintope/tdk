@@ -4,6 +4,7 @@ use tdk_chain::{
     keychain::Balance,
     local_chain::LocalChain,
     spk_client::SyncRequest,
+    tapyrus::script::color_identifier::ColorIdentifier,
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
 use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
@@ -11,12 +12,14 @@ use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
 fn get_balance(
     recv_chain: &LocalChain,
     recv_graph: &IndexedTxGraph<ConfirmationTimeHeightAnchor, SpkTxOutIndex<()>>,
+    color_id: ColorIdentifier,
 ) -> anyhow::Result<Balance> {
     let chain_tip = recv_chain.tip().block_id();
     let outpoints = recv_graph.index.outpoints().clone();
-    let balance = recv_graph
+    let balances = recv_graph
         .graph()
         .balance(recv_chain, chain_tip, outpoints, |_, _| true);
+    let balance = balances.get(&color_id).unwrap().to_owned();
     Ok(balance)
 }
 
@@ -78,7 +81,7 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
 
     // Check to see if tx is confirmed.
     assert_eq!(
-        get_balance(&recv_chain, &recv_graph)?,
+        get_balance(&recv_chain, &recv_graph, ColorIdentifier::default())?,
         Balance {
             confirmed: SEND_AMOUNT,
             ..Balance::default()
@@ -173,7 +176,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
 
     // Check if initial balance is correct.
     assert_eq!(
-        get_balance(&recv_chain, &recv_graph)?,
+        get_balance(&recv_chain, &recv_graph, ColorIdentifier::default())?,
         Balance {
             confirmed: SEND_AMOUNT * REORG_COUNT as u64,
             ..Balance::default()
@@ -205,7 +208,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
         let _ = recv_graph.apply_update(update.graph_update);
 
         assert_eq!(
-            get_balance(&recv_chain, &recv_graph)?,
+            get_balance(&recv_chain, &recv_graph, ColorIdentifier::default())?,
             Balance {
                 confirmed: SEND_AMOUNT * (REORG_COUNT - depth) as u64,
                 trusted_pending: SEND_AMOUNT * depth as u64,
