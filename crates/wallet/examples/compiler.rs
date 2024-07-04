@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Parse the string as a [`Concrete`] type miniscript policy.
     let policy = Concrete::<String>::from_str(&policy_str)?;
 
-    // Create a `wsh` type descriptor from the policy.
+    // Create a `sh` type descriptor from the policy.
     // `policy.compile()` returns the resulting miniscript from the policy.
     let descriptor = Descriptor::new_sh(policy.compile()?)?.to_string();
 

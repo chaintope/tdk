@@ -181,7 +181,7 @@ impl FullyNodedExport {
                 ShInner::SortedMulti(_) => Ok(()),
                 ShInner::Ms(ms) => check_ms(&ms.node),
             },
-            _ => Err("The descriptor is not compatible with Bitcoin Core"),
+            _ => Err("The descriptor is not compatible with Tapyrus Core"),
         }
     }
 

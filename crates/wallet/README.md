@@ -90,7 +90,7 @@ fn main() {
 <!-- use tdk_wallet::blockchain::ElectrumBlockchain; -->
 <!-- use tdk_wallet::SyncOptions; -->
 <!-- use tdk_wallet::electrum_client::Client; -->
-<!-- use tdk_wallet::bitcoin::Network; -->
+<!-- use tdk_wallet::tapyrus::Network; -->
 
 <!-- fn main() -> Result<(), tdk_wallet::Error> { -->
 <!--     let blockchain = ElectrumBlockchain::from(Client::new("ssl://electrum.blockstream.info:60002")?); -->
@@ -112,7 +112,7 @@ fn main() {
 <!-- ```rust -->
 <!-- use tdk_wallet::Wallet; -->
 <!-- use tdk_wallet::wallet::AddressIndex::New; -->
-<!-- use tdk_wallet::bitcoin::Network; -->
+<!-- use tdk_wallet::tapyrus::Network; -->
 
 <!-- fn main() -> Result<(), tdk_wallet::Error> { -->
 <!--     let wallet = Wallet::new_no_persist( -->
@@ -138,9 +138,9 @@ fn main() {
 <!-- use tdk_wallet::electrum_client::Client; -->
 <!-- use tdk_wallet::wallet::AddressIndex::New; -->
 
-<!-- use bitcoin::base64; -->
-<!-- use tdk_wallet::bitcoin::consensus::serialize; -->
-<!-- use tdk_wallet::bitcoin::Network; -->
+<!-- use tapyrus::base64; -->
+<!-- use tdk_wallet::tapyrus::consensus::serialize; -->
+<!-- use tdk_wallet::tapyrus::Network; -->
 
 <!-- fn main() -> Result<(), tdk_wallet::Error> { -->
 <!--     let blockchain = ElectrumBlockchain::from(Client::new("ssl://electrum.blockstream.info:60002")?); -->
@@ -175,9 +175,9 @@ fn main() {
 <!-- ```rust,no_run -->
 <!-- use tdk_wallet::{Wallet, SignOptions}; -->
 
-<!-- use bitcoin::base64; -->
-<!-- use tdk_wallet::bitcoin::consensus::deserialize; -->
-<!-- use tdk_wallet::bitcoin::Network; -->
+<!-- use tapyrus::base64; -->
+<!-- use tdk_wallet::tapyrus::consensus::deserialize; -->
+<!-- use tdk_wallet::tapyrus::Network; -->
 
 <!-- fn main() -> Result<(), tdk_wallet::Error> { -->
 <!--     let wallet = Wallet::new_no_persist( -->

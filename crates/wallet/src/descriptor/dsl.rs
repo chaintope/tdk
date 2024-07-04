@@ -779,7 +779,6 @@ mod test {
     // verify descriptor generates expected script(s) (if bare or pk) or address(es)
     fn check(
         desc: Result<(Descriptor<DescriptorPublicKey>, KeyMap, ValidNetworks), DescriptorError>,
-        _is_witness: bool,
         is_fixed: bool,
         expected: &[&str],
     ) {
@@ -818,25 +817,21 @@ mod test {
 
         check(
             descriptor!(bare(multi(1,pubkey1,pubkey2))),
-            false,
             true,
             &["512103a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd21032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af52ae"],
         );
         check(
             descriptor!(pk(pubkey1)),
-            false,
             true,
             &["2103a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bdac"],
         );
         check(
             descriptor!(pkh(pubkey1)),
-            false,
             true,
             &["muZpTpBYhxmRFuCjLc7C6BBDF32C8XVJUi"],
         );
         check(
             descriptor!(sh(multi(1, pubkey1, pubkey2))),
-            false,
             true,
             &["2MymURoV1bzuMnWMGiXzyomDkeuxXY7Suey"],
         );
@@ -855,7 +850,6 @@ mod test {
 
         check(
             descriptor!(sh(and_or(pk(redeem_key), older(1000), pk(move_key)))),
-            false,
             true,
             &["2MxyMCxGYgkYDS3kDDqVjM1EqvF8Wfx6yDn"],
         );
@@ -870,7 +864,6 @@ mod test {
         check(
             descriptor!(pk(desc_key)),
             false,
-            false,
             &[
                 "2102363ad03c10024e1b597a5b01b9982807fb638e00b06f3b2d4a89707de3b93c37ac",
                 "2102063a21fd780df370ed2fc8c4b86aa5ea642630609c203009df631feb7b480dd2ac",
@@ -881,7 +874,6 @@ mod test {
         let desc_key = (xprv, path.clone()).into_descriptor_key().unwrap();
         check(
             descriptor!(pkh(desc_key)),
-            false,
             false,
             &[
                 "muvBdsVpJxpFuTHMKA47htJPdCvdt4F9DP",
@@ -896,7 +888,6 @@ mod test {
 
         check(
             descriptor!(sh(multi(1, desc_key1, desc_key2))),
-            false,
             false,
             &[
                 "2MtMDXsfwefZkEEhVViEPidvcKRUtJamJJ8",
@@ -920,7 +911,6 @@ mod test {
         check(
             descriptor!(sh(sortedmulti(1, desc_key1.clone(), desc_key2.clone()))),
             false,
-            false,
             &[
                 "2MsxzPEJDBzpGffJXPaDpfXZAUNnZhaMh2N",
                 "2My3x3DLPK3UbGWGpxrXr1RnbD8MNC4FpgS",
@@ -933,7 +923,6 @@ mod test {
 
         check(
             descriptor!(sh(sortedmulti_vec(1, vec![desc_key1, desc_key2]))),
-            false,
             false,
             &[
                 "2MsxzPEJDBzpGffJXPaDpfXZAUNnZhaMh2N",
