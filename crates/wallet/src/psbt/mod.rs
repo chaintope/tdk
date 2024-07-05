@@ -12,10 +12,10 @@
 //! Additional functions on the `rust-bitcoin` `Psbt` structure.
 
 use alloc::vec::Vec;
-use bitcoin::Amount;
-use bitcoin::FeeRate;
-use bitcoin::Psbt;
-use bitcoin::TxOut;
+use tapyrus::Amount;
+use tapyrus::FeeRate;
+use tapyrus::Psbt;
+use tapyrus::TxOut;
 
 // TODO upstream the functions here to `rust-bitcoin`?
 

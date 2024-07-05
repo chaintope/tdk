@@ -16,10 +16,10 @@ extern crate std;
 #[macro_use]
 pub extern crate alloc;
 
-pub extern crate bitcoin;
 pub extern crate miniscript;
 extern crate serde;
 extern crate serde_json;
+pub extern crate tapyrus;
 
 #[cfg(feature = "keys-bip39")]
 extern crate bip39;

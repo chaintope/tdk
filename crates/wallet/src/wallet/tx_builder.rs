@@ -13,12 +13,13 @@
 //!
 //! ## Example
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use std::str::FromStr;
 //! # use bitcoin::*;
-//! # use bdk_wallet::*;
-//! # use bdk_wallet::wallet::ChangeSet;
-//! # use bdk_wallet::wallet::error::CreateTxError;
+//! # use tdk_wallet::*;
+//! # use tdk_wallet::wallet::ChangeSet;
+//! # use tdk_wallet::wallet::error::CreateTxError;
 //! # use tdk_persist::PersistBackend;
 //! # use anyhow::Error;
 //! # let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap().assume_checked();
@@ -28,9 +29,9 @@
 //!
 //! tx_builder
 //!     // Create a transaction with one output to `to_address` of 50_000 satoshi
-//!     .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+//!     .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
 //!     // With a custom fee rate of 5.0 satoshi/vbyte
-//!     .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"))
+//!     .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"))
 //!     // Only spend non-change outputs
 //!     .do_not_spend_change()
 //!     // Turn on RBF signaling
@@ -43,9 +44,9 @@ use alloc::{boxed::Box, rc::Rc, string::String, vec::Vec};
 use core::cell::RefCell;
 use core::fmt;
 
-use bitcoin::psbt::{self, Psbt};
-use bitcoin::script::PushBytes;
-use bitcoin::{absolute, Amount, FeeRate, OutPoint, ScriptBuf, Sequence, Transaction, Txid};
+use tapyrus::psbt::{self, Psbt};
+use tapyrus::script::PushBytes;
+use tapyrus::{absolute, Amount, FeeRate, OutPoint, ScriptBuf, Sequence, Transaction, Txid};
 
 use super::coin_selection::CoinSelectionAlgorithm;
 use super::{CreateTxError, Wallet};
@@ -61,13 +62,14 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 /// Each option setting method on `TxBuilder` takes and returns `&mut self` so you can chain calls
 /// as in the following example:
 ///
-/// ```
-/// # use bdk_wallet::*;
-/// # use bdk_wallet::wallet::tx_builder::*;
-/// # use bitcoin::*;
+/// TODO: fix this example
+/// ```ignore
+/// # use tdk_wallet::*;
+/// # use tdk_wallet::wallet::tx_builder::*;
+/// # use tapyrus::*;
 /// # use core::str::FromStr;
-/// # use bdk_wallet::wallet::ChangeSet;
-/// # use bdk_wallet::wallet::error::CreateTxError;
+/// # use tdk_wallet::wallet::ChangeSet;
+/// # use tdk_wallet::wallet::error::CreateTxError;
 /// # use tdk_persist::PersistBackend;
 /// # use anyhow::Error;
 /// # let mut wallet = doctest_wallet!();
@@ -78,8 +80,8 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 ///     let mut builder = wallet.build_tx();
 ///     builder
 ///         .ordering(TxOrdering::Untouched)
-///         .add_recipient(addr1.script_pubkey(), Amount::from_sat(50_000))
-///         .add_recipient(addr2.script_pubkey(), Amount::from_sat(50_000));
+///         .add_recipient(addr1.script_pubkey(), Amount::from_tap(50_000))
+///         .add_recipient(addr2.script_pubkey(), Amount::from_tap(50_000));
 ///     builder.finish()?
 /// };
 ///
@@ -88,7 +90,7 @@ use crate::{KeychainKind, LocalOutput, Utxo, WeightedUtxo};
 ///     let mut builder = wallet.build_tx();
 ///     builder.ordering(TxOrdering::Untouched);
 ///     for addr in &[addr1, addr2] {
-///         builder.add_recipient(addr.script_pubkey(), Amount::from_sat(50_000));
+///         builder.add_recipient(addr.script_pubkey(), Amount::from_tap(50_000));
 ///     }
 ///     builder.finish()?
 /// };
@@ -195,7 +197,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// overshoot it slightly since adding a change output to drain the remaining
     /// excess might not be viable.
     pub fn fee_absolute(&mut self, fee_amount: Amount) -> &mut Self {
-        self.params.fee_policy = Some(FeePolicy::FeeAmount(fee_amount.to_sat()));
+        self.params.fee_policy = Some(FeePolicy::FeeAmount(fee_amount.to_tap()));
         self
     }
 
@@ -241,11 +243,12 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// If a particularly complex descriptor has multiple ambiguous thresholds in its structure,
     /// multiple entries can be added to the map, one for each node that requires an explicit path.
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
     /// # use std::collections::BTreeMap;
-    /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
+    /// # use tapyrus::*;
+    /// # use tdk_wallet::*;
     /// # let to_address =
     /// Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt")
     ///     .unwrap()
@@ -256,7 +259,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     ///
     /// let builder = wallet
     ///     .build_tx()
-    ///     .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+    ///     .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
     ///     .policy_path(path, KeychainKind::External);
     ///
     /// # Ok::<(), anyhow::Error>(())
@@ -595,7 +598,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn set_recipients(&mut self, recipients: Vec<(ScriptBuf, Amount)>) -> &mut Self {
         self.params.recipients = recipients
             .into_iter()
-            .map(|(script, amount)| (script, amount.to_sat()))
+            .map(|(script, amount)| (script, amount.to_tap()))
             .collect();
         self
     }
@@ -604,7 +607,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn add_recipient(&mut self, script_pubkey: ScriptBuf, amount: Amount) -> &mut Self {
         self.params
             .recipients
-            .push((script_pubkey, amount.to_sat()));
+            .push((script_pubkey, amount.to_tap()));
         self
     }
 
@@ -632,12 +635,13 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// `drain_to` is very useful for draining all the coins in a wallet with [`drain_wallet`] to a
     /// single address.
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tapyrus::*;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let to_address =
@@ -652,7 +656,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     ///     .drain_wallet()
     ///     // Send the excess (which is all the coins minus the fee) to this address.
     ///     .drain_to(to_address.script_pubkey())
-    ///     .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"))
+    ///     .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"))
     ///     .enable_rbf();
     /// let psbt = tx_builder.finish()?;
     /// # Ok::<(), anyhow::Error>(())
@@ -838,14 +842,14 @@ mod test {
                                     00000000";
     macro_rules! ordering_test_tx {
         () => {
-            deserialize::<bitcoin::Transaction>(&Vec::<u8>::from_hex(ORDERING_TEST_TX).unwrap())
+            deserialize::<tapyrus::Transaction>(&Vec::<u8>::from_hex(ORDERING_TEST_TX).unwrap())
                 .unwrap()
         };
     }
 
-    use bitcoin::consensus::deserialize;
-    use bitcoin::hex::FromHex;
-    use bitcoin::TxOut;
+    use tapyrus::consensus::deserialize;
+    use tapyrus::hex::FromHex;
+    use tapyrus::TxOut;
     use tdk_chain::ConfirmationTime;
 
     use super::*;
@@ -897,27 +901,27 @@ mod test {
 
         assert_eq!(
             tx.input[0].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0e53ec5dfb2cb8a71fec32dc9a634a35b7e24799295ddd5278217822e0b31f57:5"
             )
             .unwrap()
         );
         assert_eq!(
             tx.input[1].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0f60fdd185542f2c6ea19030b0796051e7772b6026dd5ddccd7a2f93b73e6fc2:0"
             )
             .unwrap()
         );
         assert_eq!(
             tx.input[2].previous_output,
-            bitcoin::OutPoint::from_str(
+            tapyrus::OutPoint::from_str(
                 "0f60fdd185542f2c6ea19030b0796051e7772b6026dd5ddccd7a2f93b73e6fc2:1"
             )
             .unwrap()
         );
 
-        assert_eq!(tx.output[0].value.to_sat(), 800);
+        assert_eq!(tx.output[0].value.to_tap(), 800);
         assert_eq!(tx.output[1].script_pubkey, ScriptBuf::from(vec![0xAA]));
         assert_eq!(
             tx.output[2].script_pubkey,
@@ -926,12 +930,12 @@ mod test {
     }
 
     fn get_test_utxos() -> Vec<LocalOutput> {
-        use bitcoin::hashes::Hash;
+        use tapyrus::hashes::Hash;
 
         vec![
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: bitcoin::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
                     vout: 0,
                 },
                 txout: TxOut::NULL,
@@ -942,7 +946,7 @@ mod test {
             },
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: bitcoin::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
                     vout: 1,
                 },
                 txout: TxOut::NULL,

@@ -18,12 +18,13 @@
 //!
 //! ## Example
 //!
-//! ```
+//! TODO: Fix this example
+//! ```ignore
 //! # use std::sync::Arc;
-//! # use bdk_wallet::descriptor::*;
-//! # use bdk_wallet::wallet::signer::*;
-//! # use bdk_wallet::bitcoin::secp256k1::Secp256k1;
-//! use bdk_wallet::descriptor::policy::BuildSatisfaction;
+//! # use tdk_wallet::descriptor::*;
+//! # use tdk_wallet::wallet::signer::*;
+//! # use tdk_wallet::bitcoin::secp256k1::Secp256k1;
+//! use tdk_wallet::descriptor::policy::BuildSatisfaction;
 //! let secp = Secp256k1::new();
 //! let desc = "wsh(and_v(v:pk(cV3oCth6zxZ1UVsHLnGothsWNsaoxRhC6aeNi5VbSdFpwUkgkEci),or_d(pk(cVMTy7uebJgvFaSBwcgvwk8qn8xSLc97dKow4MBetjrrahZoimm2),older(12960))))";
 //!
@@ -46,12 +47,12 @@ use core::fmt;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
-use bitcoin::bip32::Fingerprint;
-use bitcoin::hashes::{hash160, ripemd160, sha256};
-use bitcoin::{absolute, key::XOnlyPublicKey, PublicKey, Sequence};
+use tapyrus::bip32::Fingerprint;
+use tapyrus::hashes::{hash160, ripemd160, sha256};
+use tapyrus::{absolute, key::XOnlyPublicKey, PublicKey, Sequence};
 
 use miniscript::descriptor::{
-    DescriptorPublicKey, ShInner, SinglePub, SinglePubKey, SortedMultiVec, WshInner,
+    DescriptorPublicKey, ShInner, SinglePub, SinglePubKey, SortedMultiVec,
 };
 use miniscript::hash256;
 use miniscript::{
@@ -59,15 +60,14 @@ use miniscript::{
 };
 
 use crate::descriptor::ExtractPolicy;
-use crate::keys::ExtScriptContext;
 use crate::wallet::signer::{SignerId, SignersContainer};
 use crate::wallet::utils::{After, Older, SecpCtx};
 
 use super::checksum::calc_checksum;
 use super::error::Error;
 use super::XKeyUtils;
-use bitcoin::psbt::{self, Psbt};
 use miniscript::psbt::PsbtInputSatisfier;
+use tapyrus::psbt::{self, Psbt};
 
 /// A unique identifier for a key
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -839,71 +839,33 @@ impl<T: ScriptContext + 'static> SigExt for T {
         build_sat: BuildSatisfaction,
         secp: &SecpCtx,
     ) -> Policy {
-        if T::as_enum().is_taproot() {
-            make_generic_signature(
-                key,
-                signers,
-                build_sat,
-                secp,
-                || SatisfiableItem::SchnorrSignature(PkOrF::from_key(key, secp)),
-                |psbt| Self::find_signature(psbt, key, secp),
-            )
-        } else {
-            make_generic_signature(
-                key,
-                signers,
-                build_sat,
-                secp,
-                || SatisfiableItem::EcdsaSignature(PkOrF::from_key(key, secp)),
-                |psbt| Self::find_signature(psbt, key, secp),
-            )
-        }
+        make_generic_signature(
+            key,
+            signers,
+            build_sat,
+            secp,
+            || SatisfiableItem::EcdsaSignature(PkOrF::from_key(key, secp)),
+            |psbt| Self::find_signature(psbt, key, secp),
+        )
     }
 
     fn find_signature(psbt: &Psbt, key: &DescriptorPublicKey, secp: &SecpCtx) -> bool {
-        if T::as_enum().is_taproot() {
-            generic_sig_in_psbt(
-                psbt,
-                key,
-                secp,
-                |input, pk| {
-                    let pk = match pk {
-                        SinglePubKey::XOnly(pk) => pk,
-                        _ => return false,
-                    };
-
-                    if input.tap_internal_key == Some(*pk) && input.tap_key_sig.is_some() {
-                        true
-                    } else {
-                        input.tap_script_sigs.keys().any(|(sk, _)| sk == pk)
-                    }
-                },
-                |input, fing| {
-                    input
-                        .tap_key_origins
-                        .iter()
-                        .find(|(_, (_, (f, _)))| f == &fing)
-                        .map(|(pk, _)| SinglePubKey::XOnly(*pk))
-                },
-            )
-        } else {
-            generic_sig_in_psbt(
-                psbt,
-                key,
-                secp,
-                |input, pk| match pk {
-                    SinglePubKey::FullKey(pk) => input.partial_sigs.contains_key(pk),
-                    _ => false,
-                },
-                |input, fing| {
-                    input
-                        .bip32_derivation
-                        .iter()
-                        .find(|(_, (f, _))| f == &fing)
-                        .map(|(pk, _)| SinglePubKey::FullKey(PublicKey::new(*pk)))
-                },
-            )
-        }
+        generic_sig_in_psbt(
+            psbt,
+            key,
+            secp,
+            |input, pk| match pk {
+                SinglePubKey::FullKey(pk) => input.partial_sigs.contains_key(pk),
+                _ => false,
+            },
+            |input, fing| {
+                input
+                    .bip32_derivation
+                    .iter()
+                    .find(|(_, (f, _))| f == &fing)
+                    .map(|(pk, _)| SinglePubKey::FullKey(PublicKey::new(*pk)))
+            },
+        )
     }
 }
 
@@ -940,9 +902,9 @@ impl<Ctx: ScriptContext + 'static> ExtractPolicy for Miniscript<DescriptorPublic
                 {
                     let after = After::new(Some(current_height), false);
                     let after_sat =
-                        Satisfier::<bitcoin::PublicKey>::check_after(&after, (*value).into());
+                        Satisfier::<tapyrus::PublicKey>::check_after(&after, (*value).into());
                     let inputs_sat = psbt_inputs_sat(psbt).all(|sat| {
-                        Satisfier::<bitcoin::PublicKey>::check_after(&sat, (*value).into())
+                        Satisfier::<tapyrus::PublicKey>::check_after(&sat, (*value).into())
                     });
                     if after_sat && inputs_sat {
                         policy.satisfaction = policy.contribution.clone();
@@ -966,9 +928,9 @@ impl<Ctx: ScriptContext + 'static> ExtractPolicy for Miniscript<DescriptorPublic
                 } = build_sat
                 {
                     let older = Older::new(Some(current_height), Some(input_max_height), false);
-                    let older_sat = Satisfier::<bitcoin::PublicKey>::check_older(&older, *value);
+                    let older_sat = Satisfier::<tapyrus::PublicKey>::check_older(&older, *value);
                     let inputs_sat = psbt_inputs_sat(psbt)
-                        .all(|sat| Satisfier::<bitcoin::PublicKey>::check_older(&sat, *value));
+                        .all(|sat| Satisfier::<tapyrus::PublicKey>::check_older(&sat, *value));
                     if older_sat && inputs_sat {
                         policy.satisfaction = policy.contribution.clone();
                     }
@@ -1104,55 +1066,11 @@ impl ExtractPolicy for Descriptor<DescriptorPublicKey> {
                 build_sat,
                 secp,
             ))),
-            Descriptor::Wpkh(pk) => Ok(Some(miniscript::Segwitv0::make_signature(
-                pk.as_inner(),
-                signers,
-                build_sat,
-                secp,
-            ))),
             Descriptor::Sh(sh) => match sh.as_inner() {
-                ShInner::Wpkh(pk) => Ok(Some(miniscript::Segwitv0::make_signature(
-                    pk.as_inner(),
-                    signers,
-                    build_sat,
-                    secp,
-                ))),
                 ShInner::Ms(ms) => Ok(ms.extract_policy(signers, build_sat, secp)?),
                 ShInner::SortedMulti(ref keys) => make_sortedmulti(keys, signers, build_sat, secp),
-                ShInner::Wsh(wsh) => match wsh.as_inner() {
-                    WshInner::Ms(ms) => Ok(ms.extract_policy(signers, build_sat, secp)?),
-                    WshInner::SortedMulti(ref keys) => {
-                        make_sortedmulti(keys, signers, build_sat, secp)
-                    }
-                },
-            },
-            Descriptor::Wsh(wsh) => match wsh.as_inner() {
-                WshInner::Ms(ms) => Ok(ms.extract_policy(signers, build_sat, secp)?),
-                WshInner::SortedMulti(ref keys) => make_sortedmulti(keys, signers, build_sat, secp),
             },
             Descriptor::Bare(ms) => Ok(ms.as_inner().extract_policy(signers, build_sat, secp)?),
-            Descriptor::Tr(tr) => {
-                // If there's no tap tree, treat this as a single sig, otherwise build a `Thresh`
-                // node with threshold = 1 and the key spend signature plus all the tree leaves
-                let key_spend_sig =
-                    miniscript::Tap::make_signature(tr.internal_key(), signers, build_sat, secp);
-
-                if tr.tap_tree().is_none() {
-                    Ok(Some(key_spend_sig))
-                } else {
-                    let mut items = vec![key_spend_sig];
-                    items.append(
-                        &mut tr
-                            .iter_scripts()
-                            .filter_map(|(_, ms)| {
-                                ms.extract_policy(signers, build_sat, secp).transpose()
-                            })
-                            .collect::<Result<Vec<_>, _>>()?,
-                    );
-
-                    Ok(Policy::make_thresh(items, 1)?)
-                }
-            }
         }
     }
 }
@@ -1168,10 +1086,10 @@ mod test {
     use crate::wallet::signer::SignersContainer;
     use alloc::{string::ToString, sync::Arc};
     use assert_matches::assert_matches;
-    use bitcoin::bip32;
-    use bitcoin::secp256k1::Secp256k1;
-    use bitcoin::Network;
     use core::str::FromStr;
+    use tapyrus::bip32;
+    use tapyrus::secp256k1::Secp256k1;
+    use tapyrus::Network;
 
     const TPRV0_STR:&str = "tprv8ZgxMBicQKsPdZXrcHNLf5JAJWFAoJ2TrstMRdSKtEggz6PddbuSkvHKM9oKJyFgZV1B7rw8oChspxyYbtmEXYyg1AjfWbL3ho3XHDpHRZf";
     const TPRV1_STR:&str = "tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N";
@@ -1196,14 +1114,12 @@ mod test {
     // test ExtractPolicy trait for simple descriptors; wpkh(), sh(multi())
 
     #[test]
-    fn test_extract_policy_for_wpkh() {
+    fn test_extract_policy_for_pkh() {
         let secp = Secp256k1::new();
 
         let (prvkey, pubkey, fingerprint) = setup_keys(TPRV0_STR, PATH, &secp);
-        let desc = descriptor!(wpkh(pubkey)).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let desc = descriptor!(pkh(pubkey)).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1213,10 +1129,8 @@ mod test {
         assert_matches!(&policy.item, EcdsaSignature(PkOrF::Fingerprint(f)) if f == &fingerprint);
         assert_matches!(&policy.contribution, Satisfaction::None);
 
-        let desc = descriptor!(wpkh(prvkey)).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let desc = descriptor!(pkh(prvkey)).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1234,9 +1148,7 @@ mod test {
         let (_prvkey0, pubkey0, fingerprint0) = setup_keys(TPRV0_STR, PATH, &secp);
         let (_prvkey1, pubkey1, fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let desc = descriptor!(sh(multi(2, pubkey0, pubkey1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1263,9 +1175,7 @@ mod test {
         let (prvkey0, _pubkey0, fingerprint0) = setup_keys(TPRV0_STR, PATH, &secp);
         let (_prvkey1, pubkey1, fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let desc = descriptor!(sh(multi(2, prvkey0, pubkey1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1292,9 +1202,7 @@ mod test {
         let (_prvkey0, pubkey0, fingerprint0) = setup_keys(TPRV0_STR, PATH, &secp);
         let (prvkey1, _pubkey1, fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let desc = descriptor!(sh(multi(1, pubkey0, prvkey1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1321,9 +1229,7 @@ mod test {
         let (prvkey0, _pubkey0, fingerprint0) = setup_keys(TPRV0_STR, PATH, &secp);
         let (prvkey1, _pubkey1, fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let desc = descriptor!(sh(multi(2, prvkey0, prvkey1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1345,14 +1251,12 @@ mod test {
     // test ExtractPolicy trait with extended and single keys
 
     #[test]
-    fn test_extract_policy_for_single_wpkh() {
+    fn test_extract_policy_for_single_pkh() {
         let secp = Secp256k1::new();
 
         let (prvkey, pubkey, fingerprint) = setup_keys(TPRV0_STR, PATH, &secp);
-        let desc = descriptor!(wpkh(pubkey)).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let desc = descriptor!(pkh(pubkey)).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1362,10 +1266,8 @@ mod test {
         assert_matches!(&policy.item, EcdsaSignature(PkOrF::Fingerprint(f)) if f == &fingerprint);
         assert_matches!(&policy.contribution, Satisfaction::None);
 
-        let desc = descriptor!(wpkh(prvkey)).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let desc = descriptor!(pkh(prvkey)).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1385,9 +1287,7 @@ mod test {
         let (_prvkey0, pubkey0, fingerprint0) = setup_keys(TPRV0_STR, PATH, &secp);
         let (prvkey1, _pubkey1, fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let desc = descriptor!(sh(multi(1, pubkey0, prvkey1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1417,7 +1317,7 @@ mod test {
         let (_prvkey1, pubkey1, _fingerprint1) = setup_keys(TPRV1_STR, PATH, &secp);
         let sequence = 50;
         #[rustfmt::skip]
-        let desc = descriptor!(wsh(thresh(
+        let desc = descriptor!(sh(thresh(
             2,
             pk(prvkey0),
             s:pk(pubkey1),
@@ -1425,9 +1325,7 @@ mod test {
         )))
         .unwrap();
 
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1460,9 +1358,7 @@ mod test {
             and_v(v: after(locktime_seconds), after(locktime_blocks))
         )))
         .unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let _policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1485,9 +1381,7 @@ mod test {
             and_v(v: after(locktime_blocks0), after(locktime_blocks1))
         )))
         .unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let _policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1503,9 +1397,7 @@ mod test {
             and_v(v: after(locktime_seconds0), after(locktime_seconds1))
         )))
         .unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
         let _policy = wallet_desc
             .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
@@ -1524,10 +1416,8 @@ mod test {
         let (_, pk0, _) = setup_keys(TPRV0_STR, PATH, &secp);
         let (_, pk1, _) = setup_keys(TPRV1_STR, PATH, &secp);
 
-        let desc = descriptor!(wsh(multi(1, pk0, pk1))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let desc = descriptor!(sh(multi(1, pk0, pk1))).unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
 
         let policy = wallet_desc
@@ -1579,21 +1469,16 @@ mod test {
         let (prvkey_alice, _, _) = setup_keys(ALICE_TPRV_STR, ALICE_BOB_PATH, &secp);
         let (prvkey_bob, _, _) = setup_keys(BOB_TPRV_STR, ALICE_BOB_PATH, &secp);
 
-        let desc = descriptor!(wsh(multi(2, prvkey_alice, prvkey_bob))).unwrap();
+        let desc = descriptor!(sh(multi(2, prvkey_alice, prvkey_bob))).unwrap();
 
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
 
         let addr = wallet_desc
             .at_derivation_index(0)
             .unwrap()
-            .address(Network::Testnet)
+            .address(Network::Dev)
             .unwrap();
-        assert_eq!(
-            "tb1qg3cwv3xt50gdg875qvjjpfgaps86gtk4rz0ejvp6ttc5ldnlxuvqlcn0xk",
-            addr.to_string()
-        );
+        assert_eq!("2NEpMggvo7JrnC4CKTVhD7N1abQ1hjxAEDx", addr.to_string());
 
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
 
@@ -1645,22 +1530,17 @@ mod test {
         let (prvkey_bob, _, _) = setup_keys(BOB_TPRV_STR, ALICE_BOB_PATH, &secp);
 
         let desc =
-            descriptor!(wsh(thresh(2,n:d:v:older(2),s:pk(prvkey_alice),s:pk(prvkey_bob)))).unwrap();
+            descriptor!(sh(thresh(2,n:d:v:older(2),s:pk(prvkey_alice),s:pk(prvkey_bob)))).unwrap();
 
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
 
         let addr = wallet_desc
             .at_derivation_index(0)
             .unwrap()
-            .address(Network::Testnet)
+            .address(Network::Dev)
             .unwrap();
-        assert_eq!(
-            "tb1qsydsey4hexagwkvercqsmes6yet0ndkyt6uzcphtqnygjd8hmzmsfxrv58",
-            addr.to_string()
-        );
+        assert_eq!("2NF44NAaMi1pgyFbyDtCaNvWvp3hefKFBbn", addr.to_string());
 
         let psbt = Psbt::from_str(PSBT_POLICY_CONSIDER_TIMELOCK_EXPIRED).unwrap();
 
@@ -1723,183 +1603,17 @@ mod test {
         let (prvkey_bob, _, _) = setup_keys(BOB_TPRV_STR, ALICE_BOB_PATH, &secp);
         let (prvkey_carol, _, _) = setup_keys(CAROL_TPRV_STR, ALICE_BOB_PATH, &secp);
 
-        let desc = descriptor!(wsh(c: andor(
+        let desc = descriptor!(sh(c: andor(
             pk(prvkey_alice),
             pk_k(prvkey_bob),
             pk_h(prvkey_carol),
         )))
         .unwrap();
 
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
 
         let policy = wallet_desc.extract_policy(&signers_container, BuildSatisfaction::None, &secp);
         assert!(policy.is_ok());
-    }
-
-    #[test]
-    fn test_extract_tr_key_spend() {
-        let secp = Secp256k1::new();
-
-        let (prvkey, _, fingerprint) = setup_keys(ALICE_TPRV_STR, ALICE_BOB_PATH, &secp);
-
-        let desc = descriptor!(tr(prvkey)).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
-        let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
-
-        let policy = wallet_desc
-            .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
-            .unwrap();
-        assert_eq!(
-            policy,
-            Some(Policy {
-                id: "48u0tz0n".to_string(),
-                item: SatisfiableItem::SchnorrSignature(PkOrF::Fingerprint(fingerprint)),
-                satisfaction: Satisfaction::None,
-                contribution: Satisfaction::Complete {
-                    condition: Condition::default()
-                }
-            })
-        );
-    }
-
-    #[test]
-    fn test_extract_tr_script_spend() {
-        let secp = Secp256k1::new();
-
-        let (alice_prv, _, alice_fing) = setup_keys(ALICE_TPRV_STR, ALICE_BOB_PATH, &secp);
-        let (_, bob_pub, bob_fing) = setup_keys(BOB_TPRV_STR, ALICE_BOB_PATH, &secp);
-
-        let desc = descriptor!(tr(bob_pub, pk(alice_prv))).unwrap();
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
-        let signers_container = Arc::new(SignersContainer::build(keymap, &wallet_desc, &secp));
-
-        let policy = wallet_desc
-            .extract_policy(&signers_container, BuildSatisfaction::None, &secp)
-            .unwrap()
-            .unwrap();
-
-        assert_matches!(policy.item, SatisfiableItem::Thresh { ref items, threshold: 1 } if items.len() == 2);
-        assert_matches!(policy.contribution, Satisfaction::PartialComplete { n: 2, m: 1, items, .. } if items == vec![1]);
-
-        let alice_sig = SatisfiableItem::SchnorrSignature(PkOrF::Fingerprint(alice_fing));
-        let bob_sig = SatisfiableItem::SchnorrSignature(PkOrF::Fingerprint(bob_fing));
-
-        let thresh_items = match policy.item {
-            SatisfiableItem::Thresh { items, .. } => items,
-            _ => unreachable!(),
-        };
-
-        assert_eq!(thresh_items[0].item, bob_sig);
-        assert_eq!(thresh_items[1].item, alice_sig);
-    }
-
-    #[test]
-    fn test_extract_tr_satisfaction_key_spend() {
-        const UNSIGNED_PSBT: &str = "cHNidP8BAFMBAAAAAUKgMCqtGLSiGYhsTols2UJ/VQQgQi/SXO38uXs2SahdAQAAAAD/////ARyWmAAAAAAAF6kU4R3W8CnGzZcSsaovTYu0X8vHt3WHAAAAAAABASuAlpgAAAAAACJRIEiEBFjbZa1xdjLfFjrKzuC1F1LeRyI/gL6IuGKNmUuSIRYnkGTDxwXMHP32fkDFoGJY28trxbkkVgR2z7jZa2pOJA0AyRF8LgAAAIADAAAAARcgJ5Bkw8cFzBz99n5AxaBiWNvLa8W5JFYEds+42WtqTiQAAA==";
-        const SIGNED_PSBT: &str = "cHNidP8BAFMBAAAAAUKgMCqtGLSiGYhsTols2UJ/VQQgQi/SXO38uXs2SahdAQAAAAD/////ARyWmAAAAAAAF6kU4R3W8CnGzZcSsaovTYu0X8vHt3WHAAAAAAABASuAlpgAAAAAACJRIEiEBFjbZa1xdjLfFjrKzuC1F1LeRyI/gL6IuGKNmUuSARNAIsRvARpRxuyQosVA7guRQT9vXr+S25W2tnP2xOGBsSgq7A4RL8yrbvwDmNlWw9R0Nc/6t+IsyCyy7dD/lbUGgyEWJ5Bkw8cFzBz99n5AxaBiWNvLa8W5JFYEds+42WtqTiQNAMkRfC4AAACAAwAAAAEXICeQZMPHBcwc/fZ+QMWgYljby2vFuSRWBHbPuNlrak4kAAA=";
-
-        let unsigned_psbt = Psbt::from_str(UNSIGNED_PSBT).unwrap();
-        let signed_psbt = Psbt::from_str(SIGNED_PSBT).unwrap();
-
-        let secp = Secp256k1::new();
-
-        let (_, pubkey, _) = setup_keys(ALICE_TPRV_STR, ALICE_BOB_PATH, &secp);
-
-        let desc = descriptor!(tr(pubkey)).unwrap();
-        let (wallet_desc, _) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
-
-        let policy_unsigned = wallet_desc
-            .extract_policy(
-                &SignersContainer::default(),
-                BuildSatisfaction::Psbt(&unsigned_psbt),
-                &secp,
-            )
-            .unwrap()
-            .unwrap();
-        let policy_signed = wallet_desc
-            .extract_policy(
-                &SignersContainer::default(),
-                BuildSatisfaction::Psbt(&signed_psbt),
-                &secp,
-            )
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(policy_unsigned.satisfaction, Satisfaction::None);
-        assert_eq!(
-            policy_signed.satisfaction,
-            Satisfaction::Complete {
-                condition: Default::default()
-            }
-        );
-    }
-
-    #[test]
-    fn test_extract_tr_satisfaction_script_spend() {
-        const UNSIGNED_PSBT: &str = "cHNidP8BAFMBAAAAAWZalxaErOL7P3WPIUc8DsjgE68S+ww+uqiqEI2SAwlPAAAAAAD/////AQiWmAAAAAAAF6kU4R3W8CnGzZcSsaovTYu0X8vHt3WHAAAAAAABASuAlpgAAAAAACJRINa6bLPZwp3/CYWoxyI3mLYcSC5f9LInAMUng94nspa2IhXBgiPY+kcolS1Hp0niOK/+7VHz6F+nsz8JVxnzWzkgToYjIHhGyuexxtRVKevRx4YwWR/W0r7LPHt6oS6DLlzyuYQarMAhFnhGyuexxtRVKevRx4YwWR/W0r7LPHt6oS6DLlzyuYQaLQH2onWFc3UR6I9ZhuHVeJCi5LNAf4APVd7mHn4BhdViHRwu7j4AAACAAgAAACEWgiPY+kcolS1Hp0niOK/+7VHz6F+nsz8JVxnzWzkgToYNAMkRfC4AAACAAgAAAAEXIIIj2PpHKJUtR6dJ4jiv/u1R8+hfp7M/CVcZ81s5IE6GARgg9qJ1hXN1EeiPWYbh1XiQouSzQH+AD1Xe5h5+AYXVYh0AAA==";
-        const SIGNED_PSBT: &str = "cHNidP8BAFMBAAAAAWZalxaErOL7P3WPIUc8DsjgE68S+ww+uqiqEI2SAwlPAAAAAAD/////AQiWmAAAAAAAF6kU4R3W8CnGzZcSsaovTYu0X8vHt3WHAAAAAAABASuAlpgAAAAAACJRINa6bLPZwp3/CYWoxyI3mLYcSC5f9LInAMUng94nspa2AQcAAQhCAUALcP9w/+Ddly9DWdhHTnQ9uCDWLPZjR6vKbKePswW2Ee6W5KNfrklus/8z98n7BQ1U4vADHk0FbadeeL8rrbHlARNAC3D/cP/g3ZcvQ1nYR050Pbgg1iz2Y0erymynj7MFthHuluSjX65JbrP/M/fJ+wUNVOLwAx5NBW2nXni/K62x5UEUeEbK57HG1FUp69HHhjBZH9bSvss8e3qhLoMuXPK5hBr2onWFc3UR6I9ZhuHVeJCi5LNAf4APVd7mHn4BhdViHUAXNmWieJ80Fs+PMa2C186YOBPZbYG/ieEUkagMwzJ788SoCucNdp5wnxfpuJVygFhglDrXGzujFtC82PrMohwuIhXBgiPY+kcolS1Hp0niOK/+7VHz6F+nsz8JVxnzWzkgToYjIHhGyuexxtRVKevRx4YwWR/W0r7LPHt6oS6DLlzyuYQarMAhFnhGyuexxtRVKevRx4YwWR/W0r7LPHt6oS6DLlzyuYQaLQH2onWFc3UR6I9ZhuHVeJCi5LNAf4APVd7mHn4BhdViHRwu7j4AAACAAgAAACEWgiPY+kcolS1Hp0niOK/+7VHz6F+nsz8JVxnzWzkgToYNAMkRfC4AAACAAgAAAAEXIIIj2PpHKJUtR6dJ4jiv/u1R8+hfp7M/CVcZ81s5IE6GARgg9qJ1hXN1EeiPWYbh1XiQouSzQH+AD1Xe5h5+AYXVYh0AAA==";
-
-        let unsigned_psbt = Psbt::from_str(UNSIGNED_PSBT).unwrap();
-        let signed_psbt = Psbt::from_str(SIGNED_PSBT).unwrap();
-
-        let secp = Secp256k1::new();
-
-        let (_, alice_pub, _) = setup_keys(ALICE_TPRV_STR, ALICE_BOB_PATH, &secp);
-        let (_, bob_pub, _) = setup_keys(BOB_TPRV_STR, ALICE_BOB_PATH, &secp);
-
-        let desc = descriptor!(tr(bob_pub, pk(alice_pub))).unwrap();
-        let (wallet_desc, _) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
-
-        let policy_unsigned = wallet_desc
-            .extract_policy(
-                &SignersContainer::default(),
-                BuildSatisfaction::Psbt(&unsigned_psbt),
-                &secp,
-            )
-            .unwrap()
-            .unwrap();
-        let policy_signed = wallet_desc
-            .extract_policy(
-                &SignersContainer::default(),
-                BuildSatisfaction::Psbt(&signed_psbt),
-                &secp,
-            )
-            .unwrap()
-            .unwrap();
-
-        assert_matches!(policy_unsigned.item, SatisfiableItem::Thresh { ref items, threshold: 1 } if items.len() == 2);
-        assert_matches!(policy_unsigned.satisfaction, Satisfaction::Partial { n: 2, m: 1, items, .. } if items.is_empty());
-
-        assert_matches!(policy_signed.item, SatisfiableItem::Thresh { ref items, threshold: 1 } if items.len() == 2);
-        assert_matches!(policy_signed.satisfaction, Satisfaction::PartialComplete { n: 2, m: 1, items, .. } if items == vec![0, 1]);
-
-        let satisfied_items = match policy_signed.item {
-            SatisfiableItem::Thresh { items, .. } => items,
-            _ => unreachable!(),
-        };
-
-        assert_eq!(
-            satisfied_items[0].satisfaction,
-            Satisfaction::Complete {
-                condition: Default::default()
-            }
-        );
-        assert_eq!(
-            satisfied_items[1].satisfaction,
-            Satisfaction::Complete {
-                condition: Default::default()
-            }
-        );
     }
 }

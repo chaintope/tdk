@@ -33,15 +33,15 @@ pub enum Error {
     InvalidDescriptorCharacter(u8),
 
     /// BIP32 error
-    Bip32(bitcoin::bip32::Error),
+    Bip32(tapyrus::bip32::Error),
     /// Error during base58 decoding
-    Base58(bitcoin::base58::Error),
+    Base58(tapyrus::base58::Error),
     /// Key-related error
-    Pk(bitcoin::key::Error),
+    Pk(tapyrus::key::Error),
     /// Miniscript error
     Miniscript(miniscript::Error),
     /// Hex decoding error
-    Hex(bitcoin::hex::HexToBytesError),
+    Hex(tapyrus::hex::HexToBytesError),
     /// The provided wallet descriptors are identical
     ExternalAndInternalAreTheSame,
 }
@@ -91,20 +91,20 @@ impl fmt::Display for Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
-impl From<bitcoin::bip32::Error> for Error {
-    fn from(err: bitcoin::bip32::Error) -> Self {
+impl From<tapyrus::bip32::Error> for Error {
+    fn from(err: tapyrus::bip32::Error) -> Self {
         Error::Bip32(err)
     }
 }
 
-impl From<bitcoin::base58::Error> for Error {
-    fn from(err: bitcoin::base58::Error) -> Self {
+impl From<tapyrus::base58::Error> for Error {
+    fn from(err: tapyrus::base58::Error) -> Self {
         Error::Base58(err)
     }
 }
 
-impl From<bitcoin::key::Error> for Error {
-    fn from(err: bitcoin::key::Error) -> Self {
+impl From<tapyrus::key::Error> for Error {
+    fn from(err: tapyrus::key::Error) -> Self {
         Error::Pk(err)
     }
 }
@@ -115,8 +115,8 @@ impl From<miniscript::Error> for Error {
     }
 }
 
-impl From<bitcoin::hex::HexToBytesError> for Error {
-    fn from(err: bitcoin::hex::HexToBytesError) -> Self {
+impl From<tapyrus::hex::HexToBytesError> for Error {
+    fn from(err: tapyrus::hex::HexToBytesError) -> Self {
         Error::Hex(err)
     }
 }

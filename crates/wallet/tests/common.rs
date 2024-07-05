@@ -1,31 +1,31 @@
 #![allow(unused)]
 
-use bdk_wallet::{KeychainKind, LocalOutput, Wallet};
-use bitcoin::hashes::Hash;
-use bitcoin::{
+use std::str::FromStr;
+use tapyrus::hashes::Hash;
+use tapyrus::{
     transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
     Txid,
 };
-use std::str::FromStr;
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
+use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 
 /// Return a fake wallet that appears to be funded for testing.
 ///
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
 /// to a foreign address and one returning 50_000 back to the wallet. The remaining 1000
 /// sats are the transaction fee.
-pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, bitcoin::Txid) {
-    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Regtest).unwrap();
+pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, tapyrus::Txid) {
+    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
-    let sendto_address = Address::from_str("bcrt1q3qtze4ys45tgdvguj66zrk4fu6hq3a3v9pfly5")
+    let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
         .expect("address")
-        .require_network(Network::Regtest)
+        .require_network(Network::Dev)
         .unwrap();
 
     let tx0 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: Txid::all_zeros(),
@@ -36,14 +36,14 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
             witness: Default::default(),
         }],
         output: vec![TxOut {
-            value: Amount::from_sat(76_000),
+            value: Amount::from_tap(76_000),
             script_pubkey: receive_address.script_pubkey(),
         }],
     };
 
     let tx1 = Transaction {
         version: transaction::Version::ONE,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
                 txid: tx0.txid(),
@@ -55,11 +55,11 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         }],
         output: vec![
             TxOut {
-                value: Amount::from_sat(50_000),
+                value: Amount::from_tap(50_000),
                 script_pubkey: receive_address.script_pubkey(),
             },
             TxOut {
-                value: Amount::from_sat(25_000),
+                value: Amount::from_tap(25_000),
                 script_pubkey: sendto_address.script_pubkey(),
             },
         ],
@@ -108,47 +108,47 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 /// Note: the change descriptor will have script type `p2wpkh`. If passing some other script type
 /// as argument, make sure you're ok with getting a wallet where the keychains have potentially
 /// different script types. Otherwise, use `get_funded_wallet_with_change`.
-pub fn get_funded_wallet(descriptor: &str) -> (Wallet, bitcoin::Txid) {
-    let change = get_test_wpkh_change();
+pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::Txid) {
+    let change = get_test_pkh_change();
     get_funded_wallet_with_change(descriptor, change)
 }
 
-pub fn get_funded_wallet_wpkh() -> (Wallet, bitcoin::Txid) {
-    get_funded_wallet_with_change(get_test_wpkh(), get_test_wpkh_change())
+pub fn get_funded_wallet_pkh() -> (Wallet, tapyrus::Txid) {
+    get_funded_wallet_with_change(get_test_pkh(), get_test_pkh_change())
 }
 
-pub fn get_test_wpkh() -> &'static str {
-    "wpkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)"
+pub fn get_test_pkh() -> &'static str {
+    "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)"
 }
 
-pub fn get_test_wpkh_with_change_desc() -> (&'static str, &'static str) {
+pub fn get_test_pkh_with_change_desc() -> (&'static str, &'static str) {
     (
-        "wpkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)",
-        get_test_wpkh_change(),
+        "pkh(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW)",
+        get_test_pkh_change(),
     )
 }
 
-fn get_test_wpkh_change() -> &'static str {
-    "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/0)"
+fn get_test_pkh_change() -> &'static str {
+    "pkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/0)"
 }
 
 pub fn get_test_single_sig_csv() -> &'static str {
     // and(pk(Alice),older(6))
-    "wsh(and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),older(6)))"
+    "sh(and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),older(6)))"
 }
 
 pub fn get_test_a_or_b_plus_csv() -> &'static str {
     // or(pk(Alice),and(pk(Bob),older(144)))
-    "wsh(or_d(pk(cRjo6jqfVNP33HhSS76UhXETZsGTZYx8FMFvR9kpbtCSV1PmdZdu),and_v(v:pk(cMnkdebixpXMPfkcNEjjGin7s94hiehAH4mLbYkZoh9KSiNNmqC8),older(144))))"
+    "sh(or_d(pk(cRjo6jqfVNP33HhSS76UhXETZsGTZYx8FMFvR9kpbtCSV1PmdZdu),and_v(v:pk(cMnkdebixpXMPfkcNEjjGin7s94hiehAH4mLbYkZoh9KSiNNmqC8),older(144))))"
 }
 
 pub fn get_test_single_sig_cltv() -> &'static str {
     // and(pk(Alice),after(100000))
-    "wsh(and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),after(100000)))"
+    "sh(and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),after(100000)))"
 }
 
-pub fn get_test_tr_single_sig() -> &'static str {
-    "tr(cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG)"
+pub fn get_test_pkh_single_sig() -> &'static str {
+    "pkh(cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG)"
 }
 
 pub fn get_test_tr_with_taptree() -> &'static str {
@@ -167,9 +167,9 @@ pub fn get_test_tr_single_sig_xprv() -> &'static str {
     "tr(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/*)"
 }
 
-pub fn get_test_tr_single_sig_xprv_with_change_desc() -> (&'static str, &'static str) {
-    ("tr(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/0/*)",
-    "tr(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/1/*)")
+pub fn get_test_pkh_single_sig_xprv_with_change_desc() -> (&'static str, &'static str) {
+    ("pkh(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/0/*)",
+    "pkh(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/1/*)")
 }
 
 pub fn get_test_tr_with_taptree_xprv() -> &'static str {
@@ -182,7 +182,7 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 
 /// Construct a new [`FeeRate`] from the given raw `sat_vb` feerate. This is
 /// useful in cases where we want to create a feerate from a `f64`, as the
-/// traditional [`FeeRate::from_sat_per_vb`] method will only accept an integer.
+/// traditional [`FeeRate::from_tap_per_vb`] method will only accept an integer.
 ///
 /// **Note** this 'quick and dirty' conversion should only be used when the input
 /// parameter has units of `satoshis/vbyte` **AND** is not expected to overflow,
@@ -190,5 +190,5 @@ pub fn get_test_tr_dup_keys() -> &'static str {
 pub fn feerate_unchecked(sat_vb: f64) -> FeeRate {
     // 1 sat_vb / 4wu_vb * 1000kwu_wu = 250 sat_kwu
     let sat_kwu = (sat_vb * 250.0).ceil() as u64;
-    FeeRate::from_sat_per_kwu(sat_kwu)
+    FeeRate::from_tap_per_kwu(sat_kwu)
 }

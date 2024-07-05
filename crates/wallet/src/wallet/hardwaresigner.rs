@@ -14,11 +14,11 @@
 //! This module contains HWISigner, an implementation of a [TransactionSigner] to be
 //! used with hardware wallets.
 //! ```no_run
-//! # use bdk_wallet::bitcoin::Network;
-//! # use bdk_wallet::signer::SignerOrdering;
-//! # use bdk_wallet::wallet::hardwaresigner::HWISigner;
-//! # use bdk_wallet::wallet::AddressIndex::New;
-//! # use bdk_wallet::{KeychainKind, SignOptions, Wallet};
+//! # use tdk_wallet::bitcoin::Network;
+//! # use tdk_wallet::signer::SignerOrdering;
+//! # use tdk_wallet::wallet::hardwaresigner::HWISigner;
+//! # use tdk_wallet::wallet::AddressIndex::New;
+//! # use tdk_wallet::{KeychainKind, SignOptions, Wallet};
 //! # use hwi::HWIClient;
 //! # use std::sync::Arc;
 //! #
@@ -28,12 +28,12 @@
 //!     panic!("No devices found!");
 //! }
 //! let first_device = devices.remove(0)?;
-//! let custom_signer = HWISigner::from_device(&first_device, Network::Testnet.into())?;
+//! let custom_signer = HWISigner::from_device(&first_device, Network::Prod.into())?;
 //!
 //! # let mut wallet = Wallet::new_no_persist(
 //! #     "",
 //! #     None,
-//! #     Network::Testnet,
+//! #     Network::Prod,
 //! # )?;
 //! #
 //! // Adding the hardware signer to the BDK wallet
@@ -47,9 +47,9 @@
 //! # }
 //! ```
 
-use bitcoin::bip32::Fingerprint;
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::Psbt;
+use tapyrus::bip32::Fingerprint;
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::Psbt;
 
 use hwi::error::Error;
 use hwi::types::{HWIChain, HWIDevice};

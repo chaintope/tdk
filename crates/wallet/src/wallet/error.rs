@@ -16,8 +16,8 @@ use crate::descriptor::DescriptorError;
 use crate::wallet::coin_selection;
 use crate::{descriptor, KeychainKind};
 use alloc::string::String;
-use bitcoin::{absolute, psbt, Amount, OutPoint, Sequence, Txid};
 use core::fmt;
+use tapyrus::{absolute, psbt, Amount, OutPoint, Sequence, Txid};
 
 /// Errors returned by miniscript when updating inconsistent PSBTs
 #[derive(Debug, Clone)]
@@ -84,7 +84,7 @@ pub enum CreateTxError {
     /// When bumping a tx the fee rate requested is lower than required
     FeeRateTooLow {
         /// Required fee rate
-        required: bitcoin::FeeRate,
+        required: tapyrus::FeeRate,
     },
     /// `manually_selected_only` option is selected but no utxo has been passed
     NoUtxosSelected,

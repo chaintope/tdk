@@ -1,4 +1,4 @@
-const DB_MAGIC: &str = "bdk_wallet_esplora_example";
+const DB_MAGIC: &str = "tdk_wallet_esplora_example";
 const SEND_AMOUNT: Amount = Amount::from_sat(1000);
 const STOP_GAP: usize = 5;
 const PARALLEL_REQUESTS: usize = 1;
@@ -6,16 +6,16 @@ const PARALLEL_REQUESTS: usize = 1;
 use std::{collections::BTreeSet, io::Write, str::FromStr};
 
 use tdk_esplora::{esplora_client, EsploraExt};
-use bdk_wallet::{
+use tdk_file_store::Store;
+use tdk_wallet::{
     bitcoin::{Address, Amount, Network},
     KeychainKind, SignOptions, Wallet,
 };
-use tdk_file_store::Store;
 
 fn main() -> Result<(), anyhow::Error> {
     let db_path = std::env::temp_dir().join("bdk-esplora-example");
     let db =
-        Store::<bdk_wallet::wallet::ChangeSet>::open_or_create_new(DB_MAGIC.as_bytes(), db_path)?;
+        Store::<tdk_wallet::wallet::ChangeSet>::open_or_create_new(DB_MAGIC.as_bytes(), db_path)?;
     let external_descriptor = "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/0/*)";
     let internal_descriptor = "wpkh(tprv8ZgxMBicQKsPdy6LMhUtFHAgpocR8GC6QmwMSFpZs7h6Eziw3SpThFfczTDh5rW2krkqffa11UpX3XkeTTB2FvzZKWXqPY54Y6Rq4AQ5R8L/84'/1'/0'/1/*)";
 

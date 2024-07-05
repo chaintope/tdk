@@ -9,8 +9,8 @@
 // You may not use this file except in accordance with one or both of these
 // licenses.
 
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::{absolute, Script, Sequence};
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::{absolute, Script, Sequence};
 
 use miniscript::{MiniscriptKey, Satisfier, ToPublicKey};
 
@@ -26,7 +26,7 @@ pub trait IsDust {
 
 impl IsDust for u64 {
     fn is_dust(&self, script: &Script) -> bool {
-        *self < script.dust_value().to_sat()
+        *self < script.dust_value().to_tap()
     }
 }
 
@@ -119,28 +119,19 @@ mod test {
     pub(crate) const SEQUENCE_LOCKTIME_TYPE_FLAG: u32 = 1 << 22;
 
     use super::{check_nsequence_rbf, IsDust};
-    use crate::bitcoin::{Address, Network, Sequence};
+    use crate::tapyrus::{Address, Network, Sequence};
     use core::str::FromStr;
 
     #[test]
     fn test_is_dust() {
         let script_p2pkh = Address::from_str("1GNgwA8JfG7Kc8akJ8opdNWJUihqUztfPe")
             .unwrap()
-            .require_network(Network::Bitcoin)
+            .require_network(Network::Prod)
             .unwrap()
             .script_pubkey();
         assert!(script_p2pkh.is_p2pkh());
         assert!(545.is_dust(&script_p2pkh));
         assert!(!546.is_dust(&script_p2pkh));
-
-        let script_p2wpkh = Address::from_str("bc1qxlh2mnc0yqwas76gqq665qkggee5m98t8yskd8")
-            .unwrap()
-            .require_network(Network::Bitcoin)
-            .unwrap()
-            .script_pubkey();
-        assert!(script_p2wpkh.is_p2wpkh());
-        assert!(293.is_dust(&script_p2wpkh));
-        assert!(!294.is_dust(&script_p2wpkh));
     }
 
     #[test]

@@ -9,19 +9,19 @@
 // You may not use this file except in accordance with one or both of these
 // licenses.
 
-extern crate bdk_wallet;
-extern crate bitcoin;
 extern crate miniscript;
 extern crate serde_json;
+extern crate tapyrus;
+extern crate tdk_wallet;
 
 use std::error::Error;
 use std::str::FromStr;
 
-use bitcoin::Network;
 use miniscript::policy::Concrete;
 use miniscript::Descriptor;
+use tapyrus::Network;
 
-use bdk_wallet::{KeychainKind, Wallet};
+use tdk_wallet::{KeychainKind, Wallet};
 
 /// Miniscript policy is a high level abstraction of spending conditions. Defined in the
 /// rust-miniscript library here  https://docs.rs/miniscript/7.0.0/miniscript/policy/index.html
@@ -50,9 +50,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Parse the string as a [`Concrete`] type miniscript policy.
     let policy = Concrete::<String>::from_str(&policy_str)?;
 
-    // Create a `wsh` type descriptor from the policy.
+    // Create a `sh` type descriptor from the policy.
     // `policy.compile()` returns the resulting miniscript from the policy.
-    let descriptor = Descriptor::new_wsh(policy.compile()?)?.to_string();
+    let descriptor = Descriptor::new_sh(policy.compile()?)?.to_string();
 
     println!("Compiled into Descriptor: \n{}", descriptor);
 
@@ -70,14 +70,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Compiling internal policy: \n{}", policy_str);
 
     let policy = Concrete::<String>::from_str(&policy_str)?;
-    let internal_descriptor = Descriptor::new_wsh(policy.compile()?)?.to_string();
+    let internal_descriptor = Descriptor::new_sh(policy.compile()?)?.to_string();
     println!(
         "Compiled into internal Descriptor: \n{}",
         internal_descriptor
     );
 
     // Create a new wallet from descriptors
-    let mut wallet = Wallet::new_no_persist(&descriptor, &internal_descriptor, Network::Regtest)?;
+    let mut wallet = Wallet::new_no_persist(&descriptor, &internal_descriptor, Network::Dev)?;
 
     println!(
         "First derived address from the descriptor: \n{}",

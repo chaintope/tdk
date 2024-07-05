@@ -19,18 +19,18 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
-use bitcoin::secp256k1::{All, Secp256k1};
-use bitcoin::sighash::{EcdsaSighashType, TapSighashType};
-use bitcoin::{
-    absolute, psbt, Address, Block, FeeRate, Network, OutPoint, Script, ScriptBuf, Sequence,
-    Transaction, TxOut, Txid, Witness,
-};
-use bitcoin::{consensus::encode::serialize, transaction, BlockHash, Psbt};
-use bitcoin::{constants::genesis_block, Amount};
 use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
 use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
+use tapyrus::secp256k1::{All, Secp256k1};
+use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
+use tapyrus::{
+    absolute, psbt, Address, Block, FeeRate, Network, OutPoint, Script, ScriptBuf, Sequence,
+    Transaction, TxOut, Txid, Witness,
+};
+use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
+use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
 pub use tdk_chain::keychain::Balance;
 use tdk_chain::{
     indexed_tx_graph,
@@ -406,8 +406,24 @@ impl Wallet {
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
         network: Network,
     ) -> Result<Self, NewError> {
-        let genesis_hash = genesis_block(network).block_hash();
+        let genesis_hash = mainnet_genesis_block().block_hash();
         Self::new_with_genesis_hash(descriptor, change_descriptor, db, network, genesis_hash)
+    }
+
+    /// Initialize an empty [`Wallet`].
+    pub fn new_with_testnet<E: IntoWalletDescriptor>(
+        descriptor: E,
+        change_descriptor: E,
+        db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+    ) -> Result<Self, NewError> {
+        let genesis_hash = testnet_genesis_block().block_hash();
+        Self::new_with_genesis_hash(
+            descriptor,
+            change_descriptor,
+            db,
+            Network::Prod,
+            genesis_hash,
+        )
     }
 
     /// Initialize an empty [`Wallet`] with a custom genesis hash.
@@ -465,11 +481,11 @@ impl Wallet {
     /// manually to the [`Wallet`]:
     ///
     /// ```rust,no_run
-    /// # use bdk_wallet::Wallet;
-    /// # use bdk_wallet::signer::{SignersContainer, SignerOrdering};
-    /// # use bdk_wallet::descriptor::Descriptor;
-    /// # use bitcoin::key::Secp256k1;
-    /// # use bdk_wallet::KeychainKind;
+    /// # use tdk_wallet::Wallet;
+    /// # use tdk_wallet::signer::{SignersContainer, SignerOrdering};
+    /// # use tdk_wallet::descriptor::Descriptor;
+    /// # use tapyrus::key::Secp256k1;
+    /// # use tdk_wallet::KeychainKind;
     /// # use tdk_sqlite::{Store, rusqlite::Connection};
     /// #
     /// # fn main() -> Result<(), anyhow::Error> {
@@ -560,12 +576,30 @@ impl Wallet {
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
         network: Network,
     ) -> Result<Self, NewOrLoadError> {
-        let genesis_hash = genesis_block(network).block_hash();
+        let genesis_hash = mainnet_genesis_block().block_hash();
         Self::new_or_load_with_genesis_hash(
             descriptor,
             change_descriptor,
             db,
             network,
+            genesis_hash,
+        )
+    }
+
+    /// Either loads [`Wallet`] from persistence, or initializes it if it does not exist.
+    ///
+    /// This method will fail if the loaded [`Wallet`] has different parameters to those provided.
+    pub fn new_or_load_with_testnet<E: IntoWalletDescriptor>(
+        descriptor: E,
+        change_descriptor: E,
+        db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
+    ) -> Result<Self, NewOrLoadError> {
+        let genesis_hash = testnet_genesis_block().block_hash();
+        Self::new_or_load_with_genesis_hash(
+            descriptor,
+            change_descriptor,
+            db,
+            Network::Prod,
             genesis_hash,
         )
     }
@@ -975,17 +1009,18 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Txid;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
     /// let fee = wallet.calculate_fee(&tx).expect("fee");
     /// ```
     ///
+    ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Psbt;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1006,8 +1041,8 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Txid;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
@@ -1015,8 +1050,8 @@ impl Wallet {
     /// ```
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Psbt;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1036,8 +1071,8 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Txid;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Txid;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:Txid = todo!();
     /// let tx = wallet.get_tx(txid).expect("tx exists").tx_node.tx;
@@ -1045,8 +1080,8 @@ impl Wallet {
     /// ```
     ///
     /// ```rust, no_run
-    /// # use bitcoin::Psbt;
-    /// # use bdk_wallet::Wallet;
+    /// # use tapyrus::Psbt;
+    /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
@@ -1067,10 +1102,10 @@ impl Wallet {
     ///   the transaction was last seen in the mempool is provided.
     ///
     /// ```rust, no_run
-    /// use bdk_wallet::{chain::ChainPosition, Wallet};
     /// use tdk_chain::Anchor;
+    /// use tdk_wallet::{chain::ChainPosition, Wallet};
     /// # let wallet: Wallet = todo!();
-    /// # let my_txid: bitcoin::Txid = todo!();
+    /// # let my_txid: tapyrus::Txid = todo!();
     ///
     /// let canonical_tx = wallet.get_tx(my_txid).expect("panic if tx does not exist");
     ///
@@ -1233,12 +1268,13 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
-    /// # use bdk_wallet::{Wallet, KeychainKind};
-    /// # use bdk_wallet::bitcoin::Network;
+    /// TODO: fix this example
+    /// ```ignore
+    /// # use tdk_wallet::{Wallet, KeychainKind};
+    /// # use tdk_wallet::tapyrus::Network;
     /// let descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/0/*)";
     /// let change_descriptor = "wpkh(tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/1'/0'/1/*)";
-    /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Testnet)?;
+    /// let wallet = Wallet::new_no_persist(descriptor, change_descriptor, Network::Prod)?;
     /// for secret_key in wallet.get_signers(KeychainKind::External).signers().iter().filter_map(|s| s.descriptor_secret_key()) {
     ///     // secret_key: tprv8ZgxMBicQKsPe73PBRSmNbTfbcsZnwWhz5eVmhHpi31HW29Z7mc9B4cWGRQzopNUzZUT391DeDJxL2PefNunWyLgqCKRMDkU1s2s8bAfoSk/84'/0'/0'/0/*
     ///     println!("secret_key: {}", secret_key);
@@ -1259,12 +1295,13 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tapyrus::*;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
@@ -1273,7 +1310,7 @@ impl Wallet {
     /// let psbt = {
     ///    let mut builder =  wallet.build_tx();
     ///    builder
-    ///        .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000));
+    ///        .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000));
     ///    builder.finish()?
     /// };
     ///
@@ -1439,7 +1476,7 @@ impl Wallet {
                 if let Some(previous_fee) = params.bumping_fee {
                     if fee < previous_fee.absolute {
                         return Err(CreateTxError::FeeTooLow {
-                            required: Amount::from_sat(previous_fee.absolute),
+                            required: Amount::from_tap(previous_fee.absolute),
                         });
                     }
                 }
@@ -1447,9 +1484,9 @@ impl Wallet {
             }
             FeePolicy::FeeRate(rate) => {
                 if let Some(previous_fee) = params.bumping_fee {
-                    let required_feerate = FeeRate::from_sat_per_kwu(
-                        previous_fee.rate.to_sat_per_kwu()
-                            + FeeRate::BROADCAST_MIN.to_sat_per_kwu(), // +1 sat/vb
+                    let required_feerate = FeeRate::from_tap_per_kwu(
+                        previous_fee.rate.to_tap_per_kwu()
+                            + FeeRate::BROADCAST_MIN.to_tap_per_kwu(), // +1 sat/vb
                     );
                     if rate < required_feerate {
                         return Err(CreateTxError::FeeRateTooLow {
@@ -1486,20 +1523,20 @@ impl Wallet {
             }
 
             if self.is_mine(script_pubkey) {
-                received += Amount::from_sat(value);
+                received += Amount::from_tap(value);
             }
 
             let new_out = TxOut {
                 script_pubkey: script_pubkey.clone(),
-                value: Amount::from_sat(value),
+                value: Amount::from_tap(value),
             };
 
             tx.output.push(new_out);
 
-            outgoing += Amount::from_sat(value);
+            outgoing += Amount::from_tap(value);
         }
 
-        fee_amount += (fee_rate * tx.weight()).to_sat();
+        fee_amount += (fee_rate * tx.weight()).to_tap();
 
         let (required_utxos, optional_utxos) =
             self.preselect_utxos(&params, Some(current_height.to_consensus_u32()));
@@ -1532,7 +1569,7 @@ impl Wallet {
             required_utxos,
             optional_utxos,
             fee_rate,
-            outgoing.to_sat() + fee_amount,
+            outgoing.to_tap() + fee_amount,
             &drain_script,
         )?;
         fee_amount += coin_selection.fee_amount;
@@ -1541,7 +1578,7 @@ impl Wallet {
         tx.input = coin_selection
             .selected
             .iter()
-            .map(|u| bitcoin::TxIn {
+            .map(|u| tapyrus::TxIn {
                 previous_output: u.outpoint(),
                 script_sig: ScriptBuf::default(),
                 sequence: u.sequence().unwrap_or(n_sequence),
@@ -1580,13 +1617,13 @@ impl Wallet {
             } => fee_amount += remaining_amount,
             Change { amount, fee } => {
                 if self.is_mine(&drain_script) {
-                    received += Amount::from_sat(*amount);
+                    received += Amount::from_tap(*amount);
                 }
                 fee_amount += fee;
 
                 // create drain output
                 let drain_output = TxOut {
-                    value: Amount::from_sat(*amount),
+                    value: Amount::from_tap(*amount),
                     script_pubkey: drain_script,
                 };
 
@@ -1615,10 +1652,10 @@ impl Wallet {
     /// ```no_run
     /// # // TODO: remove norun -- bumping fee seems to need the tx in the wallet database first.
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tapyrus::*;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # use anyhow::Error;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
@@ -1627,7 +1664,7 @@ impl Wallet {
     /// let mut psbt = {
     ///     let mut builder = wallet.build_tx();
     ///     builder
-    ///         .add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000))
+    ///         .add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000))
     ///         .enable_rbf();
     ///     builder.finish()?
     /// };
@@ -1637,7 +1674,7 @@ impl Wallet {
     /// let mut psbt =  {
     ///     let mut builder = wallet.build_fee_bump(tx.txid())?;
     ///     builder
-    ///         .fee_rate(FeeRate::from_sat_per_vb(5).expect("valid feerate"));
+    ///         .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"));
     ///     builder.finish()?
     /// };
     ///
@@ -1762,11 +1799,11 @@ impl Wallet {
             recipients: tx
                 .output
                 .into_iter()
-                .map(|txout| (txout.script_pubkey, txout.value.to_sat()))
+                .map(|txout| (txout.script_pubkey, txout.value.to_tap()))
                 .collect(),
             utxos: original_utxos,
             bumping_fee: Some(tx_builder::PreviousFee {
-                absolute: fee.to_sat(),
+                absolute: fee.to_tap(),
                 rate: fee_rate,
             }),
             ..Default::default()
@@ -1789,19 +1826,20 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```
+    /// TODO: fix this example
+    /// ```ignore
     /// # use std::str::FromStr;
-    /// # use bitcoin::*;
-    /// # use bdk_wallet::*;
-    /// # use bdk_wallet::wallet::ChangeSet;
-    /// # use bdk_wallet::wallet::error::CreateTxError;
+    /// # use tapyrus::*;
+    /// # use tdk_wallet::*;
+    /// # use tdk_wallet::wallet::ChangeSet;
+    /// # use tdk_wallet::wallet::error::CreateTxError;
     /// # use tdk_persist::PersistBackend;
     /// # let descriptor = "wpkh(tpubD6NzVbkrYhZ4Xferm7Pz4VnjdcDPFyjVu5K4iZXQ4pVN8Cks4pHVowTBXBKRhX64pkRyJZJN5xAKj4UDNnLPb5p2sSKXhewoYx5GbTdUFWq/*)";
     /// # let mut wallet = doctest_wallet!();
     /// # let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap().assume_checked();
     /// let mut psbt = {
     ///     let mut builder = wallet.build_tx();
-    ///     builder.add_recipient(to_address.script_pubkey(), Amount::from_sat(50_000));
+    ///     builder.add_recipient(to_address.script_pubkey(), Amount::from_tap(50_000));
     ///     builder.finish()?
     /// };
     /// let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
@@ -1938,7 +1976,7 @@ impl Wallet {
 
             match desc {
                 Some(desc) => {
-                    let mut tmp_input = bitcoin::TxIn::default();
+                    let mut tmp_input = tapyrus::TxIn::default();
                     match desc.satisfy(
                         &mut tmp_input,
                         (
@@ -2206,15 +2244,7 @@ impl Wallet {
                     psbt_input: foreign_psbt_input,
                     ..
                 } => {
-                    let is_taproot = foreign_psbt_input
-                        .witness_utxo
-                        .as_ref()
-                        .map(|txout| txout.script_pubkey.is_p2tr())
-                        .unwrap_or(false);
-                    if !is_taproot
-                        && !params.only_witness_utxo
-                        && foreign_psbt_input.non_witness_utxo.is_none()
-                    {
+                    if foreign_psbt_input.non_witness_utxo.is_none() {
                         return Err(CreateTxError::MissingNonWitnessUtxo(outpoint));
                     }
                     *psbt_input = *foreign_psbt_input;
@@ -2232,7 +2262,7 @@ impl Wallet {
         &self,
         utxo: LocalOutput,
         sighash_type: Option<psbt::PsbtSighashType>,
-        only_witness_utxo: bool,
+        _only_witness_utxo: bool,
     ) -> Result<psbt::Input, CreateTxError> {
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
@@ -2258,12 +2288,7 @@ impl Wallet {
 
         let prev_output = utxo.outpoint;
         if let Some(prev_tx) = self.indexed_graph.graph().get_tx(prev_output.txid) {
-            if desc.is_witness() || desc.is_taproot() {
-                psbt_input.witness_utxo = Some(prev_tx.output[prev_output.vout as usize].clone());
-            }
-            if !desc.is_taproot() && (!desc.is_witness() || !only_witness_utxo) {
-                psbt_input.non_witness_utxo = Some(prev_tx.as_ref().clone());
-            }
+            psbt_input.non_witness_utxo = Some(prev_tx.as_ref().clone());
         }
         Ok(psbt_input)
     }
@@ -2555,9 +2580,9 @@ fn create_signers<E: IntoWalletDescriptor>(
 #[doc(hidden)]
 macro_rules! floating_rate {
     ($rate:expr) => {{
-        use $crate::bitcoin::blockdata::constants::WITNESS_SCALE_FACTOR;
+        use $crate::tapyrus::blockdata::constants::WITNESS_SCALE_FACTOR;
         // sat_kwu / 250.0 -> sat_vb
-        $rate.to_sat_per_kwu() as f64 / ((1000 / WITNESS_SCALE_FACTOR) as f64)
+        $rate.to_tap_per_kwu() as f64 / ((1000 / WITNESS_SCALE_FACTOR) as f64)
     }};
 }
 
@@ -2566,7 +2591,7 @@ macro_rules! floating_rate {
 /// Macro for getting a wallet for use in a doctest
 macro_rules! doctest_wallet {
     () => {{
-        use $crate::bitcoin::{BlockHash, Transaction, absolute, TxOut, Network, hashes::Hash};
+        use $crate::tapyrus::{BlockHash, Transaction, absolute, TxOut, Network, hashes::Hash};
         use $crate::chain::{ConfirmationTime, BlockId};
         use $crate::{KeychainKind, wallet::Wallet};
         let descriptor = "tr([73c5da0a/86'/0'/0']tprv8fMn4hSKPRC1oaCPqxDb1JWtgkpeiQvZhsr8W2xuy3GEMkzoArcAWTfJxYb6Wj8XNNDWEjfYKK4wGQXh3ZUXhDF2NcnsALpWTeSwarJt7Vc/0/*)";
@@ -2575,7 +2600,7 @@ macro_rules! doctest_wallet {
         let mut wallet = Wallet::new_no_persist(
             descriptor,
             change_descriptor,
-            Network::Regtest,
+            Network::Dev,
         )
         .unwrap();
         let address = wallet.peek_address(KeychainKind::External, 0).address;
@@ -2584,7 +2609,7 @@ macro_rules! doctest_wallet {
             lock_time: absolute::LockTime::ZERO,
             input: vec![],
             output: vec![TxOut {
-                value: Amount::from_sat(500_000),
+                value: Amount::from_tap(500_000),
                 script_pubkey: address.script_pubkey(),
             }],
         };

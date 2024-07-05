@@ -18,10 +18,10 @@ use crate::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, KeySource, Xpub};
-use bitcoin::{key::XOnlyPublicKey, secp256k1, PublicKey};
-use bitcoin::{psbt, taproot};
-use bitcoin::{Network, TxOut};
+use tapyrus::bip32::{ChildNumber, DerivationPath, Fingerprint, KeySource, Xpub};
+use tapyrus::{key::XOnlyPublicKey, secp256k1, PublicKey};
+use tapyrus::{psbt, taproot};
+use tapyrus::{Network, TxOut};
 
 use miniscript::descriptor::{
     DefiniteDescriptorKey, DescriptorMultiXKey, DescriptorSecretKey, DescriptorType,
@@ -142,15 +142,7 @@ impl IntoWalletDescriptor for (ExtendedDescriptor, KeyMap) {
             fn pk(&mut self, pk: &DescriptorPublicKey) -> Result<String, DescriptorError> {
                 let secp = &self.secp;
 
-                let (_, _, networks) = if self.descriptor.is_taproot() {
-                    let descriptor_key: DescriptorKey<miniscript::Tap> =
-                        pk.clone().into_descriptor_key()?;
-                    descriptor_key.extract(secp)?
-                } else if self.descriptor.is_witness() {
-                    let descriptor_key: DescriptorKey<miniscript::Segwitv0> =
-                        pk.clone().into_descriptor_key()?;
-                    descriptor_key.extract(secp)?
-                } else {
+                let (_, _, networks) = {
                     let descriptor_key: DescriptorKey<miniscript::Legacy> =
                         pk.clone().into_descriptor_key()?;
                     descriptor_key.extract(secp)?
@@ -375,8 +367,6 @@ where
 }
 
 pub(crate) trait DescriptorMeta {
-    fn is_witness(&self) -> bool;
-    fn is_taproot(&self) -> bool;
     fn get_extended_keys(&self) -> Vec<DescriptorXKey<Xpub>>;
     fn derive_from_hd_keypaths(
         &self,
@@ -402,22 +392,6 @@ pub(crate) trait DescriptorMeta {
 }
 
 impl DescriptorMeta for ExtendedDescriptor {
-    fn is_witness(&self) -> bool {
-        matches!(
-            self.desc_type(),
-            DescriptorType::Wpkh
-                | DescriptorType::ShWpkh
-                | DescriptorType::Wsh
-                | DescriptorType::ShWsh
-                | DescriptorType::ShWshSortedMulti
-                | DescriptorType::WshSortedMulti
-        )
-    }
-
-    fn is_taproot(&self) -> bool {
-        self.desc_type() == DescriptorType::Tr
-    }
-
     fn get_extended_keys(&self) -> Vec<DescriptorXKey<Xpub>> {
         let mut answer = Vec::new();
 
@@ -568,9 +542,6 @@ impl DescriptorMeta for ExtendedDescriptor {
         match descriptor.desc_type() {
             // TODO: add pk() here
             DescriptorType::Pkh
-            | DescriptorType::Wpkh
-            | DescriptorType::ShWpkh
-            | DescriptorType::Tr
                 if utxo.is_some()
                     && descriptor.script_pubkey() == utxo.as_ref().unwrap().script_pubkey =>
             {
@@ -580,16 +551,6 @@ impl DescriptorMeta for ExtendedDescriptor {
                 if psbt_input.redeem_script.is_some()
                     && &descriptor.explicit_script().unwrap()
                         == psbt_input.redeem_script.as_ref().unwrap() =>
-            {
-                Some(descriptor)
-            }
-            DescriptorType::Wsh
-            | DescriptorType::ShWsh
-            | DescriptorType::ShWshSortedMulti
-            | DescriptorType::WshSortedMulti
-                if psbt_input.witness_script.is_some()
-                    && &descriptor.explicit_script().unwrap()
-                        == psbt_input.witness_script.as_ref().unwrap() =>
             {
                 Some(descriptor)
             }
@@ -604,36 +565,13 @@ mod test {
     use core::str::FromStr;
 
     use assert_matches::assert_matches;
-    use bitcoin::hex::FromHex;
-    use bitcoin::secp256k1::Secp256k1;
-    use bitcoin::ScriptBuf;
-    use bitcoin::{bip32, Psbt};
+    use tapyrus::hex::FromHex;
+    use tapyrus::secp256k1::Secp256k1;
+    use tapyrus::ScriptBuf;
+    use tapyrus::{bip32, Psbt};
 
     use super::*;
     use crate::psbt::PsbtUtils;
-
-    #[test]
-    fn test_derive_from_psbt_input_wpkh_wif() {
-        let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
-            "wpkh(02b4632d08485ff1df2db55b9dafd23347d1c47a457072a1e87be26896549a8737)",
-        )
-        .unwrap();
-        let psbt = Psbt::deserialize(
-            &Vec::<u8>::from_hex(
-                "70736274ff010052010000000162307be8e431fbaff807cdf9cdc3fde44d7402\
-                 11bc8342c31ffd6ec11fe35bcc0100000000ffffffff01328601000000000016\
-                 001493ce48570b55c42c2af816aeaba06cfee1224fae000000000001011fa086\
-                 01000000000016001493ce48570b55c42c2af816aeaba06cfee1224fae010304\
-                 010000000000",
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        assert!(descriptor
-            .derive_from_psbt_input(&psbt.inputs[0], psbt.get_utxo_for(0), &Secp256k1::new())
-            .is_some());
-    }
 
     #[test]
     fn test_derive_from_psbt_input_pkh_tpub() {
@@ -656,30 +594,6 @@ mod test {
                  52584228ab7ec00e8b9779d0c3ffe8114fc1a7d2c80600000103040100000022\
                  0603433b83583f8c4879b329dd08bbc7da935e4cc02f637ff746e05f0466ffb2\
                  a6a2180f0569432c00008000000080000000800a000000000000000000",
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        assert!(descriptor
-            .derive_from_psbt_input(&psbt.inputs[0], psbt.get_utxo_for(0), &Secp256k1::new())
-            .is_some());
-    }
-
-    #[test]
-    fn test_derive_from_psbt_input_wsh() {
-        let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
-            "wsh(and_v(v:pk(03b6633fef2397a0a9de9d7b6f23aef8368a6e362b0581f0f0af70d5ecfd254b14),older(6)))",
-        )
-        .unwrap();
-        let psbt = Psbt::deserialize(
-            &Vec::<u8>::from_hex(
-                "70736274ff01005302000000011c8116eea34408ab6529223c9a176606742207\
-                 67a1ff1d46a6e3c4a88243ea6e01000000000600000001109698000000000017\
-                 a914ad105f61102e0d01d7af40d06d6a5c3ae2f7fde387000000000001012b80\
-                 969800000000002200203ca72f106a72234754890ca7640c43f65d2174e44d33\
-                 336030f9059345091044010304010000000105252103b6633fef2397a0a9de9d\
-                 7b6f23aef8368a6e362b0581f0f0af70d5ecfd254b14ad56b20000",
             )
             .unwrap(),
         )
@@ -736,14 +650,12 @@ mod test {
         let key = key.override_valid_networks(any_network());
 
         // make a descriptor out of it
-        let desc = crate::descriptor!(wpkh(key)).unwrap();
+        let desc = crate::descriptor!(pkh(key)).unwrap();
         // this should convert the key that supports "any_network" to the right network (testnet)
-        let (wallet_desc, keymap) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, keymap) = desc.into_wallet_descriptor(&secp, Network::Prod).unwrap();
 
         let mut xprv_testnet = xprv;
-        xprv_testnet.network = Network::Testnet;
+        xprv_testnet.network = Network::Prod;
 
         let xpub_testnet = bip32::Xpub::from_priv(&secp, &xprv_testnet);
         let desc_pubkey = DescriptorPublicKey::XPub(DescriptorXKey {
@@ -753,7 +665,7 @@ mod test {
             wildcard: Wildcard::Unhardened,
         });
 
-        assert_eq!(wallet_desc.to_string(), "wpkh(tpubD6NzVbkrYhZ4XtJzoDja5snUjBNQRP5B3f4Hyn1T1x6PVPxzzVjvw6nJx2D8RBCxog9GEVjZoyStfepTz7TtKoBVdkCtnc7VCJh9dD4RAU9/0/*)#a3svx0ha");
+        assert_eq!(wallet_desc.to_string(), "pkh(xpub661MyMwAqRbcG689M2kUsxT7Q4GkRza7W2TzdDxJg3LVk7JHvGtqnf7Uhz8LtgFj1mcMcvDhGscqyUKrbFceSMjCa9Tb75TFcM6jsC2csEG/0/*)#e9nud4hk");
         assert_eq!(
             keymap
                 .get(&desc_pubkey)
@@ -767,28 +679,28 @@ mod test {
     fn test_descriptor_from_str_with_checksum() {
         let secp = Secp256k1::new();
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#tqz0nc62"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#k97wlg6f"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)#f7fzjhga"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#67ju93jw"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)#67ju93jw"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)#67ju93jw"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::InvalidDescriptorChecksum));
     }
 
@@ -797,36 +709,36 @@ mod test {
     fn test_descriptor_from_str_with_keys_network() {
         let secp = Secp256k1::new();
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xprv9s21ZrQH143K31XJmYP5ZCSZecChgQBP2zrCedSkJjiBDW9CF8WzDy55Ka5mn6tnkXzq6U1B7w2XupBtasVY7smth2UF3vMiTmyfHMSryhD/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Regtest);
+        let desc = "pkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "pkh(xpub661MyMwAqRbcFVbmsZv5vLPJCe3C5ruEQDmoT1rMs5FA6JULnfqEmmPZAqkQXnRqBnx9GaWoJkCNuMb9yfp7DzWERCtrWGZfHHtRGx5Zw6h/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Regtest);
+        let desc = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Dev);
         assert!(desc.is_ok());
 
-        let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
-            .into_wallet_descriptor(&secp, Network::Testnet);
+        let desc = "sh(pkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "sh(wpkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+        let desc = "sh(pkh(02864bb4ad00cefa806098a69e192bbda937494e69eb452b87bb3f20f6283baedb))"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert!(desc.is_ok());
 
-        let desc = "wpkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+        let desc = "pkh(tprv8ZgxMBicQKsPdpkqS7Eair4YxjcuuvDPNYmKX3sCniCf16tHEVrjjiSXEkFRnUH77yXc6ZcwHHcLNfjdi5qUvw3VDfgYiH5mNsj5izuiu2N/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
 
-        let desc = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
-            .into_wallet_descriptor(&secp, Network::Bitcoin);
+        let desc = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)"
+            .into_wallet_descriptor(&secp, Network::Prod);
         assert_matches!(desc, Err(DescriptorError::Key(KeyError::InvalidNetwork)));
     }
 
@@ -840,16 +752,14 @@ mod test {
         let key = (tpub, path).into_descriptor_key().unwrap();
 
         // make a descriptor out of it
-        let desc = crate::descriptor!(wpkh(key)).unwrap();
+        let desc = crate::descriptor!(pkh(key)).unwrap();
 
-        let (wallet_desc, _) = desc
-            .into_wallet_descriptor(&secp, Network::Testnet)
-            .unwrap();
+        let (wallet_desc, _) = desc.into_wallet_descriptor(&secp, Network::Dev).unwrap();
         let wallet_desc_str = wallet_desc.to_string();
-        assert_eq!(wallet_desc_str, "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#67ju93jw");
+        assert_eq!(wallet_desc_str, "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/1/2/*)#w2nlmd48");
 
         let (wallet_desc2, _) = wallet_desc_str
-            .into_wallet_descriptor(&secp, Network::Testnet)
+            .into_wallet_descriptor(&secp, Network::Dev)
             .unwrap();
         assert_eq!(wallet_desc, wallet_desc2)
     }
@@ -858,32 +768,32 @@ mod test {
     fn test_into_wallet_descriptor_checked() {
         let secp = Secp256k1::new();
 
-        let descriptor = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0'/1/2/*)";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let descriptor = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0'/1/2/*)";
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Dev);
 
         assert_matches!(result, Err(DescriptorError::HardenedDerivationXpub));
 
-        let descriptor = "wpkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/<0;1>/*)";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let descriptor = "pkh(tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/<0;1>/*)";
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Dev);
 
         assert_matches!(result, Err(DescriptorError::MultiPath));
 
         // repeated pubkeys
-        let descriptor = "wsh(multi(2,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*))";
-        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet);
+        let descriptor = "sh(multi(2,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*,tpubD6NzVbkrYhZ4XHndKkuB8FifXm8r5FQHwrN6oZuWCz13qb93rtgKvD4PQsqC4HP4yhV3tA2fqr2RbY5mNXfM7RxXUoeABoDtsFUq2zJq6YK/0/*))";
+        let result = into_wallet_descriptor_checked(descriptor, &secp, Network::Dev);
 
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_sh_wsh_sortedmulti_redeemscript() {
+    fn test_sh_sortedmulti_redeemscript() {
         use miniscript::psbt::PsbtInputExt;
 
         let secp = Secp256k1::new();
 
-        let descriptor = "sh(wsh(sortedmulti(3,tpubDEsqS36T4DVsKJd9UH8pAKzrkGBYPLEt9jZMwpKtzh1G6mgYehfHt9WCgk7MJG5QGSFWf176KaBNoXbcuFcuadAFKxDpUdMDKGBha7bY3QM/0/*,tpubDF3cpwfs7fMvXXuoQbohXtLjNM6ehwYT287LWtmLsd4r77YLg6MZg4vTETx5MSJ2zkfigbYWu31VA2Z2Vc1cZugCYXgS7FQu6pE8V6TriEH/0/*,tpubDE1SKfcW76Tb2AASv5bQWMuScYNAdoqLHoexw13sNDXwmUhQDBbCD3QAedKGLhxMrWQdMDKENzYtnXPDRvexQPNuDrLj52wAjHhNEm8sJ4p/0/*,tpubDFLc6oXwJmhm3FGGzXkfJNTh2KitoY3WhmmQvuAjMhD8YbyWn5mAqckbxXfm2etM3p5J6JoTpSrMqRSTfMLtNW46poDaEZJ1kjd3csRSjwH/0/*,tpubDEWD9NBeWP59xXmdqSNt4VYdtTGwbpyP8WS962BuqpQeMZmX9Pur14dhXdZT5a7wR1pK6dPtZ9fP5WR493hPzemnBvkfLLYxnUjAKj1JCQV/0/*,tpubDEHyZkkwd7gZWCTgQuYQ9C4myF2hMEmyHsBCCmLssGqoqUxeT3gzohF5uEVURkf9TtmeepJgkSUmteac38FwZqirjApzNX59XSHLcwaTZCH/0/*,tpubDEqLouCekwnMUWN486kxGzD44qVgeyuqHyxUypNEiQt5RnUZNJe386TKPK99fqRV1vRkZjYAjtXGTECz98MCsdLcnkM67U6KdYRzVubeCgZ/0/*)))";
+        let descriptor = "sh(sortedmulti(3,tpubDEsqS36T4DVsKJd9UH8pAKzrkGBYPLEt9jZMwpKtzh1G6mgYehfHt9WCgk7MJG5QGSFWf176KaBNoXbcuFcuadAFKxDpUdMDKGBha7bY3QM/0/*,tpubDF3cpwfs7fMvXXuoQbohXtLjNM6ehwYT287LWtmLsd4r77YLg6MZg4vTETx5MSJ2zkfigbYWu31VA2Z2Vc1cZugCYXgS7FQu6pE8V6TriEH/0/*,tpubDE1SKfcW76Tb2AASv5bQWMuScYNAdoqLHoexw13sNDXwmUhQDBbCD3QAedKGLhxMrWQdMDKENzYtnXPDRvexQPNuDrLj52wAjHhNEm8sJ4p/0/*,tpubDFLc6oXwJmhm3FGGzXkfJNTh2KitoY3WhmmQvuAjMhD8YbyWn5mAqckbxXfm2etM3p5J6JoTpSrMqRSTfMLtNW46poDaEZJ1kjd3csRSjwH/0/*,tpubDEWD9NBeWP59xXmdqSNt4VYdtTGwbpyP8WS962BuqpQeMZmX9Pur14dhXdZT5a7wR1pK6dPtZ9fP5WR493hPzemnBvkfLLYxnUjAKj1JCQV/0/*,tpubDEHyZkkwd7gZWCTgQuYQ9C4myF2hMEmyHsBCCmLssGqoqUxeT3gzohF5uEVURkf9TtmeepJgkSUmteac38FwZqirjApzNX59XSHLcwaTZCH/0/*,tpubDEqLouCekwnMUWN486kxGzD44qVgeyuqHyxUypNEiQt5RnUZNJe386TKPK99fqRV1vRkZjYAjtXGTECz98MCsdLcnkM67U6KdYRzVubeCgZ/0/*))";
         let (descriptor, _) =
-            into_wallet_descriptor_checked(descriptor, &secp, Network::Testnet).unwrap();
+            into_wallet_descriptor_checked(descriptor, &secp, Network::Dev).unwrap();
 
         let descriptor = descriptor.at_derivation_index(0).unwrap();
 
@@ -894,7 +804,7 @@ mod test {
             .update_with_descriptor_unchecked(&descriptor)
             .unwrap();
 
-        assert_eq!(psbt_input.redeem_script, Some(script.to_p2wsh()));
-        assert_eq!(psbt_input.witness_script, Some(script));
+        assert_eq!(psbt_input.redeem_script, Some(script));
+        assert_eq!(psbt_input.witness_script, None);
     }
 }
