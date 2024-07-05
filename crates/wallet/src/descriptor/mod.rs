@@ -574,7 +574,7 @@ mod test {
     use crate::psbt::PsbtUtils;
 
     #[test]
-    #[ignore]
+    #[ignore] // TODO: re-enable after rust-tapyrus support PSBT. see: [Modify PSBT for Tapyrus](https://github.com/chaintope/rust-tapyrus/issues/64)
     fn test_derive_from_psbt_input_pkh_tpub() {
         let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
             "pkh([0f056943/44h/0h/0h]tpubDDpWvmUrPZrhSPmUzCMBHffvC3HyMAPnWDSAQNBTnj1iZeJa7BZQEttFiP4DS4GCcXQHezdXhn86Hj6LHX5EDstXPWrMaSneRWM8yUf6NFd/10/*)",
@@ -606,7 +606,7 @@ mod test {
     }
 
     #[test]
-    #[ignore]
+    #[ignore] // TODO: re-enable after rust-tapyrus support PSBT. see: [Modify PSBT for Tapyrus](https://github.com/chaintope/rust-tapyrus/issues/64)
     fn test_derive_from_psbt_input_sh() {
         let descriptor = Descriptor::<DescriptorPublicKey>::from_str(
             "sh(and_v(v:pk(021403881a5587297818fcaf17d239cefca22fce84a45b3b1d23e836c4af671dbb),after(630000)))",
