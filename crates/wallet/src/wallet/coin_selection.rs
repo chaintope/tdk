@@ -431,7 +431,7 @@ impl OutputGroup {
     fn new(weighted_utxo: WeightedUtxo, fee_rate: FeeRate) -> Self {
         let fee = (fee_rate
             * Weight::from_wu(
-                TxIn::default().segwit_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
+                TxIn::default().legacy_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
             ))
         .to_tap();
         let effective_value = weighted_utxo.utxo.txout().value.to_tap() as i64 - fee as i64;

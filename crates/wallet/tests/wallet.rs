@@ -3,7 +3,9 @@ use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
+use tapyrus::consensus::serialize;
 use tapyrus::hashes::Hash;
+use tapyrus::hex::DisplayHex;
 use tapyrus::key::Secp256k1;
 use tapyrus::psbt;
 use tapyrus::script::PushBytesBuf;
@@ -69,6 +71,8 @@ fn receive_output_in_latest_block(wallet: &mut Wallet, value: u64) -> OutPoint {
 // Here, we push just once for simplicity, so we have to add an extra byte for the missing
 // OP_PUSH.
 const P2WPKH_FAKE_WITNESS_SIZE: usize = 106;
+
+const P2PKH_FAKE_SCRIPT_SIG_SIZE: usize = 107;
 
 const DB_MAGIC: &[u8] = &[0x21, 0x24, 0x48];
 
@@ -391,9 +395,7 @@ fn test_get_funded_wallet_tx_fees() {
     assert_eq!(tx_fee, Amount::from_tap(1000))
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_get_funded_wallet_tx_fee_rate() {
     let (wallet, txid) = get_funded_wallet_pkh();
 
@@ -402,14 +404,14 @@ fn test_get_funded_wallet_tx_fee_rate() {
         .calculate_fee_rate(&tx)
         .expect("transaction fee rate");
 
-    // The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
+    // The funded wallet contains a tx with a 76_000 taps input and two outputs, one spending 25_000
     // to a foreign address and one returning 50_000 back to the wallet as change. The remaining 1000
-    // sats are the transaction fee.
+    // taps are the transaction fee.
 
-    // tx weight = 452 wu, as vbytes = (452 + 3) / 4 = 113
-    // fee_rate (sats per kwu) = fee / weight = 1000sat / 0.452kwu = 2212
-    // fee_rate (sats per vbyte ceil) = fee / vsize = 1000sat / 113vb = 9
-    assert_eq!(tx_fee_rate.to_tap_per_kwu(), 2212);
+    // tx weight = 476 wu, as vbytes = (476 + 3) / 4 = 119
+    // fee_rate (sats per kwu) = fee / weight = 1000tap / 0.476kwu = 2100
+    // fee_rate (sats per vbyte ceil) = fee / vsize = 1000tap / 119vb = 9
+    assert_eq!(tx_fee_rate.to_tap_per_kwu(), 2100);
     assert_eq!(tx_fee_rate.to_tap_per_vb_ceil(), 9);
 }
 
@@ -440,7 +442,7 @@ macro_rules! assert_fee_rate {
         $(
             $( $add_signature )*
                 for txin in &mut tx.input {
-                    txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // fake signature
+                    txin.script_sig = ScriptBuf::from_bytes(vec![0x00; P2PKH_FAKE_SCRIPT_SIG_SIZE]);
                 }
         )*
 
@@ -455,7 +457,12 @@ macro_rules! assert_fee_rate {
             let fee_amount = psbt
             .inputs
             .iter()
-            .fold(Amount::ZERO, |acc, i| acc + i.witness_utxo.as_ref().unwrap().value)
+            .enumerate()
+            .fold(Amount::ZERO, |acc, (index, input)| {
+              let txin = &psbt.unsigned_tx.input[index];
+              let vout = txin.previous_output.vout as usize;
+              acc + input.non_witness_utxo.as_ref().unwrap().output[vout].value
+            })
             - psbt
             .unsigned_tx
             .output
@@ -2205,9 +2212,7 @@ fn test_bump_fee_no_change_add_input_and_change() {
     assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(50), @add_signature);
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_bump_fee_add_input_change_dust() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     receive_output_in_latest_block(&mut wallet, 25_000);
@@ -2225,7 +2230,7 @@ fn test_bump_fee_add_input_change_dust() {
 
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
     for txin in &mut tx.input {
-        txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // to get realistic weight
+        txin.script_sig = ScriptBuf::from_bytes(vec![0x00; P2PKH_FAKE_SCRIPT_SIG_SIZE]);
     }
     let original_tx_weight = tx.weight();
     assert_eq!(tx.input.len(), 1);
@@ -2242,11 +2247,10 @@ fn test_bump_fee_add_input_change_dust() {
 
     // We calculate the new weight as:
     //   original weight
-    // + extra input weight: 160 WU = (32 (prevout) + 4 (vout) + 4 (nsequence)) * 4
-    // + input satisfaction weight: 112 WU = 106 (witness) + 2 (witness len) + (1 (script len)) * 4
-    // - change output weight: 124 WU = (8 (value) + 1 (script len) + 22 (script)) * 4
-    let new_tx_weight =
-        original_tx_weight + Weight::from_wu(160) + Weight::from_wu(112) - Weight::from_wu(124);
+    // + extra input weight: 592 WU = (32 (prevout) + 4 (vout) + 1 (script len) + 107 (script_sig) + 4 (nsequence)) * 4
+    // - change output weight: 136 WU = (8 (value) + 1 (script len) + 25 (script)) * 4
+    let new_tx_weight = original_tx_weight + Weight::from_wu(592) - Weight::from_wu(136);
+
     // two inputs (50k, 25k) and one output (45k) - epsilon
     // We use epsilon here to avoid asking for a slightly too high feerate
     let fee_abs = 50_000 + 25_000 - 45_000 - 10;
@@ -2280,12 +2284,10 @@ fn test_bump_fee_add_input_change_dust() {
         Amount::from_tap(45_000)
     );
 
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(140), @dust_change, @add_signature);
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::from_tap_per_vb_unchecked(88), @dust_change, @add_signature);
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_bump_fee_force_add_input() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     let incoming_op = receive_output_in_latest_block(&mut wallet, 25_000);

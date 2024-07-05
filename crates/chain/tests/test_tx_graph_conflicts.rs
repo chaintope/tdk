@@ -30,7 +30,6 @@ struct Scenario<'a> {
 /// This test also checks that [`TxGraph::list_chain_txs`], [`TxGraph::filter_chain_txouts`],
 /// [`TxGraph::filter_chain_unspents`], and [`TxGraph::balance`] return correct data.
 #[test]
-#[ignore]
 fn test_tx_conflict_handling() {
     // Create Local chains
     let local_chain = local_chain!(
