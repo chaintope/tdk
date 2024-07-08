@@ -100,7 +100,13 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// Scan a single `TxOut` for a matching script pubkey and returns the index that matches the
     /// script pubkey (if any).
     pub fn scan_txout(&mut self, op: OutPoint, txout: &TxOut) -> Option<&I> {
-        let spk_i = self.spk_indices.get(&txout.script_pubkey);
+        let spk_i = if txout.script_pubkey.is_colored() {
+            self.spk_indices.get(&ScriptBuf::from_bytes(
+                txout.script_pubkey.as_bytes()[35..].to_vec(),
+            ))
+        } else {
+            self.spk_indices.get(&txout.script_pubkey)
+        };
         if let Some(spk_i) = spk_i {
             self.txouts.insert(op, (spk_i.clone(), txout.clone()));
             self.spk_txouts.insert((spk_i.clone(), op));
