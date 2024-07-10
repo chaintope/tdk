@@ -14,6 +14,7 @@
 //! This module defines the [`Wallet`].
 use crate::collections::{BTreeMap, HashMap};
 use alloc::{
+    borrow::ToOwned,
     boxed::Box,
     string::{String, ToString},
     sync::Arc,
@@ -26,8 +27,8 @@ use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
 use tapyrus::secp256k1::{All, Secp256k1};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
-    absolute, psbt, Address, Block, FeeRate, Network, OutPoint, Script, ScriptBuf, Sequence,
-    Transaction, TxOut, Txid, Witness,
+    absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, Network,
+    OutPoint, Script, ScriptBuf, Sequence, Transaction, TxOut, Txid, Witness,
 };
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
@@ -1238,7 +1239,22 @@ impl Wallet {
 
     /// Return the balance, separated into available, trusted-pending, untrusted-pending and immature
     /// values.
-    pub fn balance(&self) -> Balance {
+    pub fn balance(&self, color_id: ColorIdentifier) -> Balance {
+        let balances: HashMap<ColorIdentifier, Balance> = self.balances();
+        if let Some(balance) = balances.get(&color_id) {
+            balance.to_owned()
+        } else {
+            Balance {
+                immature: Amount::ZERO,
+                trusted_pending: Amount::ZERO,
+                untrusted_pending: Amount::ZERO,
+                confirmed: Amount::ZERO,
+            }
+        }
+    }
+
+    /// Return the balances, which key is Color Identifier and value is instance of Balance
+    pub fn balances(&self) -> HashMap<ColorIdentifier, Balance> {
         self.indexed_graph.graph().balance(
             &self.chain,
             self.chain.tip().block_id(),

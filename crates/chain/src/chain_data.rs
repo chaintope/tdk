@@ -1,4 +1,6 @@
-use tapyrus::{hashes::Hash, BlockHash, OutPoint, TxOut, Txid};
+use tapyrus::{
+    hashes::Hash, script::color_identifier::ColorIdentifier, BlockHash, OutPoint, TxOut, Txid,
+};
 
 use crate::{Anchor, AnchorFromBlockPosition, COINBASE_MATURITY};
 
@@ -232,6 +234,8 @@ pub struct FullTxOut<A> {
     pub chain_position: ChainPosition<A>,
     /// The location of the `TxOut`.
     pub outpoint: OutPoint,
+    /// The Color Identifier of the `TxOut`
+    pub color_id: ColorIdentifier,
     /// The `TxOut`.
     pub txout: TxOut,
     /// The txid and chain position of the transaction (if any) that has spent this output.

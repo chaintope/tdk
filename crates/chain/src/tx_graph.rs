@@ -92,6 +92,7 @@ use crate::{
     collections::*, keychain::Balance, Anchor, Append, BlockId, ChainOracle, ChainPosition,
     FullTxOut,
 };
+use alloc::borrow::ToOwned;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -100,6 +101,7 @@ use core::{
     convert::Infallible,
     ops::{Deref, RangeInclusive},
 };
+use tapyrus::script::color_identifier::ColorIdentifier;
 use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 
 /// A graph of transactions and spends.
@@ -1043,6 +1045,8 @@ impl<A: Anchor> TxGraph<A> {
                         None => return Ok(None),
                     };
 
+                    let color_id = txout.script_pubkey.color_id().unwrap_or_default();
+
                     let chain_position =
                         match self.try_get_chain_position(chain, chain_tip, op.txid)? {
                             Some(pos) => pos.cloned(),
@@ -1058,6 +1062,7 @@ impl<A: Anchor> TxGraph<A> {
                         FullTxOut {
                             outpoint: op,
                             txout,
+                            color_id,
                             chain_position,
                             spent_by,
                             is_on_coinbase: tx_node.tx.is_coinbase(),
@@ -1151,15 +1156,24 @@ impl<A: Anchor> TxGraph<A> {
         chain_tip: BlockId,
         outpoints: impl IntoIterator<Item = (OI, OutPoint)>,
         mut trust_predicate: impl FnMut(&OI, &Script) -> bool,
-    ) -> Result<Balance, C::Error> {
-        let mut immature = Amount::ZERO;
-        let mut trusted_pending = Amount::ZERO;
-        let mut untrusted_pending = Amount::ZERO;
-        let mut confirmed = Amount::ZERO;
+    ) -> Result<HashMap<ColorIdentifier, Balance>, C::Error> {
+        let mut balances: HashMap<ColorIdentifier, Balance> = HashMap::new();
 
         for res in self.try_filter_chain_unspents(chain, chain_tip, outpoints) {
             let (spk_i, txout) = res?;
 
+            let balance = balances
+                .entry(txout.color_id)
+                .or_insert(Balance {
+                    immature: Amount::ZERO,
+                    trusted_pending: Amount::ZERO,
+                    untrusted_pending: Amount::ZERO,
+                    confirmed: Amount::ZERO,
+                })
+                .to_owned();
+
+            let (mut immature, mut trusted_pending, mut untrusted_pending, mut confirmed) =
+                (Amount::ZERO, Amount::ZERO, Amount::ZERO, Amount::ZERO);
             match &txout.chain_position {
                 ChainPosition::Confirmed(_) => {
                     if txout.is_confirmed_and_spendable(chain_tip.height) {
@@ -1176,14 +1190,17 @@ impl<A: Anchor> TxGraph<A> {
                     }
                 }
             }
+            let new_balance = balance
+                + Balance {
+                    immature,
+                    trusted_pending,
+                    untrusted_pending,
+                    confirmed,
+                };
+            balances.insert(txout.color_id, new_balance);
         }
 
-        Ok(Balance {
-            immature,
-            trusted_pending,
-            untrusted_pending,
-            confirmed,
-        })
+        Ok(balances)
     }
 
     /// Get the total balance of `outpoints` that are in `chain` of `chain_tip`.
@@ -1197,7 +1214,7 @@ impl<A: Anchor> TxGraph<A> {
         chain_tip: BlockId,
         outpoints: impl IntoIterator<Item = (OI, OutPoint)>,
         trust_predicate: impl FnMut(&OI, &Script) -> bool,
-    ) -> Balance {
+    ) -> HashMap<ColorIdentifier, Balance> {
         self.try_balance(chain, chain_tip, outpoints, trust_predicate)
             .expect("oracle is infallible")
     }

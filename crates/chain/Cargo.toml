@@ -2,7 +2,7 @@
 name = "tdk_chain"
 version = "0.15.0"
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.67"
 homepage = "https://bitcoindevkit.org"
 repository = "https://github.com/bitcoindevkit/bdk"
 documentation = "https://docs.rs/tdk_chain"

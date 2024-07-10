@@ -20,6 +20,7 @@ use tdk_chain::{
     bitcoin::{constants::genesis_block, Block, Transaction},
     indexed_tx_graph, keychain,
     local_chain::{self, LocalChain},
+    tapyrus::script::color_identifier::ColorIdentifier,
     ConfirmationTimeHeightAnchor, IndexedTxGraph,
 };
 
@@ -208,7 +209,7 @@ fn main() -> anyhow::Result<()> {
                 if last_print.elapsed() >= STDOUT_PRINT_DELAY {
                     last_print = Instant::now();
                     let synced_to = chain.tip();
-                    let balance = {
+                    let balances = {
                         graph.graph().balance(
                             &*chain,
                             synced_to.block_id(),
@@ -216,6 +217,7 @@ fn main() -> anyhow::Result<()> {
                             |(k, _), _| k == &Keychain::Internal,
                         )
                     };
+                    let balance = balances.get(&ColorIdentifier::default()).unwrap();
                     println!(
                         "[{:>10}s] synced to {} @ {} | total: {} sats",
                         start.elapsed().as_secs_f32(),
@@ -332,7 +334,7 @@ fn main() -> anyhow::Result<()> {
                 if last_print.map_or(Duration::MAX, |i| i.elapsed()) >= STDOUT_PRINT_DELAY {
                     last_print = Some(Instant::now());
                     let synced_to = chain.tip();
-                    let balance = {
+                    let balances = {
                         graph.graph().balance(
                             &*chain,
                             synced_to.block_id(),
@@ -340,6 +342,10 @@ fn main() -> anyhow::Result<()> {
                             |(k, _), _| k == &Keychain::Internal,
                         )
                     };
+                    let balance = balances
+                        .get(&ColorIdentifier::default())
+                        .unwrap()
+                        .to_owned();
                     println!(
                         "[{:>10}s] synced to {} @ {} / {} | total: {} sats",
                         start.elapsed().as_secs_f32(),

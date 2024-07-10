@@ -7,6 +7,7 @@ use tdk_chain::{
     bitcoin::{Address, Amount, Txid},
     keychain::Balance,
     local_chain::{CheckPoint, LocalChain},
+    tapyrus::script::color_identifier::ColorIdentifier,
     Append, BlockId, IndexedTxGraph, SpkTxOutIndex,
 };
 use tdk_testenv::{anyhow, TestEnv};
@@ -305,12 +306,14 @@ where
 fn get_balance(
     recv_chain: &LocalChain,
     recv_graph: &IndexedTxGraph<BlockId, SpkTxOutIndex<()>>,
+    color_id: ColorIdentifier,
 ) -> anyhow::Result<Balance> {
     let chain_tip = recv_chain.tip().block_id();
     let outpoints = recv_graph.index.outpoints().clone();
-    let balance = recv_graph
+    let balances = recv_graph
         .graph()
         .balance(recv_chain, chain_tip, outpoints, |_, _| true);
+    let balance = balances.get(&color_id).unwrap().to_owned();
     Ok(balance)
 }
 
@@ -375,7 +378,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
     sync_from_emitter(&mut recv_chain, &mut recv_graph, &mut emitter)?;
 
     assert_eq!(
-        get_balance(&recv_chain, &recv_graph)?,
+        get_balance(&recv_chain, &recv_graph, ColorIdentifier::default())?,
         Balance {
             confirmed: SEND_AMOUNT * ADDITIONAL_COUNT as u64,
             ..Balance::default()
@@ -389,7 +392,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
         sync_from_emitter(&mut recv_chain, &mut recv_graph, &mut emitter)?;
 
         assert_eq!(
-            get_balance(&recv_chain, &recv_graph)?,
+            get_balance(&recv_chain, &recv_graph, ColorIdentifier::default())?,
             Balance {
                 confirmed: SEND_AMOUNT * (ADDITIONAL_COUNT - reorg_count) as u64,
                 trusted_pending: SEND_AMOUNT * reorg_count as u64,

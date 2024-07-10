@@ -13,7 +13,7 @@
     <a href="https://github.com/bitcoindevkit/bdk/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk/workflows/CI/badge.svg"></a>
     <a href="https://coveralls.io/github/bitcoindevkit/bdk?branch=master"><img src="https://coveralls.io/repos/github/bitcoindevkit/bdk/badge.svg?branch=master"/></a>
     <a href="https://docs.rs/tdk_wallet"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-tdk_wallet-green"/></a>
-    <a href="https://blog.rust-lang.org/2022/08/11/Rust-1.63.0.html"><img alt="Rustc Version 1.63.0+" src="https://img.shields.io/badge/rustc-1.63.0%2B-lightgrey.svg"/></a>
+    <a href="https://blog.rust-lang.org/2022/08/11/Rust-1.67.0.html"><img alt="Rustc Version 1.67.0+" src="https://img.shields.io/badge/rustc-1.67.0%2B-lightgrey.svg"/></a>
     <a href="https://discord.gg/d7NkDKm"><img alt="Chat on Discord" src="https://img.shields.io/discord/753336465005608961?logo=discord"></a>
   </p>
 
@@ -102,7 +102,7 @@ fn main() {
 
 <!--     wallet.sync(&blockchain, SyncOptions::default())?; -->
 
-<!--     println!("Descriptor balance: {} SAT", wallet.balance()?); -->
+<!--     println!("Descriptor balance: {} SAT", wallet.balance(ColorIdentifier::default())?); -->
 
 <!--     Ok(()) -->
 <!-- } -->

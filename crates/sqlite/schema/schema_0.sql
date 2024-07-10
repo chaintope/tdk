@@ -51,6 +51,7 @@ CREATE TABLE txout
     txid   TEXT    NOT NULL,
     vout   INTEGER NOT NULL,
     value  INTEGER NOT NULL,
+    color_id TEXT,
     script BLOB    NOT NULL,
     PRIMARY KEY (txid, vout)
 ) STRICT;

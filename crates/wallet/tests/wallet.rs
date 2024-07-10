@@ -9,8 +9,8 @@ use tapyrus::script::PushBytesBuf;
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::taproot::TapNodeHash;
 use tapyrus::{
-    absolute, transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, ScriptBuf,
-    Sequence, Transaction, TxIn, TxOut, Txid, Weight,
+    absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
+    FeeRate, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Weight,
 };
 use tdk_chain::collections::BTreeMap;
 use tdk_chain::COINBASE_MATURITY;
@@ -317,7 +317,25 @@ fn test_get_funded_wallet_balance() {
     // The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
     // to a foreign address and one returning 50_000 back to the wallet as change. The remaining 1000
     // sats are the transaction fee.
-    assert_eq!(wallet.balance().confirmed, Amount::from_tap(50_000));
+    assert_eq!(
+        wallet.balance(ColorIdentifier::default()).confirmed,
+        Amount::from_tap(50_000)
+    );
+}
+
+#[test]
+fn test_get_funded_wallet_colored_balance() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (wallet, _, color_id) = get_funded_wallet_with_nft_and_change(get_test_pkh(), change_desc);
+
+    // The funded wallet contains a tx with a 76_000 sats input and three outputs, one spending 25_000
+    // to a foreign address, one returning 50_000 back to the wallet as change, and one issuing NFT to the wallet.
+    // The remaining 1000 taps are the transaction fee.
+    assert_eq!(
+        wallet.balance(ColorIdentifier::default()).confirmed,
+        Amount::from_tap(50_000)
+    );
+    assert_eq!(wallet.balance(color_id).confirmed, Amount::ONE_TAP);
 }
 
 #[test]
@@ -3765,7 +3783,7 @@ fn test_spend_coinbase() {
     let not_yet_mature_time = confirmation_height + COINBASE_MATURITY - 1;
     let maturity_time = confirmation_height + COINBASE_MATURITY;
 
-    let balance = wallet.balance();
+    let balance = wallet.balance(ColorIdentifier::default());
     assert_eq!(
         balance,
         Balance {
@@ -3816,7 +3834,7 @@ fn test_spend_coinbase() {
             hash: BlockHash::all_zeros(),
         })
         .unwrap();
-    let balance = wallet.balance();
+    let balance = wallet.balance(ColorIdentifier::default());
     assert_eq!(
         balance,
         Balance {
