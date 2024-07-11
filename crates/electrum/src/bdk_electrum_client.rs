@@ -2,7 +2,7 @@ use core::str::FromStr;
 use electrum_client::{ElectrumApi, Error, HeaderNotification};
 use std::sync::{Arc, Mutex};
 use tdk_chain::{
-    bitcoin::{OutPoint, ScriptBuf, Transaction, Txid},
+    bitcoin::{MalFixTxid, OutPoint, ScriptBuf, Transaction},
     collections::{BTreeMap, HashMap, HashSet},
     local_chain::CheckPoint,
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
@@ -20,7 +20,7 @@ pub struct BdkElectrumClient<E> {
     /// The internal [`electrum_client::ElectrumApi`]
     pub inner: E,
     /// The transaction cache
-    tx_cache: Mutex<HashMap<Txid, Arc<Transaction>>>,
+    tx_cache: Mutex<HashMap<MalFixTxid, Arc<Transaction>>>,
 }
 
 impl<E: ElectrumApi> BdkElectrumClient<E> {
@@ -49,7 +49,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
     /// Fetch transaction of given `txid`.
     ///
     /// If it hits the cache it will return the cached version and avoid making the request.
-    pub fn fetch_tx(&self, txid: Txid) -> Result<Arc<Transaction>, Error> {
+    pub fn fetch_tx(&self, txid: MalFixTxid) -> Result<Arc<Transaction>, Error> {
         let tx_cache = self.tx_cache.lock().unwrap();
 
         if let Some(tx) = tx_cache.get(&txid) {
@@ -68,7 +68,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
     /// Broadcasts a transaction to the network.
     ///
     /// This is a re-export of [`ElectrumApi::transaction_broadcast`].
-    pub fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error> {
+    pub fn transaction_broadcast(&self, tx: &Transaction) -> Result<MalFixTxid, Error> {
         self.inner.transaction_broadcast(tx)
     }
 
@@ -310,7 +310,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
                 Some(txout) => txout,
                 None => continue,
             };
-            debug_assert_eq!(op_tx.txid(), op_txid);
+            debug_assert_eq!(op_tx.malfix_txid(), op_txid);
 
             // attempt to find the following transactions (alongside their chain positions), and
             // add to our sparsechain `update`:
@@ -354,7 +354,7 @@ impl<E: ElectrumApi> BdkElectrumClient<E> {
         &self,
         cps: &BTreeMap<u32, CheckPoint>,
         graph_update: &mut TxGraph<ConfirmationHeightAnchor>,
-        txids: impl IntoIterator<Item = Txid>,
+        txids: impl IntoIterator<Item = MalFixTxid>,
     ) -> Result<(), Error> {
         for txid in txids {
             let tx = match self.fetch_tx(txid) {
@@ -552,14 +552,14 @@ fn construct_update_tip(
 fn determine_tx_anchor(
     cps: &BTreeMap<u32, CheckPoint>,
     raw_height: i32,
-    txid: Txid,
+    txid: MalFixTxid,
 ) -> Option<ConfirmationHeightAnchor> {
     // The electrum API has a weird quirk where an unconfirmed transaction is presented with a
     // height of 0. To avoid invalid representation in our data structures, we manually set
     // transactions residing in the genesis block to have height 0, then interpret a height of 0 as
     // unconfirmed for all other transactions.
     if txid
-        == Txid::from_str("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b")
+        == MalFixTxid::from_str("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b")
             .expect("must deserialize genesis coinbase txid")
     {
         let anchor_block = cps.values().next()?.block_id();

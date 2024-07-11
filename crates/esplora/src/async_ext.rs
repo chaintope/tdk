@@ -8,7 +8,7 @@ use tdk_chain::Anchor;
 use tdk_chain::{
     collections::BTreeMap,
     local_chain::CheckPoint,
-    tapyrus::{BlockHash, OutPoint, ScriptBuf, TxOut, Txid},
+    tapyrus::{BlockHash, MalFixTxid, OutPoint, ScriptBuf, TxOut},
     BlockId, ConfirmationTimeHeightAnchor, TxGraph,
 };
 
@@ -181,7 +181,7 @@ async fn chain_update<A: Anchor>(
     client: &esplora_client::AsyncClient,
     latest_blocks: &BTreeMap<u32, BlockHash>,
     local_tip: &CheckPoint,
-    anchors: &BTreeSet<(A, Txid)>,
+    anchors: &BTreeSet<(A, MalFixTxid)>,
 ) -> Result<CheckPoint, Error> {
     let mut point_of_agreement = None;
     let mut conflicts = vec![];
@@ -330,7 +330,7 @@ async fn full_scan_for_index_and_graph<K: Ord + Clone + Send>(
 async fn sync_for_index_and_graph(
     client: &esplora_client::AsyncClient,
     misc_spks: impl IntoIterator<IntoIter = impl Iterator<Item = ScriptBuf> + Send> + Send,
-    txids: impl IntoIterator<IntoIter = impl Iterator<Item = Txid> + Send> + Send,
+    txids: impl IntoIterator<IntoIter = impl Iterator<Item = MalFixTxid> + Send> + Send,
     outpoints: impl IntoIterator<IntoIter = impl Iterator<Item = OutPoint> + Send> + Send,
     parallel_requests: usize,
 ) -> Result<TxGraph<ConfirmationTimeHeightAnchor>, Error> {
@@ -366,7 +366,7 @@ async fn sync_for_index_and_graph(
             break;
         }
 
-        for (txid, status) in handles.try_collect::<Vec<(Txid, TxStatus)>>().await? {
+        for (txid, status) in handles.try_collect::<Vec<(MalFixTxid, TxStatus)>>().await? {
             if let Some(anchor) = anchor_from_status(&status) {
                 let _ = graph.insert_anchor(txid, anchor);
             }
@@ -409,7 +409,7 @@ mod test {
     use esplora_client::Builder;
     use tdk_chain::{
         local_chain::LocalChain,
-        tapyrus::{hashes::Hash, Txid},
+        tapyrus::{hashes::Hash, MalFixTxid},
         BlockId,
     };
     use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
@@ -435,7 +435,7 @@ mod test {
             final_env_height: u32,
             /// The anchors to test with: `(height, txid)`. Only the height is provided as we can fetch
             /// the blockhash from the env.
-            anchors: &'a [(u32, Txid)],
+            anchors: &'a [(u32, MalFixTxid)],
         }
 
         let test_cases = [
@@ -493,7 +493,7 @@ mod test {
                                 height,
                                 hash: env.tapyrusd.client.get_block_hash(height as _)?,
                             },
-                            Txid::all_zeros(),
+                            MalFixTxid::all_zeros(),
                         ))
                     })
                     .collect::<anyhow::Result<BTreeSet<_>>>()?;

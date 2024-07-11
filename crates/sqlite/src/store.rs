@@ -9,7 +9,7 @@ use tdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
 use tdk_chain::tapyrus::consensus::{deserialize, serialize};
 use tdk_chain::tapyrus::hashes::Hash;
 use tdk_chain::tapyrus::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
-use tdk_chain::tapyrus::{BlockHash, Txid};
+use tdk_chain::tapyrus::{BlockHash, MalFixTxid};
 
 use crate::Error;
 use tdk_chain::{
@@ -303,7 +303,7 @@ impl<K, A> Store<K, A> {
             let insert_tx_stmt = &mut db_transaction
                 .prepare_cached("INSERT INTO tx (txid, whole_tx) VALUES (:txid, :whole_tx) ON CONFLICT (txid) DO UPDATE SET whole_tx = :whole_tx WHERE txid = :txid")
                 .expect("insert or update tx whole_tx statement");
-            let txid = tx.txid().to_string();
+            let txid = tx.malfix_txid().to_string();
             let whole_tx = serialize(&tx);
             insert_tx_stmt
                 .execute(named_params! {":txid": txid, ":whole_tx": whole_tx })
@@ -336,7 +336,7 @@ impl<K, A> Store<K, A> {
     /// Select all transactions with last_seen values.
     fn select_last_seen(
         db_transaction: &rusqlite::Transaction,
-    ) -> Result<BTreeMap<Txid, u64>, Error> {
+    ) -> Result<BTreeMap<MalFixTxid, u64>, Error> {
         // load tx last_seen
         let mut select_last_seen_stmt = db_transaction
             .prepare_cached("SELECT txid, last_seen FROM tx WHERE last_seen IS NOT NULL")
@@ -345,7 +345,7 @@ impl<K, A> Store<K, A> {
         let last_seen = select_last_seen_stmt
             .query_map([], |row| {
                 let txid = row.get_unwrap::<usize, String>(0);
-                let txid = Txid::from_str(&txid).expect("txid");
+                let txid = MalFixTxid::from_str(&txid).expect("txid");
                 let last_seen = row.get_unwrap::<usize, u64>(1);
                 Ok((txid, last_seen))
             })
@@ -395,7 +395,7 @@ impl<K, A> Store<K, A> {
         let txouts = select_txout_stmt
             .query_map([], |row| {
                 let txid = row.get_unwrap::<usize, String>(0);
-                let txid = Txid::from_str(&txid).expect("txid");
+                let txid = MalFixTxid::from_str(&txid).expect("txid");
                 let vout = row.get_unwrap::<usize, u32>(1);
                 let outpoint = OutPoint::new(txid, vout);
                 let value = row.get_unwrap::<usize, u64>(2);
@@ -461,7 +461,7 @@ where
     /// Select all anchors.
     fn select_anchors(
         db_transaction: &rusqlite::Transaction,
-    ) -> Result<BTreeSet<(A, Txid)>, Error> {
+    ) -> Result<BTreeSet<(A, MalFixTxid)>, Error> {
         // serde_json::from_str
         let mut select_anchor_stmt = db_transaction
             .prepare_cached("SELECT block_hash, json(anchor), txid FROM anchor_tx")
@@ -475,7 +475,7 @@ where
                 // double check anchor blob block hash matches
                 assert_eq!(hash, anchor.anchor_block().hash);
                 let txid = row.get_unwrap::<usize, String>(2);
-                let txid = Txid::from_str(&txid).expect("txid");
+                let txid = MalFixTxid::from_str(&txid).expect("txid");
                 Ok((anchor, txid))
             })
             .map_err(Error::Sqlite)?;
@@ -691,9 +691,9 @@ mod test {
         let tx2_hex = Vec::<u8>::from_hex("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0e0432e7494d010e062f503253482fffffffff0100f2052a010000002321038a7f6ef1c8ca0c588aa53fa860128077c9e6c11e6830f4d7ee4e763a56b7718fac00000000").unwrap();
         let tx2: Arc<Transaction> = Arc::new(deserialize(tx2_hex.as_slice()).unwrap());
 
-        let outpoint0_0 = OutPoint::new(tx0.txid(), 0);
+        let outpoint0_0 = OutPoint::new(tx0.malfix_txid(), 0);
         let txout0_0 = tx0.output.first().unwrap().clone();
-        let outpoint1_0 = OutPoint::new(tx1.txid(), 0);
+        let outpoint1_0 = OutPoint::new(tx1.malfix_txid(), 0);
         let txout1_0 = tx1.output.first().unwrap().clone();
 
         let anchor1 = anchor_fn(1, 1296667328, block_hash_1);
@@ -702,11 +702,11 @@ mod test {
         let tx_graph_changeset = tx_graph::ChangeSet::<A> {
             txs: [tx0.clone(), tx1.clone()].into(),
             txouts: [(outpoint0_0, txout0_0), (outpoint1_0, txout1_0)].into(),
-            anchors: [(anchor1, tx0.txid()), (anchor1, tx1.txid())].into(),
+            anchors: [(anchor1, tx0.malfix_txid()), (anchor1, tx1.malfix_txid())].into(),
             last_seen: [
-                (tx0.txid(), 1598918400),
-                (tx1.txid(), 1598919121),
-                (tx2.txid(), 1608919121),
+                (tx0.malfix_txid(), 1598918400),
+                (tx1.malfix_txid(), 1598919121),
+                (tx2.malfix_txid(), 1608919121),
             ]
             .into(),
         };
@@ -736,7 +736,7 @@ mod test {
             txs: [tx2.clone()].into(),
             txouts: BTreeMap::default(),
             anchors: BTreeSet::default(),
-            last_seen: [(tx2.txid(), 1708919121)].into(),
+            last_seen: [(tx2.malfix_txid(), 1708919121)].into(),
         };
 
         let graph_changeset2: indexed_tx_graph::ChangeSet<A, keychain::ChangeSet<Keychain>> =
@@ -755,7 +755,7 @@ mod test {
         let tx_graph_changeset3 = tx_graph::ChangeSet::<A> {
             txs: BTreeSet::default(),
             txouts: BTreeMap::default(),
-            anchors: [(anchor2, tx0.txid()), (anchor2, tx1.txid())].into(),
+            anchors: [(anchor2, tx0.malfix_txid()), (anchor2, tx1.malfix_txid())].into(),
             last_seen: BTreeMap::default(),
         };
 

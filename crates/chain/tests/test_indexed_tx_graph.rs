@@ -53,7 +53,7 @@ fn insert_relevant_txs() {
 
     let tx_b = Transaction {
         input: vec![TxIn {
-            previous_output: OutPoint::new(tx_a.txid(), 0),
+            previous_output: OutPoint::new(tx_a.malfix_txid(), 0),
             ..Default::default()
         }],
         ..common::new_tx(1)
@@ -61,7 +61,7 @@ fn insert_relevant_txs() {
 
     let tx_c = Transaction {
         input: vec![TxIn {
-            previous_output: OutPoint::new(tx_a.txid(), 1),
+            previous_output: OutPoint::new(tx_a.malfix_txid(), 1),
             ..Default::default()
         }],
         ..common::new_tx(2)
@@ -197,7 +197,7 @@ fn test_list_owned_txouts() {
     // tx3 spends tx2 and gives a change back in trusted keychain. Confirmed at Block 2.
     let tx3 = Transaction {
         input: vec![TxIn {
-            previous_output: OutPoint::new(tx2.txid(), 0),
+            previous_output: OutPoint::new(tx2.malfix_txid(), 0),
             ..Default::default()
         }],
         output: vec![TxOut {
@@ -345,16 +345,22 @@ fn test_list_owned_txouts() {
             balance,
         ) = fetch(0, &graph);
 
-        assert_eq!(confirmed_txouts_txid, [tx1.txid()].into());
+        assert_eq!(confirmed_txouts_txid, [tx1.malfix_txid()].into());
         assert_eq!(
             unconfirmed_txouts_txid,
-            [tx2.txid(), tx3.txid(), tx4.txid(), tx5.txid()].into()
+            [
+                tx2.malfix_txid(),
+                tx3.malfix_txid(),
+                tx4.malfix_txid(),
+                tx5.malfix_txid()
+            ]
+            .into()
         );
 
-        assert_eq!(confirmed_utxos_txid, [tx1.txid()].into());
+        assert_eq!(confirmed_utxos_txid, [tx1.malfix_txid()].into());
         assert_eq!(
             unconfirmed_utxos_txid,
-            [tx3.txid(), tx4.txid(), tx5.txid()].into()
+            [tx3.malfix_txid(), tx4.malfix_txid(), tx5.malfix_txid()].into()
         );
 
         assert_eq!(
@@ -379,17 +385,20 @@ fn test_list_owned_txouts() {
         ) = fetch(1, &graph);
 
         // tx2 gets into confirmed txout set
-        assert_eq!(confirmed_txouts_txid, [tx1.txid(), tx2.txid()].into());
+        assert_eq!(
+            confirmed_txouts_txid,
+            [tx1.malfix_txid(), tx2.malfix_txid()].into()
+        );
         assert_eq!(
             unconfirmed_txouts_txid,
-            [tx3.txid(), tx4.txid(), tx5.txid()].into()
+            [tx3.malfix_txid(), tx4.malfix_txid(), tx5.malfix_txid()].into()
         );
 
         // tx2 doesn't get into confirmed utxos set
-        assert_eq!(confirmed_utxos_txid, [tx1.txid()].into());
+        assert_eq!(confirmed_utxos_txid, [tx1.malfix_txid()].into());
         assert_eq!(
             unconfirmed_utxos_txid,
-            [tx3.txid(), tx4.txid(), tx5.txid()].into()
+            [tx3.malfix_txid(), tx4.malfix_txid(), tx5.malfix_txid()].into()
         );
 
         assert_eq!(
@@ -416,13 +425,22 @@ fn test_list_owned_txouts() {
         // tx3 now gets into the confirmed txout set
         assert_eq!(
             confirmed_txouts_txid,
-            [tx1.txid(), tx2.txid(), tx3.txid()].into()
+            [tx1.malfix_txid(), tx2.malfix_txid(), tx3.malfix_txid()].into()
         );
-        assert_eq!(unconfirmed_txouts_txid, [tx4.txid(), tx5.txid()].into());
+        assert_eq!(
+            unconfirmed_txouts_txid,
+            [tx4.malfix_txid(), tx5.malfix_txid()].into()
+        );
 
         // tx3 also gets into confirmed utxo set
-        assert_eq!(confirmed_utxos_txid, [tx1.txid(), tx3.txid()].into());
-        assert_eq!(unconfirmed_utxos_txid, [tx4.txid(), tx5.txid()].into());
+        assert_eq!(
+            confirmed_utxos_txid,
+            [tx1.malfix_txid(), tx3.malfix_txid()].into()
+        );
+        assert_eq!(
+            unconfirmed_utxos_txid,
+            [tx4.malfix_txid(), tx5.malfix_txid()].into()
+        );
 
         assert_eq!(
             balance,
@@ -447,12 +465,21 @@ fn test_list_owned_txouts() {
 
         assert_eq!(
             confirmed_txouts_txid,
-            [tx1.txid(), tx2.txid(), tx3.txid()].into()
+            [tx1.malfix_txid(), tx2.malfix_txid(), tx3.malfix_txid()].into()
         );
-        assert_eq!(unconfirmed_txouts_txid, [tx4.txid(), tx5.txid()].into());
+        assert_eq!(
+            unconfirmed_txouts_txid,
+            [tx4.malfix_txid(), tx5.malfix_txid()].into()
+        );
 
-        assert_eq!(confirmed_utxos_txid, [tx1.txid(), tx3.txid()].into());
-        assert_eq!(unconfirmed_utxos_txid, [tx4.txid(), tx5.txid()].into());
+        assert_eq!(
+            confirmed_utxos_txid,
+            [tx1.malfix_txid(), tx3.malfix_txid()].into()
+        );
+        assert_eq!(
+            unconfirmed_utxos_txid,
+            [tx4.malfix_txid(), tx5.malfix_txid()].into()
+        );
 
         // Coinbase is still immature
         assert_eq!(

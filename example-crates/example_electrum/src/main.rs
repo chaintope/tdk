@@ -13,7 +13,7 @@ use example_cli::{
     Keychain,
 };
 use tdk_chain::{
-    bitcoin::{constants::genesis_block, Address, Network, Txid},
+    bitcoin::{constants::genesis_block, Address, MalFixTxid, Network},
     collections::BTreeSet,
     indexed_tx_graph::{self, IndexedTxGraph},
     keychain,
@@ -276,7 +276,7 @@ fn main() -> anyhow::Result<()> {
                     .list_chain_txs(&*chain, chain_tip.block_id())
                     .filter(|canonical_tx| !canonical_tx.chain_position.is_confirmed())
                     .map(|canonical_tx| canonical_tx.tx_node.txid)
-                    .collect::<Vec<Txid>>();
+                    .collect::<Vec<MalFixTxid>>();
 
                 request = request.chain_txids(
                     unconfirmed_txids

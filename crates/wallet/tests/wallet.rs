@@ -11,7 +11,7 @@ use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::taproot::TapNodeHash;
 use tapyrus::{
     absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
-    FeeRate, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Weight,
+    FeeRate, MalFixTxid, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Weight,
 };
 use tdk_chain::collections::BTreeMap;
 use tdk_chain::COINBASE_MATURITY;
@@ -46,7 +46,7 @@ fn receive_output(wallet: &mut Wallet, value: u64, height: ConfirmationTime) -> 
     wallet.insert_tx(tx.clone(), height).unwrap();
 
     OutPoint {
-        txid: tx.txid(),
+        txid: tx.malfix_txid(),
         vout: 0,
     }
 }
@@ -343,7 +343,7 @@ fn test_get_funded_wallet_colored_balance() {
 fn test_get_funded_wallet_sent_and_received() {
     let (wallet, txid) = get_funded_wallet_pkh();
 
-    let mut tx_amounts: Vec<(Txid, (Amount, Amount))> = wallet
+    let mut tx_amounts: Vec<(MalFixTxid, (Amount, Amount))> = wallet
         .transactions()
         .map(|ct| (ct.tx_node.txid, wallet.sent_and_received(&ct.tx_node)))
         .collect();
@@ -1106,7 +1106,7 @@ fn test_create_tx_add_utxo() {
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(30_000))
         .add_utxo(OutPoint {
-            txid: small_output_tx.txid(),
+            txid: small_output_tx.malfix_txid(),
             vout: 0,
         })
         .unwrap();
@@ -1157,7 +1157,7 @@ fn test_create_tx_manually_selected_insufficient() {
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(30_000))
         .add_utxo(OutPoint {
-            txid: small_output_tx.txid(),
+            txid: small_output_tx.malfix_txid(),
             vout: 0,
         })
         .unwrap()
@@ -1537,7 +1537,7 @@ fn test_bump_fee_irreplaceable_tx() {
     let psbt = builder.finish().unwrap();
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1554,7 +1554,7 @@ fn test_bump_fee_confirmed_tx() {
     let psbt = builder.finish().unwrap();
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
 
     wallet
         .insert_tx(
@@ -1581,7 +1581,7 @@ fn test_bump_fee_low_fee_rate() {
     let feerate = psbt.fee_rate().unwrap();
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
 
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
@@ -1614,7 +1614,7 @@ fn test_bump_fee_low_abs() {
     let psbt = builder.finish().unwrap();
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
 
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
@@ -1637,7 +1637,7 @@ fn test_bump_fee_zero_abs() {
     let psbt = builder.finish().unwrap();
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1665,7 +1665,7 @@ fn test_bump_fee_reduce_change() {
     let original_fee = check_fee!(wallet, psbt);
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1765,7 +1765,7 @@ fn test_bump_fee_reduce_single_recipient() {
     let tx = psbt.clone().extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
     let original_fee = check_fee!(wallet, psbt);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1813,7 +1813,7 @@ fn test_bump_fee_absolute_reduce_single_recipient() {
     let original_fee = check_fee!(wallet, psbt);
     let tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1877,7 +1877,7 @@ fn test_bump_fee_drain_wallet() {
     builder
         .drain_to(addr.script_pubkey())
         .add_utxo(OutPoint {
-            txid: tx.txid(),
+            txid: tx.malfix_txid(),
             vout: 0,
         })
         .unwrap()
@@ -1887,7 +1887,7 @@ fn test_bump_fee_drain_wallet() {
     let tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
 
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -1939,7 +1939,7 @@ fn test_bump_fee_remove_output_manually_selected_only() {
         )
         .unwrap();
     let outpoint = OutPoint {
-        txid: init_tx.txid(),
+        txid: init_tx.malfix_txid(),
         vout: 0,
     };
     let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
@@ -1955,7 +1955,7 @@ fn test_bump_fee_remove_output_manually_selected_only() {
     let psbt = builder.finish().unwrap();
     let tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -2004,7 +2004,7 @@ fn test_bump_fee_add_input() {
     let psbt = builder.finish().unwrap();
     let tx = psbt.extract_tx().expect("failed to extract tx");
     let original_details = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -2061,7 +2061,7 @@ fn test_bump_fee_absolute_add_input() {
     let psbt = builder.finish().unwrap();
     let tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -2129,7 +2129,7 @@ fn test_bump_fee_no_change_add_input_and_change() {
     let original_fee = check_fee!(wallet, psbt);
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -2201,7 +2201,7 @@ fn test_bump_fee_add_input_change_dust() {
     let original_tx_weight = tx.weight();
     assert_eq!(tx.input.len(), 1);
     assert_eq!(tx.output.len(), 2);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     wallet
         .insert_tx(tx, ConfirmationTime::Unconfirmed { last_seen: 0 })
         .unwrap();
@@ -2271,7 +2271,7 @@ fn test_bump_fee_force_add_input() {
     let psbt = builder.finish().unwrap();
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     for txin in &mut tx.input {
         txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // fake signature
     }
@@ -2337,7 +2337,7 @@ fn test_bump_fee_absolute_force_add_input() {
     let psbt = builder.finish().unwrap();
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
     let original_sent_received = wallet.sent_and_received(&tx);
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     // skip saving the new utxos, we know they can't be used anyways
     for txin in &mut tx.input {
         txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // fake signature
@@ -2417,7 +2417,7 @@ fn test_bump_fee_unconfirmed_inputs_only() {
         ConfirmationTime::Unconfirmed { last_seen: 0 },
     );
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     for txin in &mut tx.input {
         txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // fake signature
     }
@@ -2450,7 +2450,7 @@ fn test_bump_fee_unconfirmed_input() {
         .enable_rbf();
     let psbt = builder.finish().unwrap();
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
-    let txid = tx.txid();
+    let txid = tx.malfix_txid();
     for txin in &mut tx.input {
         txin.witness.push([0x00; P2WPKH_FAKE_WITNESS_SIZE]); // fake signature
     }

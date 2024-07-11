@@ -47,7 +47,7 @@ use tapyrus::script::color_identifier::ColorIdentifier;
 
 use tapyrus::psbt::{self, Psbt};
 use tapyrus::script::PushBytes;
-use tapyrus::{absolute, Amount, FeeRate, OutPoint, ScriptBuf, Sequence, Transaction, Txid};
+use tapyrus::{absolute, Amount, FeeRate, MalFixTxid, OutPoint, ScriptBuf, Sequence, Transaction};
 
 use super::coin_selection::CoinSelectionAlgorithm;
 use super::{CreateTxError, Wallet};
@@ -389,9 +389,9 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
         if psbt_input.witness_utxo.is_none() {
             match psbt_input.non_witness_utxo.as_ref() {
                 Some(tx) => {
-                    if tx.txid() != outpoint.txid {
+                    if tx.malfix_txid() != outpoint.txid {
                         return Err(AddForeignUtxoError::InvalidTxid {
-                            input_txid: tx.txid(),
+                            input_txid: tx.malfix_txid(),
                             foreign_utxo: outpoint,
                         });
                     }
@@ -726,7 +726,7 @@ pub enum AddForeignUtxoError {
     /// Foreign utxo outpoint txid does not match PSBT input txid
     InvalidTxid {
         /// PSBT input txid
-        input_txid: Txid,
+        input_txid: MalFixTxid,
         /// Foreign UTXO outpoint
         foreign_utxo: OutPoint,
     },
@@ -949,7 +949,7 @@ mod test {
         vec![
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::MalFixTxid::from_slice(&[0; 32]).unwrap(),
                     vout: 0,
                 },
                 txout: TxOut::NULL,
@@ -960,7 +960,7 @@ mod test {
             },
             LocalOutput {
                 outpoint: OutPoint {
-                    txid: tapyrus::Txid::from_slice(&[0; 32]).unwrap(),
+                    txid: tapyrus::MalFixTxid::from_slice(&[0; 32]).unwrap(),
                     vout: 1,
                 },
                 txout: TxOut::NULL,

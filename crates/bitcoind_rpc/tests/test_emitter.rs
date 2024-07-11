@@ -4,7 +4,7 @@ use bdk_bitcoind_rpc::Emitter;
 use bitcoin::{hashes::Hash, Block, OutPoint, ScriptBuf, WScriptHash};
 use bitcoincore_rpc::RpcApi;
 use tdk_chain::{
-    bitcoin::{Address, Amount, Txid},
+    bitcoin::{Address, Amount, MalFixTxid},
     keychain::Balance,
     local_chain::{CheckPoint, LocalChain},
     tapyrus::script::color_identifier::ColorIdentifier,
@@ -198,8 +198,8 @@ fn test_into_tx_graph() -> anyhow::Result<()> {
                 .graph
                 .txs
                 .iter()
-                .map(|tx| tx.txid())
-                .collect::<BTreeSet<Txid>>(),
+                .map(|tx| tx.malfix_txid())
+                .collect::<BTreeSet<MalFixTxid>>(),
             exp_txids,
             "changeset should have the 3 mempool transactions",
         );
@@ -437,14 +437,14 @@ fn mempool_avoids_re_emission() -> anyhow::Result<()> {
     // have some random txs in mempool
     let exp_txids = (0..MEMPOOL_TX_COUNT)
         .map(|_| env.send(&addr, Amount::from_sat(2100)))
-        .collect::<Result<BTreeSet<Txid>, _>>()?;
+        .collect::<Result<BTreeSet<MalFixTxid>, _>>()?;
 
     // the first emission should include all transactions
     let emitted_txids = emitter
         .mempool()?
         .into_iter()
-        .map(|(tx, _)| tx.txid())
-        .collect::<BTreeSet<Txid>>();
+        .map(|(tx, _)| tx.malfix_txid())
+        .collect::<BTreeSet<MalFixTxid>>();
     assert_eq!(
         emitted_txids, exp_txids,
         "all mempool txs should be emitted"
@@ -512,7 +512,7 @@ fn mempool_re_emits_if_tx_introduction_height_not_reached() -> anyhow::Result<()
         emitter
             .mempool()?
             .into_iter()
-            .map(|(tx, _)| tx.txid())
+            .map(|(tx, _)| tx.malfix_txid())
             .collect::<BTreeSet<_>>(),
         tx_introductions.iter().map(|&(_, txid)| txid).collect(),
         "first mempool emission should include all txs",
@@ -521,7 +521,7 @@ fn mempool_re_emits_if_tx_introduction_height_not_reached() -> anyhow::Result<()
         emitter
             .mempool()?
             .into_iter()
-            .map(|(tx, _)| tx.txid())
+            .map(|(tx, _)| tx.malfix_txid())
             .collect::<BTreeSet<_>>(),
         tx_introductions.iter().map(|&(_, txid)| txid).collect(),
         "second mempool emission should still include all txs",
@@ -535,13 +535,13 @@ fn mempool_re_emits_if_tx_introduction_height_not_reached() -> anyhow::Result<()
         // The second call (at height `h`) should skip the tx introduced at height `h`.
         for try_index in 0..2 {
             let exp_txids = tx_introductions
-                .range((height as usize + try_index, Txid::all_zeros())..)
+                .range((height as usize + try_index, MalFixTxid::all_zeros())..)
                 .map(|&(_, txid)| txid)
                 .collect::<BTreeSet<_>>();
             let emitted_txids = emitter
                 .mempool()?
                 .into_iter()
-                .map(|(tx, _)| tx.txid())
+                .map(|(tx, _)| tx.malfix_txid())
                 .collect::<BTreeSet<_>>();
             assert_eq!(
                 emitted_txids, exp_txids,
@@ -599,7 +599,7 @@ fn mempool_during_reorg() -> anyhow::Result<()> {
         emitter
             .mempool()?
             .into_iter()
-            .map(|(tx, _)| tx.txid())
+            .map(|(tx, _)| tx.malfix_txid())
             .collect::<BTreeSet<_>>(),
         env.rpc_client()
             .get_raw_mempool()?
@@ -636,7 +636,7 @@ fn mempool_during_reorg() -> anyhow::Result<()> {
             let mempool = emitter
                 .mempool()?
                 .into_iter()
-                .map(|(tx, _)| tx.txid())
+                .map(|(tx, _)| tx.malfix_txid())
                 .collect::<BTreeSet<_>>();
             let exp_mempool = tx_introductions
                 .iter()
@@ -651,7 +651,7 @@ fn mempool_during_reorg() -> anyhow::Result<()> {
             let mempool = emitter
                 .mempool()?
                 .into_iter()
-                .map(|(tx, _)| tx.txid())
+                .map(|(tx, _)| tx.malfix_txid())
                 .collect::<BTreeSet<_>>();
             let exp_mempool = tx_introductions
                 .iter()

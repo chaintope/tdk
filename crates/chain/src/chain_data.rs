@@ -1,5 +1,5 @@
 use tapyrus::{
-    hashes::Hash, script::color_identifier::ColorIdentifier, BlockHash, OutPoint, TxOut, Txid,
+    hashes::Hash, script::color_identifier::ColorIdentifier, BlockHash, MalFixTxid, OutPoint, TxOut,
 };
 
 use crate::{Anchor, AnchorFromBlockPosition, COINBASE_MATURITY};
@@ -239,7 +239,7 @@ pub struct FullTxOut<A> {
     /// The `TxOut`.
     pub txout: TxOut,
     /// The txid and chain position of the transaction (if any) that has spent this output.
-    pub spent_by: Option<(ChainPosition<A>, Txid)>,
+    pub spent_by: Option<(ChainPosition<A>, MalFixTxid)>,
     /// Whether this output is on a coinbase transaction.
     pub is_on_coinbase: bool,
 }

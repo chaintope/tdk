@@ -5,7 +5,7 @@ use crate::{
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::{fmt::Debug, marker::PhantomData, ops::RangeBounds};
-use tapyrus::{OutPoint, Script, ScriptBuf, Txid};
+use tapyrus::{MalFixTxid, OutPoint, Script, ScriptBuf};
 
 /// Data required to perform a spk-based blockchain client sync.
 ///
@@ -20,7 +20,7 @@ pub struct SyncRequest {
     /// Transactions that spend from or to these indexed script pubkeys.
     pub spks: Box<dyn ExactSizeIterator<Item = ScriptBuf> + Send>,
     /// Transactions with these txids.
-    pub txids: Box<dyn ExactSizeIterator<Item = Txid> + Send>,
+    pub txids: Box<dyn ExactSizeIterator<Item = MalFixTxid> + Send>,
     /// Transactions with these outpoints or spent from these outpoints.
     pub outpoints: Box<dyn ExactSizeIterator<Item = OutPoint> + Send>,
 }
@@ -48,13 +48,13 @@ impl SyncRequest {
         self
     }
 
-    /// Set the [`Txid`]s that will be synced against.
+    /// Set the [`MalFixTxid`]s that will be synced against.
     ///
     /// This consumes the [`SyncRequest`] and returns the updated one.
     #[must_use]
     pub fn set_txids(
         mut self,
-        txids: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = Txid> + Send + 'static>,
+        txids: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = MalFixTxid> + Send + 'static>,
     ) -> Self {
         self.txids = Box::new(txids.into_iter());
         self
@@ -89,15 +89,15 @@ impl SyncRequest {
         self
     }
 
-    /// Chain on additional [`Txid`]s that will be synced against.
+    /// Chain on additional [`MalFixTxid`]s that will be synced against.
     ///
     /// This consumes the [`SyncRequest`] and returns the updated one.
     #[must_use]
     pub fn chain_txids(
         mut self,
         txids: impl IntoIterator<
-            IntoIter = impl ExactSizeIterator<Item = Txid> + Send + 'static,
-            Item = Txid,
+            IntoIter = impl ExactSizeIterator<Item = MalFixTxid> + Send + 'static,
+            Item = MalFixTxid,
         >,
     ) -> Self {
         self.txids = Box::new(ExactSizeChain::new(self.txids, txids.into_iter()));
@@ -131,11 +131,14 @@ impl SyncRequest {
         self
     }
 
-    /// Add a closure that will be called for [`Txid`]s previously added to this request.
+    /// Add a closure that will be called for [`MalFixTxid`]s previously added to this request.
     ///
     /// This consumes the [`SyncRequest`] and returns the updated one.
     #[must_use]
-    pub fn inspect_txids(mut self, mut inspect: impl FnMut(&Txid) + Send + Sync + 'static) -> Self {
+    pub fn inspect_txids(
+        mut self,
+        mut inspect: impl FnMut(&MalFixTxid) + Send + Sync + 'static,
+    ) -> Self {
         self.txids = Box::new(self.txids.inspect(move |txid| inspect(txid)));
         self
     }

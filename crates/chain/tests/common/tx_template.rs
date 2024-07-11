@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use miniscript::Descriptor;
 use tapyrus::{
-    locktime::absolute::LockTime, secp256k1::Secp256k1, transaction, Amount, OutPoint, ScriptBuf,
-    Sequence, Transaction, TxIn, TxOut, Txid, Witness,
+    locktime::absolute::LockTime, secp256k1::Secp256k1, transaction, Amount, MalFixTxid, OutPoint,
+    ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
 };
 use tdk_chain::{tx_graph::TxGraph, Anchor, SpkTxOutIndex};
 
@@ -53,7 +53,7 @@ impl TxOutTemplate {
 #[allow(dead_code)]
 pub fn init_graph<'a, A: Anchor + Clone + 'a>(
     tx_templates: impl IntoIterator<Item = &'a TxTemplate<'a, A>>,
-) -> (TxGraph<A>, SpkTxOutIndex<u32>, HashMap<&'a str, Txid>) {
+) -> (TxGraph<A>, SpkTxOutIndex<u32>, HashMap<&'a str, MalFixTxid>) {
     let (descriptor, _) =
         Descriptor::parse_descriptor(&Secp256k1::signing_only(), super::DESCRIPTORS[2]).unwrap();
     let mut graph = TxGraph::<A>::default();
@@ -67,7 +67,7 @@ pub fn init_graph<'a, A: Anchor + Clone + 'a>(
                 .script_pubkey(),
         );
     });
-    let mut tx_ids = HashMap::<&'a str, Txid>::new();
+    let mut tx_ids = HashMap::<&'a str, MalFixTxid>::new();
 
     for (bogus_txin_vout, tx_tmp) in tx_templates.into_iter().enumerate() {
         let tx = Transaction {
@@ -125,14 +125,14 @@ pub fn init_graph<'a, A: Anchor + Clone + 'a>(
                 .collect(),
         };
 
-        tx_ids.insert(tx_tmp.tx_name, tx.txid());
+        tx_ids.insert(tx_tmp.tx_name, tx.malfix_txid());
         spk_index.scan(&tx);
         let _ = graph.insert_tx(tx.clone());
         for anchor in tx_tmp.anchors.iter() {
-            let _ = graph.insert_anchor(tx.txid(), anchor.clone());
+            let _ = graph.insert_anchor(tx.malfix_txid(), anchor.clone());
         }
         if let Some(seen_at) = tx_tmp.last_seen {
-            let _ = graph.insert_seen_at(tx.txid(), seen_at);
+            let _ = graph.insert_seen_at(tx.malfix_txid(), seen_at);
         }
     }
     (graph, spk_index, tx_ids)

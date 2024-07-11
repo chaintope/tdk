@@ -102,7 +102,7 @@ use core::{
     ops::{Deref, RangeInclusive},
 };
 use tapyrus::script::color_identifier::ColorIdentifier;
-use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{Amount, MalFixTxid, OutPoint, Script, SignedAmount, Transaction, TxOut};
 
 /// A graph of transactions and spends.
 ///
@@ -112,13 +112,13 @@ use tapyrus::{Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
 #[derive(Clone, Debug, PartialEq)]
 pub struct TxGraph<A = ()> {
     // all transactions that the graph is aware of in format: `(tx_node, tx_anchors, tx_last_seen)`
-    txs: HashMap<Txid, (TxNodeInternal, BTreeSet<A>, u64)>,
-    spends: BTreeMap<OutPoint, HashSet<Txid>>,
-    anchors: BTreeSet<(A, Txid)>,
+    txs: HashMap<MalFixTxid, (TxNodeInternal, BTreeSet<A>, u64)>,
+    spends: BTreeMap<OutPoint, HashSet<MalFixTxid>>,
+    anchors: BTreeSet<(A, MalFixTxid)>,
 
     // This atrocity exists so that `TxGraph::outspends()` can return a reference.
     // FIXME: This can be removed once `HashSet::new` is a const fn.
-    empty_outspends: HashSet<Txid>,
+    empty_outspends: HashSet<MalFixTxid>,
 }
 
 impl<A> Default for TxGraph<A> {
@@ -135,8 +135,8 @@ impl<A> Default for TxGraph<A> {
 /// A transaction node in the [`TxGraph`].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TxNode<'a, T, A> {
-    /// Txid of the transaction.
-    pub txid: Txid,
+    /// MalFixTxid of the transaction.
+    pub txid: MalFixTxid,
     /// A partial or full representation of the transaction.
     pub tx: T,
     /// The blocks that the transaction is "anchored" in.
@@ -265,12 +265,12 @@ impl<A> TxGraph<A> {
     /// Refer to [`get_txout`] for getting a specific [`TxOut`].
     ///
     /// [`get_txout`]: Self::get_txout
-    pub fn get_tx(&self, txid: Txid) -> Option<Arc<Transaction>> {
+    pub fn get_tx(&self, txid: MalFixTxid) -> Option<Arc<Transaction>> {
         self.get_tx_node(txid).map(|n| n.tx)
     }
 
     /// Get a transaction node by txid. This only returns `Some` for full transactions.
-    pub fn get_tx_node(&self, txid: Txid) -> Option<TxNode<'_, Arc<Transaction>, A>> {
+    pub fn get_tx_node(&self, txid: MalFixTxid) -> Option<TxNode<'_, Arc<Transaction>, A>> {
         match &self.txs.get(&txid)? {
             (TxNodeInternal::Whole(tx), anchors, last_seen) => Some(TxNode {
                 txid,
@@ -293,7 +293,7 @@ impl<A> TxGraph<A> {
     /// Returns known outputs of a given `txid`.
     ///
     /// Returns a [`BTreeMap`] of vout to output of the provided `txid`.
-    pub fn tx_outputs(&self, txid: Txid) -> Option<BTreeMap<u32, &TxOut>> {
+    pub fn tx_outputs(&self, txid: MalFixTxid) -> Option<BTreeMap<u32, &TxOut>> {
         Some(match &self.txs.get(&txid)?.0 {
             TxNodeInternal::Whole(tx) => tx
                 .as_ref()
@@ -357,7 +357,7 @@ impl<A> TxGraph<A> {
     ///
     /// [`TxGraph`] allows conflicting transactions within the graph. Obviously the transactions in
     /// the returned set will never be in the same active-chain.
-    pub fn outspends(&self, outpoint: OutPoint) -> &HashSet<Txid> {
+    pub fn outspends(&self, outpoint: OutPoint) -> &HashSet<MalFixTxid> {
         self.spends.get(&outpoint).unwrap_or(&self.empty_outspends)
     }
 
@@ -369,8 +369,8 @@ impl<A> TxGraph<A> {
     /// - `txid-set` is the set of txids spending the `vout`.
     pub fn tx_spends(
         &self,
-        txid: Txid,
-    ) -> impl DoubleEndedIterator<Item = (u32, &HashSet<Txid>)> + '_ {
+        txid: MalFixTxid,
+    ) -> impl DoubleEndedIterator<Item = (u32, &HashSet<MalFixTxid>)> + '_ {
         let start = OutPoint::new(txid, 0);
         let end = OutPoint::new(txid, u32::MAX);
         self.spends
@@ -411,9 +411,13 @@ impl<A: Clone + Ord> TxGraph<A> {
     ///
     /// The supplied closure returns an `Option<T>`, allowing the caller to map each node it visits
     /// and decide whether to visit descendants.
-    pub fn walk_descendants<'g, F, O>(&'g self, txid: Txid, walk_map: F) -> TxDescendants<A, F>
+    pub fn walk_descendants<'g, F, O>(
+        &'g self,
+        txid: MalFixTxid,
+        walk_map: F,
+    ) -> TxDescendants<A, F>
     where
-        F: FnMut(usize, Txid) -> Option<O> + 'g,
+        F: FnMut(usize, MalFixTxid) -> Option<O> + 'g,
     {
         TxDescendants::new_exclude_root(self, txid, walk_map)
     }
@@ -430,7 +434,7 @@ impl<A> TxGraph<A> {
         walk_map: F,
     ) -> TxDescendants<A, F>
     where
-        F: FnMut(usize, Txid) -> Option<O> + 'g,
+        F: FnMut(usize, MalFixTxid) -> Option<O> + 'g,
     {
         let txids = self.direct_conflicts(tx).map(|(_, txid)| txid);
         TxDescendants::from_multiple_include_root(self, txids, walk_map)
@@ -446,8 +450,8 @@ impl<A> TxGraph<A> {
     pub fn direct_conflicts<'g>(
         &'g self,
         tx: &'g Transaction,
-    ) -> impl Iterator<Item = (usize, Txid)> + '_ {
-        let txid = tx.txid();
+    ) -> impl Iterator<Item = (usize, MalFixTxid)> + '_ {
+        let txid = tx.malfix_txid();
         tx.input
             .iter()
             .enumerate()
@@ -457,7 +461,7 @@ impl<A> TxGraph<A> {
     }
 
     /// Get all transaction anchors known by [`TxGraph`].
-    pub fn all_anchors(&self) -> &BTreeSet<(A, Txid)> {
+    pub fn all_anchors(&self) -> &BTreeSet<(A, MalFixTxid)> {
         &self.anchors
     }
 
@@ -518,9 +522,10 @@ impl<A: Clone + Ord> TxGraph<A> {
     pub fn insert_tx<T: Into<Arc<Transaction>>>(&mut self, tx: T) -> ChangeSet<A> {
         let tx = tx.into();
         let mut update = Self::default();
-        update
-            .txs
-            .insert(tx.txid(), (TxNodeInternal::Whole(tx), BTreeSet::new(), 0));
+        update.txs.insert(
+            tx.malfix_txid(),
+            (TxNodeInternal::Whole(tx), BTreeSet::new(), 0),
+        );
         self.apply_update(update)
     }
 
@@ -535,7 +540,7 @@ impl<A: Clone + Ord> TxGraph<A> {
     ) -> ChangeSet<A> {
         let mut changeset = ChangeSet::<A>::default();
         for (tx, seen_at) in txs {
-            changeset.append(self.insert_seen_at(tx.txid(), seen_at));
+            changeset.append(self.insert_seen_at(tx.malfix_txid(), seen_at));
             changeset.append(self.insert_tx(tx));
         }
         changeset
@@ -545,7 +550,7 @@ impl<A: Clone + Ord> TxGraph<A> {
     ///
     /// The [`ChangeSet`] returned will be empty if graph already knows that `txid` exists in
     /// `anchor`.
-    pub fn insert_anchor(&mut self, txid: Txid, anchor: A) -> ChangeSet<A> {
+    pub fn insert_anchor(&mut self, txid: MalFixTxid, anchor: A) -> ChangeSet<A> {
         let mut update = Self::default();
         update.anchors.insert((anchor, txid));
         self.apply_update(update)
@@ -558,7 +563,7 @@ impl<A: Clone + Ord> TxGraph<A> {
     /// [`update_last_seen_unconfirmed`].
     ///
     /// [`update_last_seen_unconfirmed`]: Self::update_last_seen_unconfirmed
-    pub fn insert_seen_at(&mut self, txid: Txid, seen_at: u64) -> ChangeSet<A> {
+    pub fn insert_seen_at(&mut self, txid: MalFixTxid, seen_at: u64) -> ChangeSet<A> {
         let mut update = Self::default();
         let (_, _, update_last_seen) = update.txs.entry(txid).or_default();
         *update_last_seen = seen_at;
@@ -604,7 +609,7 @@ impl<A: Clone + Ord> TxGraph<A> {
     /// [`try_get_chain_position`]: Self::try_get_chain_position
     pub fn update_last_seen_unconfirmed(&mut self, seen_at: u64) -> ChangeSet<A> {
         let mut changeset = ChangeSet::default();
-        let unanchored_txs: Vec<Txid> = self
+        let unanchored_txs: Vec<MalFixTxid> = self
             .txs
             .iter()
             .filter_map(
@@ -644,7 +649,7 @@ impl<A: Clone + Ord> TxGraph<A> {
     pub fn apply_changeset(&mut self, changeset: ChangeSet<A>) {
         for wrapped_tx in changeset.txs {
             let tx = wrapped_tx.as_ref();
-            let txid = tx.txid();
+            let txid = tx.malfix_txid();
 
             tx.input
                 .iter()
@@ -662,7 +667,7 @@ impl<A: Clone + Ord> TxGraph<A> {
                 }
                 Some((TxNodeInternal::Whole(tx), _, _)) => {
                     debug_assert_eq!(
-                        tx.as_ref().txid(),
+                        tx.as_ref().malfix_txid(),
                         txid,
                         "tx should produce txid that is same as key"
                     );
@@ -785,7 +790,7 @@ impl<A: Anchor> TxGraph<A> {
         &self,
         chain: &C,
         chain_tip: BlockId,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> Result<Option<ChainPosition<&A>>, C::Error> {
         let (tx_node, anchors, last_seen) = match self.txs.get(&txid) {
             Some(v) => v,
@@ -827,7 +832,7 @@ impl<A: Anchor> TxGraph<A> {
         // resulting array will also include `tx`
         let unconfirmed_ancestor_txs =
             TxAncestors::new_include_root(self, tx.clone(), |_, ancestor_tx: Arc<Transaction>| {
-                let tx_node = self.get_tx_node(ancestor_tx.as_ref().txid())?;
+                let tx_node = self.get_tx_node(ancestor_tx.as_ref().malfix_txid())?;
                 // We're filtering the ancestors to keep only the unconfirmed ones (= no anchors in
                 // the best chain)
                 for block in tx_node.anchors {
@@ -845,8 +850,8 @@ impl<A: Anchor> TxGraph<A> {
         // and our unconf descendants' last seen.
         let unconfirmed_descendants_txs = TxDescendants::new_include_root(
             self,
-            tx.as_ref().txid(),
-            |_, descendant_txid: Txid| {
+            tx.as_ref().malfix_txid(),
+            |_, descendant_txid: MalFixTxid| {
                 let tx_node = self.get_tx_node(descendant_txid)?;
                 // We're filtering the ancestors to keep only the unconfirmed ones (= no anchors in
                 // the best chain)
@@ -886,7 +891,7 @@ impl<A: Anchor> TxGraph<A> {
                     return Ok(None);
                 }
                 if conflicting_tx.last_seen_unconfirmed == *last_seen
-                    && conflicting_tx.as_ref().txid() > tx.as_ref().txid()
+                    && conflicting_tx.as_ref().malfix_txid() > tx.as_ref().malfix_txid()
                 {
                     // Conflicting tx has priority if txid of conflicting tx > txid of original tx
                     return Ok(None);
@@ -906,7 +911,7 @@ impl<A: Anchor> TxGraph<A> {
         &self,
         chain: &C,
         chain_tip: BlockId,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> Option<ChainPosition<&A>> {
         self.try_get_chain_position(chain, chain_tip, txid)
             .expect("error is infallible")
@@ -929,7 +934,7 @@ impl<A: Anchor> TxGraph<A> {
         chain: &C,
         chain_tip: BlockId,
         outpoint: OutPoint,
-    ) -> Result<Option<(ChainPosition<&A>, Txid)>, C::Error> {
+    ) -> Result<Option<(ChainPosition<&A>, MalFixTxid)>, C::Error> {
         if self
             .try_get_chain_position(chain, chain_tip, outpoint.txid)?
             .is_none()
@@ -957,7 +962,7 @@ impl<A: Anchor> TxGraph<A> {
         chain: &C,
         static_block: BlockId,
         outpoint: OutPoint,
-    ) -> Option<(ChainPosition<&A>, Txid)> {
+    ) -> Option<(ChainPosition<&A>, MalFixTxid)> {
         self.try_get_chain_spend(chain, static_block, outpoint)
             .expect("error is infallible")
     }
@@ -1247,9 +1252,9 @@ pub struct ChangeSet<A = ()> {
     /// Added txouts.
     pub txouts: BTreeMap<OutPoint, TxOut>,
     /// Added anchors.
-    pub anchors: BTreeSet<(A, Txid)>,
+    pub anchors: BTreeSet<(A, MalFixTxid)>,
     /// Added last-seen unix timestamps of transactions.
-    pub last_seen: BTreeMap<Txid, u64>,
+    pub last_seen: BTreeMap<MalFixTxid, u64>,
 }
 
 impl<A> Default for ChangeSet<A> {
@@ -1272,7 +1277,7 @@ impl<A> ChangeSet<A> {
                 tx.output
                     .iter()
                     .enumerate()
-                    .map(move |(vout, txout)| (OutPoint::new(tx.txid(), vout as _), txout))
+                    .map(move |(vout, txout)| (OutPoint::new(tx.malfix_txid(), vout as _), txout))
             })
             .chain(self.txouts.iter().map(|(op, txout)| (*op, txout)))
     }
@@ -1335,7 +1340,7 @@ impl<A: Ord> ChangeSet<A> {
         ChangeSet {
             txs: self.txs,
             txouts: self.txouts,
-            anchors: BTreeSet::<(A2, Txid)>::from_iter(
+            anchors: BTreeSet::<(A2, MalFixTxid)>::from_iter(
                 self.anchors.into_iter().map(|(a, txid)| (f(a), txid)),
             ),
             last_seen: self.last_seen,
@@ -1358,7 +1363,7 @@ impl<A> AsRef<TxGraph<A>> for TxGraph<A> {
 /// [`walk_ancestors`]: TxGraph::walk_ancestors
 pub struct TxAncestors<'g, A, F> {
     graph: &'g TxGraph<A>,
-    visited: HashSet<Txid>,
+    visited: HashSet<MalFixTxid>,
     queue: VecDeque<(usize, Arc<Transaction>)>,
     filter_map: F,
 }
@@ -1478,15 +1483,15 @@ where
 /// [`walk_descendants`]: TxGraph::walk_descendants
 pub struct TxDescendants<'g, A, F> {
     graph: &'g TxGraph<A>,
-    visited: HashSet<Txid>,
-    queue: VecDeque<(usize, Txid)>,
+    visited: HashSet<MalFixTxid>,
+    queue: VecDeque<(usize, MalFixTxid)>,
     filter_map: F,
 }
 
 impl<'g, A, F> TxDescendants<'g, A, F> {
     /// Creates a `TxDescendants` that includes the starting `txid` when iterating.
     #[allow(unused)]
-    pub(crate) fn new_include_root(graph: &'g TxGraph<A>, txid: Txid, filter_map: F) -> Self {
+    pub(crate) fn new_include_root(graph: &'g TxGraph<A>, txid: MalFixTxid, filter_map: F) -> Self {
         Self {
             graph,
             visited: Default::default(),
@@ -1496,7 +1501,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
     }
 
     /// Creates a `TxDescendants` that excludes the starting `txid` when iterating.
-    pub(crate) fn new_exclude_root(graph: &'g TxGraph<A>, txid: Txid, filter_map: F) -> Self {
+    pub(crate) fn new_exclude_root(graph: &'g TxGraph<A>, txid: MalFixTxid, filter_map: F) -> Self {
         let mut descendants = Self {
             graph,
             visited: Default::default(),
@@ -1515,7 +1520,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
         filter_map: F,
     ) -> Self
     where
-        I: IntoIterator<Item = Txid>,
+        I: IntoIterator<Item = MalFixTxid>,
     {
         Self {
             graph,
@@ -1534,7 +1539,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
         filter_map: F,
     ) -> Self
     where
-        I: IntoIterator<Item = Txid>,
+        I: IntoIterator<Item = MalFixTxid>,
     {
         let mut descendants = Self {
             graph,
@@ -1550,7 +1555,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
 }
 
 impl<'g, A, F> TxDescendants<'g, A, F> {
-    fn populate_queue(&mut self, depth: usize, txid: Txid) {
+    fn populate_queue(&mut self, depth: usize, txid: MalFixTxid) {
         let spend_paths = self
             .graph
             .spends
@@ -1563,7 +1568,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
 
 impl<'g, A, F, O> Iterator for TxDescendants<'g, A, F>
 where
-    F: FnMut(usize, Txid) -> Option<O>,
+    F: FnMut(usize, MalFixTxid) -> Option<O>,
 {
     type Item = O;
 
@@ -1585,6 +1590,6 @@ where
     }
 }
 
-fn tx_outpoint_range(txid: Txid) -> RangeInclusive<OutPoint> {
+fn tx_outpoint_range(txid: MalFixTxid) -> RangeInclusive<OutPoint> {
     OutPoint::new(txid, u32::MIN)..=OutPoint::new(txid, u32::MAX)
 }

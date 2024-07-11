@@ -1,7 +1,7 @@
 //! Contains the [`IndexedTxGraph`] and associated types. Refer to the
 //! [`IndexedTxGraph`] documentation for more.
 use alloc::vec::Vec;
-use tapyrus::{Block, OutPoint, Transaction, TxOut, Txid};
+use tapyrus::{Block, MalFixTxid, OutPoint, Transaction, TxOut};
 
 use crate::{
     tx_graph::{self, TxGraph},
@@ -107,7 +107,7 @@ where
     }
 
     /// Insert an `anchor` for a given transaction.
-    pub fn insert_anchor(&mut self, txid: Txid, anchor: A) -> ChangeSet<A, I::ChangeSet> {
+    pub fn insert_anchor(&mut self, txid: MalFixTxid, anchor: A) -> ChangeSet<A, I::ChangeSet> {
         self.graph.insert_anchor(txid, anchor).into()
     }
 
@@ -115,7 +115,7 @@ where
     ///
     /// This is used for transaction conflict resolution in [`TxGraph`] where the transaction with
     /// the later last-seen is prioritized.
-    pub fn insert_seen_at(&mut self, txid: Txid, seen_at: u64) -> ChangeSet<A, I::ChangeSet> {
+    pub fn insert_seen_at(&mut self, txid: MalFixTxid, seen_at: u64) -> ChangeSet<A, I::ChangeSet> {
         self.graph.insert_seen_at(txid, seen_at).into()
     }
 
@@ -143,7 +143,7 @@ where
         let mut graph = tx_graph::ChangeSet::default();
         for (tx, anchors) in txs {
             if self.index.is_tx_relevant(tx) {
-                let txid = tx.txid();
+                let txid = tx.malfix_txid();
                 graph.append(self.graph.insert_tx(tx.clone()));
                 for anchor in anchors {
                     graph.append(self.graph.insert_anchor(txid, anchor));
@@ -234,7 +234,7 @@ where
         for (tx_pos, tx) in block.txdata.iter().enumerate() {
             changeset.indexer.append(self.index.index_tx(tx));
             if self.index.is_tx_relevant(tx) {
-                let txid = tx.txid();
+                let txid = tx.malfix_txid();
                 let anchor = A::from_block_position(block, block_id, tx_pos);
                 changeset.graph.append(self.graph.insert_tx(tx.clone()));
                 changeset
@@ -261,7 +261,7 @@ where
         let mut graph = tx_graph::ChangeSet::default();
         for (tx_pos, tx) in block.txdata.iter().enumerate() {
             let anchor = A::from_block_position(&block, block_id, tx_pos);
-            graph.append(self.graph.insert_anchor(tx.txid(), anchor));
+            graph.append(self.graph.insert_anchor(tx.malfix_txid(), anchor));
             graph.append(self.graph.insert_tx(tx.clone()));
         }
         let indexer = self.index_tx_graph_changeset(&graph);

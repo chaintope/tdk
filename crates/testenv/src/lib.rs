@@ -14,7 +14,7 @@ use tdk_chain::{
     tapyrus::{
         address::NetworkChecked, block::Header, block::XField, hash_types::TxMerkleNode,
         hashes::Hash, secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash,
-        ScriptBuf, ScriptHash, Transaction, TxIn, TxOut, Txid,
+        MalFixTxid, ScriptBuf, ScriptHash, Transaction, TxIn, TxOut,
     },
     BlockId,
 };
@@ -220,12 +220,16 @@ impl TestEnv {
     }
 
     /// Send a tx of a given `amount` to a given `address`.
-    pub fn send(&self, address: &Address<NetworkChecked>, amount: Amount) -> anyhow::Result<Txid> {
+    pub fn send(
+        &self,
+        address: &Address<NetworkChecked>,
+        amount: Amount,
+    ) -> anyhow::Result<MalFixTxid> {
         let txid = self
             .tapyrusd
             .client
             .send_to_address(address, amount, None, None, None, None, None, None)?;
-        Ok(Txid::from_slice(&txid[..]).unwrap())
+        Ok(MalFixTxid::from_slice(&txid[..]).unwrap())
         // Ok(txid)
     }
 
