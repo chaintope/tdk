@@ -1595,7 +1595,7 @@ impl Wallet {
         let (required_utxos, optional_utxos) =
             coin_selection::filter_duplicates(required_utxos, optional_utxos);
 
-        let mut selected_coins:Vec<Utxo> = Vec::new();
+        let mut selected_coins: Vec<Utxo> = Vec::new();
 
         // for Colored Coin
         for (script_pubkey, value, color_id) in recipients {
@@ -1612,7 +1612,7 @@ impl Wallet {
                 &color_id,
             )?;
             let excess = &coin_selection.excess;
-            
+
             tx.input.extend(
                 coin_selection
                     .selected
@@ -1651,7 +1651,9 @@ impl Wallet {
         }
 
         // for TPC
-        let outgoing = outgoings.get(&ColorIdentifier::default()).unwrap_or(&Amount::ZERO);
+        let outgoing = outgoings
+            .get(&ColorIdentifier::default())
+            .unwrap_or(&Amount::ZERO);
         let coin_selection = coin_selection.coin_select(
             required_utxos,
             optional_utxos,
@@ -1664,15 +1666,13 @@ impl Wallet {
         fee_amount += coin_selection.fee_amount;
         let excess = &coin_selection.excess;
 
-        tx.input.extend(coin_selection
-                .selected
-                .iter()
-                .map(|u| tapyrus::TxIn {
-                    previous_output: u.outpoint(),
-                    script_sig: ScriptBuf::default(),
-                    sequence: u.sequence().unwrap_or(n_sequence),
-                    witness: Witness::new(),
-                }));
+        tx.input
+            .extend(coin_selection.selected.iter().map(|u| tapyrus::TxIn {
+                previous_output: u.outpoint(),
+                script_sig: ScriptBuf::default(),
+                sequence: u.sequence().unwrap_or(n_sequence),
+                witness: Witness::new(),
+            }));
         selected_coins.extend(coin_selection.selected);
 
         if tx.output.is_empty() {
@@ -2363,9 +2363,7 @@ impl Wallet {
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
         let mut script = if utxo.txout.script_pubkey.is_colored() {
-            ScriptBuf::from_bytes(
-                utxo.txout.script_pubkey.as_bytes()[35..].to_vec(),
-            )
+            ScriptBuf::from_bytes(utxo.txout.script_pubkey.as_bytes()[35..].to_vec())
         } else {
             utxo.txout.script_pubkey
         };
@@ -2374,7 +2372,7 @@ impl Wallet {
             .index
             .index_of_spk(&script)
             .ok_or(CreateTxError::UnknownUtxo)?;
-        
+
         let mut psbt_input = psbt::Input {
             sighash_type,
             ..psbt::Input::default()

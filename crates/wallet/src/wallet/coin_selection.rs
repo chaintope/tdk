@@ -340,14 +340,21 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
 /// - `remaining_amount`: the amount in which the selected coins exceed the target amount
 /// - `fee_rate`: required fee rate for the current selection
 /// - `drain_script`: script to consider change creation
-pub fn decide_change(remaining_amount: u64, fee_rate: FeeRate, drain_script: &Script, color_id: &ColorIdentifier) -> Excess {
+pub fn decide_change(
+    remaining_amount: u64,
+    fee_rate: FeeRate,
+    drain_script: &Script,
+    color_id: &ColorIdentifier,
+) -> Excess {
     // drain_output_len = size(len(script_pubkey)) + len(script_pubkey) + size(output_value)
     let drain_output_len = serialize(drain_script).len() + 8usize;
     let change_fee =
         (fee_rate * Weight::from_vb(drain_output_len as u64).expect("overflow occurred")).to_tap();
     let drain_val = remaining_amount.saturating_sub(change_fee);
 
-    if (drain_val.is_dust(drain_script) && color_id.is_default()) || ( drain_val == 0 && color_id.is_colored()){
+    if (drain_val.is_dust(drain_script) && color_id.is_default())
+        || (drain_val == 0 && color_id.is_colored())
+    {
         let dust_threshold = drain_script.dust_value().to_tap();
         Excess::NoChange {
             dust_threshold,
@@ -595,7 +602,7 @@ impl BranchAndBoundCoinSelection {
         cost_of_change: u64,
         drain_script: &Script,
         fee_rate: FeeRate,
-        color_id: &ColorIdentifier
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error> {
         // current_selection[i] will contain true if we are using optional_utxos[i],
         // false otherwise. Note that current_selection.len() could be less than

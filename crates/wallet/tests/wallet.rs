@@ -1324,13 +1324,13 @@ fn test_create_tx_policy_path_ignored_subtree_with_csv() {
 #[test]
 fn test_create_tx_with_nft() {
     let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
-    let (mut wallet, _, color_id) = get_funded_wallet_with_nft_and_change(get_test_pkh(), change_desc);
+    let (mut wallet, _, color_id) =
+        get_funded_wallet_with_nft_and_change(get_test_pkh(), change_desc);
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
     let mut builder = wallet.build_tx();
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
-        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(1), color_id)
-        ;
+        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(1), color_id);
     let psbt = builder.finish().unwrap();
     let fee = check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 3);
@@ -1339,13 +1339,13 @@ fn test_create_tx_with_nft() {
 #[test]
 fn test_create_tx_with_reissuable() {
     let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
-    let (mut wallet, _, color_id) = get_funded_wallet_with_reissuable_and_change(get_test_pkh(), change_desc);
+    let (mut wallet, _, color_id) =
+        get_funded_wallet_with_reissuable_and_change(get_test_pkh(), change_desc);
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
     let mut builder = wallet.build_tx();
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
-        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(98), color_id)
-        ;
+        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(98), color_id);
     let psbt = builder.finish().unwrap();
     let fee = check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 4);
@@ -1395,7 +1395,8 @@ fn test_add_foreign_utxo() {
         ..Default::default()
     };
 
-    let mut builder: tdk_wallet::TxBuilder<coin_selection::BranchAndBoundCoinSelection> = wallet1.build_tx();
+    let mut builder: tdk_wallet::TxBuilder<coin_selection::BranchAndBoundCoinSelection> =
+        wallet1.build_tx();
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(60_000))
         .add_foreign_utxo(utxo.outpoint, psbt_input, foreign_utxo_satisfaction)
