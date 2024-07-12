@@ -24,7 +24,6 @@ use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
 use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
-use tapyrus::secp256k1::{All, Secp256k1};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
     absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, Network,
@@ -32,6 +31,10 @@ use tapyrus::{
 };
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
+use tapyrus::{
+    secp256k1::{All, Secp256k1},
+    TxIn,
+};
 pub use tdk_chain::keychain::Balance;
 use tdk_chain::{
     indexed_tx_graph,
@@ -1525,14 +1528,16 @@ impl Wallet {
             return Err(CreateTxError::NoUtxosSelected);
         }
 
-        let mut outgoing = Amount::ZERO;
+        let mut outgoings: HashMap<ColorIdentifier, Amount> = HashMap::new();
+        // let mut outgoing = Amount::ZERO;
         let mut received = Amount::ZERO;
 
-        let recipients = params.recipients.iter().map(|(r, v)| (r, *v));
+        let recipients = params.recipients.iter().map(|(r, v, c)| (r, *v, *c));
 
-        for (index, (script_pubkey, value)) in recipients.enumerate() {
+        for (index, (script_pubkey, value, color_id)) in recipients.clone().enumerate() {
             if !params.allow_dust
                 && value.is_dust(script_pubkey)
+                && color_id.is_default()
                 && !script_pubkey.is_provably_unspendable()
             {
                 return Err(CreateTxError::OutputBelowDustLimit(index));
@@ -1542,14 +1547,23 @@ impl Wallet {
                 received += Amount::from_tap(value);
             }
 
-            let new_out = TxOut {
-                script_pubkey: script_pubkey.clone(),
-                value: Amount::from_tap(value),
+            let new_out = if color_id.is_colored() {
+                TxOut {
+                    script_pubkey: script_pubkey.clone().add_color(color_id).unwrap(),
+                    value: Amount::from_tap(value),
+                }
+            } else {
+                TxOut {
+                    script_pubkey: script_pubkey.clone(),
+                    value: Amount::from_tap(value),
+                }
             };
 
             tx.output.push(new_out);
 
+            let mut outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
             outgoing += Amount::from_tap(value);
+            outgoings.insert(color_id, outgoing);
         }
 
         fee_amount += (fee_rate * tx.weight()).to_tap();
@@ -1581,26 +1595,85 @@ impl Wallet {
         let (required_utxos, optional_utxos) =
             coin_selection::filter_duplicates(required_utxos, optional_utxos);
 
+        let mut selected_coins:Vec<Utxo> = Vec::new();
+
+        // for Colored Coin
+        for (script_pubkey, value, color_id) in recipients {
+            if color_id.is_default() {
+                continue;
+            }
+            let mut outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
+            let coin_selection = coin_selection.coin_select(
+                required_utxos.clone(),
+                optional_utxos.clone(),
+                fee_rate,
+                outgoing.to_tap(),
+                &drain_script,
+                &color_id,
+            )?;
+            let excess = &coin_selection.excess;
+            
+            tx.input.extend(
+                coin_selection
+                    .selected
+                    .iter()
+                    .map(|u| tapyrus::TxIn {
+                        previous_output: u.outpoint(),
+                        script_sig: ScriptBuf::default(),
+                        sequence: u.sequence().unwrap_or(n_sequence),
+                        witness: Witness::new(),
+                    })
+                    .collect::<Vec<TxIn>>(),
+            );
+            selected_coins.extend(coin_selection.selected);
+            match excess {
+                NoChange {
+                    remaining_amount, ..
+                } => {}
+                Change { amount, fee } => {
+                    // if self.is_mine(&drain_script) {
+                    //     received += Amount::from_tap(*amount);
+                    // }
+                    // fee_amount += fee;
+
+                    // create drain output
+                    let drain_output = TxOut {
+                        value: Amount::from_tap(*amount),
+                        script_pubkey: drain_script.add_color(color_id).unwrap(),
+                    };
+
+                    // TODO: We should pay attention when adding a new output: this might increase
+                    // the length of the "number of vouts" parameter by 2 bytes, potentially making
+                    // our feerate too low
+                    tx.output.push(drain_output);
+                }
+            };
+        }
+
+        // for TPC
+        let outgoing = outgoings.get(&ColorIdentifier::default()).unwrap_or(&Amount::ZERO);
         let coin_selection = coin_selection.coin_select(
             required_utxos,
             optional_utxos,
             fee_rate,
             outgoing.to_tap() + fee_amount,
             &drain_script,
+            &ColorIdentifier::default(),
         )?;
+
         fee_amount += coin_selection.fee_amount;
         let excess = &coin_selection.excess;
 
-        tx.input = coin_selection
-            .selected
-            .iter()
-            .map(|u| tapyrus::TxIn {
-                previous_output: u.outpoint(),
-                script_sig: ScriptBuf::default(),
-                sequence: u.sequence().unwrap_or(n_sequence),
-                witness: Witness::new(),
-            })
-            .collect();
+        tx.input.extend(coin_selection
+                .selected
+                .iter()
+                .map(|u| tapyrus::TxIn {
+                    previous_output: u.outpoint(),
+                    script_sig: ScriptBuf::default(),
+                    sequence: u.sequence().unwrap_or(n_sequence),
+                    witness: Witness::new(),
+                }));
+        selected_coins.extend(coin_selection.selected);
 
         if tx.output.is_empty() {
             // Uh oh, our transaction has no outputs.
@@ -1653,7 +1726,7 @@ impl Wallet {
         // sort input/outputs according to the chosen algorithm
         params.ordering.sort_tx(&mut tx);
 
-        let psbt = self.complete_transaction(tx, coin_selection.selected, params)?;
+        let psbt = self.complete_transaction(tx, selected_coins, params)?;
         Ok(psbt)
     }
 
@@ -1815,7 +1888,13 @@ impl Wallet {
             recipients: tx
                 .output
                 .into_iter()
-                .map(|txout| (txout.script_pubkey, txout.value.to_tap()))
+                .map(|txout| {
+                    (
+                        txout.script_pubkey.clone(),
+                        txout.value.to_tap(),
+                        txout.script_pubkey.color_id().unwrap_or_default(),
+                    )
+                })
                 .collect(),
             utxos: original_utxos,
             bumping_fee: Some(tx_builder::PreviousFee {
@@ -2280,14 +2359,22 @@ impl Wallet {
         sighash_type: Option<psbt::PsbtSighashType>,
         _only_witness_utxo: bool,
     ) -> Result<psbt::Input, CreateTxError> {
+        // let mut script_pubkey = txo.txout.script_pubkey;
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
+        let mut script = if utxo.txout.script_pubkey.is_colored() {
+            ScriptBuf::from_bytes(
+                utxo.txout.script_pubkey.as_bytes()[35..].to_vec(),
+            )
+        } else {
+            utxo.txout.script_pubkey
+        };
         let (keychain, child) = self
             .indexed_graph
             .index
-            .index_of_spk(&utxo.txout.script_pubkey)
+            .index_of_spk(&script)
             .ok_or(CreateTxError::UnknownUtxo)?;
-
+        
         let mut psbt_input = psbt::Input {
             sighash_type,
             ..psbt::Input::default()
