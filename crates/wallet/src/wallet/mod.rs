@@ -1075,24 +1075,26 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use tapyrus::MalFixTxid;
+    /// # use tapyrus::{MalFixTxid, script::color_identifier::ColorIdentifier};
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let txid:MalFixTxid = todo!();
     /// let tx = wallet.get_tx(txid).expect("tx exists").tx_node.tx;
-    /// let (sent, received) = wallet.sent_and_received(&tx);
+    /// let color_id = ColorIdentifier::default();
+    /// let (sent, received) = wallet.sent_and_received(&tx, &color_id);
     /// ```
     ///
     /// ```rust, no_run
-    /// # use tapyrus::Psbt;
+    /// # use tapyrus::{Psbt, script::color_identifier::ColorIdentifier};
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
     /// # let mut psbt: Psbt = todo!();
     /// let tx = &psbt.clone().extract_tx().expect("tx");
-    /// let (sent, received) = wallet.sent_and_received(tx);
+    /// let color_id = ColorIdentifier::default();
+    /// let (sent, received) = wallet.sent_and_received(tx, &color_id);
     /// ```
-    pub fn sent_and_received(&self, tx: &Transaction) -> (Amount, Amount) {
-        self.indexed_graph.index.sent_and_received(tx, ..)
+    pub fn sent_and_received(&self, tx: &Transaction, color_id: &ColorIdentifier) -> (Amount, Amount) {
+        self.indexed_graph.index.sent_and_received(tx, .., color_id)
     }
 
     /// Get a single transaction from the wallet as a [`CanonicalTx`] (if the transaction exists).

@@ -4,7 +4,10 @@ use crate::{
     collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap},
     indexed_tx_graph::Indexer,
 };
-use tapyrus::{Amount, MalFixTxid, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, TxOut};
+use tapyrus::{
+    script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint, Script, ScriptBuf,
+    SignedAmount, Transaction, TxOut,
+};
 
 /// An index storing [`TxOut`]s that have a script pubkey that matches those in a list.
 ///
@@ -285,20 +288,30 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         &self,
         tx: &Transaction,
         range: impl RangeBounds<I>,
+        color_id: &ColorIdentifier,
     ) -> (Amount, Amount) {
         let mut sent = Amount::ZERO;
         let mut received = Amount::ZERO;
 
         for txin in &tx.input {
             if let Some((index, txout)) = self.txout(txin.previous_output) {
-                if range.contains(index) {
+                if range.contains(index)
+                    && txout.script_pubkey.color_id().unwrap_or_default() == *color_id
+                {
                     sent += txout.value;
                 }
             }
         }
         for txout in &tx.output {
-            if let Some(index) = self.index_of_spk(&txout.script_pubkey) {
-                if range.contains(index) {
+            let script_pubkey = if txout.script_pubkey.is_colored() {
+                ScriptBuf::from_bytes(txout.script_pubkey.as_bytes()[35..].to_vec())
+            } else {
+                txout.script_pubkey.clone()
+            };
+            if let Some(index) = self.index_of_spk(&script_pubkey) {
+                if range.contains(index)
+                    && txout.script_pubkey.color_id().unwrap_or_default() == *color_id
+                {
                     received += txout.value;
                 }
             }
@@ -311,8 +324,13 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// for calling [`sent_and_received`] and subtracting sent from received.
     ///
     /// [`sent_and_received`]: Self::sent_and_received
-    pub fn net_value(&self, tx: &Transaction, range: impl RangeBounds<I>) -> SignedAmount {
-        let (sent, received) = self.sent_and_received(tx, range);
+    pub fn net_value(
+        &self,
+        tx: &Transaction,
+        range: impl RangeBounds<I>,
+        color_id: &ColorIdentifier,
+    ) -> SignedAmount {
+        let (sent, received) = self.sent_and_received(tx, range, color_id);
         received.to_signed().expect("valid `SignedAmount`")
             - sent.to_signed().expect("valid `SignedAmount`")
     }
