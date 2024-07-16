@@ -174,7 +174,7 @@ mod test {
         let (desc, keys, networks) = crate::descriptor!(pkh(key)).unwrap();
         assert_eq!(desc.to_string(), "pkh([be83839f/44'/0'/0']xpub6DCQ1YcqvZtSwGWMrwHELPehjWV3f2MGZ69yBADTxFEUAoLwb5Mp5GniQK6tTp3AgbngVz9zEFbBJUPVnkG7LFYt8QMTfbrNqs6FNEwAPKA/0/*)#542fac6g");
         assert_eq!(keys.len(), 1);
-        assert_eq!(networks.len(), 4);
+        assert_eq!(networks.len(), 2);
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod test {
         let (desc, keys, networks) = crate::descriptor!(pkh(key)).unwrap();
         assert_eq!(desc.to_string(), "pkh([8f6cb80c/44'/0'/0']xpub6DWYS8bbihFevy29M4cbw4ZR3P5E12jB8R88gBDWCTCNpYiDHhYWNywrCF9VZQYagzPmsZpxXpytzSoxynyeFr4ZyzheVjnpLKuse4fiwZw/0/*)#rmp57g7c");
         assert_eq!(keys.len(), 1);
-        assert_eq!(networks.len(), 4);
+        assert_eq!(networks.len(), 2);
     }
 
     #[test]
