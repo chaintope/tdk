@@ -255,7 +255,7 @@ impl<Ctx: ScriptContext + 'static> ExtScriptContext for Ctx {
 /// makes the compiler (correctly) fail.
 ///
 /// ```compile_fail
-/// use tdk_wallet::bitcoin::PublicKey;
+/// use tdk_wallet::tapyrus::PublicKey;
 /// use core::str::FromStr;
 ///
 /// use tdk_wallet::keys::{DescriptorKey, IntoDescriptorKey, KeyError};

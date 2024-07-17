@@ -200,6 +200,99 @@ pub fn get_funded_wallet_with_nft_and_change(
     (wallet, tx1.txid(), color_id)
 }
 
+pub fn get_funded_wallet_with_reissuable_and_change(
+    descriptor: &str,
+    change: &str,
+) -> (Wallet, tapyrus::Txid, ColorIdentifier) {
+    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
+    let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
+    let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
+        .expect("address")
+        .require_network(Network::Dev)
+        .unwrap();
+
+    let tx0 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: Txid::all_zeros(),
+                vout: 0,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![TxOut {
+            value: Amount::from_tap(76_000),
+            script_pubkey: receive_address.script_pubkey(),
+        }],
+    };
+
+    let out_point = OutPoint {
+        txid: tx0.txid(),
+        vout: 0,
+    };
+    let color_id = ColorIdentifier::reissuable(receive_address.script_pubkey().as_script());
+
+    let tx1 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: out_point,
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(100),
+                script_pubkey: receive_address.script_pubkey().add_color(color_id).unwrap(),
+            },
+            TxOut {
+                value: Amount::from_tap(50_000),
+                script_pubkey: receive_address.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(25_000),
+                script_pubkey: sendto_address.script_pubkey(),
+            },
+        ],
+    };
+
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 1_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 2_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx0,
+            ConfirmationTime::Confirmed {
+                height: 1_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx1.clone(),
+            ConfirmationTime::Confirmed {
+                height: 2_000,
+                time: 200,
+            },
+        )
+        .unwrap();
+
+    (wallet, tx1.txid(), color_id)
+}
 /// Return a fake wallet that appears to be funded for testing.
 ///
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000

@@ -74,7 +74,7 @@
 //!
 //!         let remaining_amount = selected_amount - amount_needed_with_fees;
 //!
-//!         let excess = decide_change(remaining_amount, fee_rate, drain_script);
+//!         let excess = decide_change(remaining_amount, fee_rate, drain_script, ColorIdentifier::default());
 //!
 //!         Ok(CoinSelectionResult {
 //!             selected: all_utxos_selected,
@@ -106,6 +106,7 @@ use crate::chain::collections::HashSet;
 use crate::wallet::utils::IsDust;
 use crate::Utxo;
 use crate::WeightedUtxo;
+use tapyrus::script::color_identifier::ColorIdentifier;
 use tapyrus::FeeRate;
 
 use alloc::vec::Vec;
@@ -236,7 +237,28 @@ pub trait CoinSelectionAlgorithm: core::fmt::Debug {
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error>;
+}
+
+/// Return WeightedUtxo list filtered by color_id
+fn filter_by_color_id(utxos: Vec<WeightedUtxo>, color_id: &ColorIdentifier) -> Vec<WeightedUtxo> {
+    utxos
+        .into_iter()
+        .filter(|wu| match wu.utxo.txout().script_pubkey.color_id() {
+            Some(c) => c == *color_id,
+            None => color_id.is_default(),
+        })
+        .collect()
+}
+
+/// Return 0 if a colored coin is being processed, otherwise return ree_rate itself.
+fn disable_fee_rate_for_color(fee_rate: FeeRate, color_id: &ColorIdentifier) -> FeeRate {
+    if color_id.is_colored() {
+        FeeRate::ZERO
+    } else {
+        fee_rate
+    }
 }
 
 /// Simple and dumb coin selection
@@ -254,7 +276,12 @@ impl CoinSelectionAlgorithm for LargestFirstCoinSelection {
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error> {
+        let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
+        let mut optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
+        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
+
         // We put the "required UTXOs" first and make sure the optional UTXOs are sorted,
         // initially smallest to largest, before being reversed with `.rev()`.
         let utxos = {
@@ -265,7 +292,7 @@ impl CoinSelectionAlgorithm for LargestFirstCoinSelection {
                 .chain(optional_utxos.into_iter().rev().map(|utxo| (false, utxo)))
         };
 
-        select_sorted_utxos(utxos, fee_rate, target_amount, drain_script)
+        select_sorted_utxos(utxos, fee_rate, target_amount, drain_script, color_id)
     }
 }
 
@@ -284,7 +311,12 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error> {
+        let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
+        let mut optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
+        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
+
         // We put the "required UTXOs" first and make sure the optional UTXOs are sorted from
         // oldest to newest according to blocktime
         // For utxo that doesn't exist in DB, they will have lowest priority to be selected
@@ -299,8 +331,7 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
                 .map(|utxo| (true, utxo))
                 .chain(optional_utxos.into_iter().map(|utxo| (false, utxo)))
         };
-
-        select_sorted_utxos(utxos, fee_rate, target_amount, drain_script)
+        select_sorted_utxos(utxos, fee_rate, target_amount, drain_script, color_id)
     }
 }
 
@@ -309,14 +340,21 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
 /// - `remaining_amount`: the amount in which the selected coins exceed the target amount
 /// - `fee_rate`: required fee rate for the current selection
 /// - `drain_script`: script to consider change creation
-pub fn decide_change(remaining_amount: u64, fee_rate: FeeRate, drain_script: &Script) -> Excess {
+pub fn decide_change(
+    remaining_amount: u64,
+    fee_rate: FeeRate,
+    drain_script: &Script,
+    color_id: &ColorIdentifier,
+) -> Excess {
     // drain_output_len = size(len(script_pubkey)) + len(script_pubkey) + size(output_value)
     let drain_output_len = serialize(drain_script).len() + 8usize;
     let change_fee =
         (fee_rate * Weight::from_vb(drain_output_len as u64).expect("overflow occurred")).to_tap();
     let drain_val = remaining_amount.saturating_sub(change_fee);
 
-    if drain_val.is_dust(drain_script) {
+    if (drain_val.is_dust(drain_script) && color_id.is_default())
+        || (drain_val == 0 && color_id.is_colored())
+    {
         let dust_threshold = drain_script.dust_value().to_tap();
         Excess::NoChange {
             dust_threshold,
@@ -336,6 +374,7 @@ fn select_sorted_utxos(
     fee_rate: FeeRate,
     target_amount: u64,
     drain_script: &Script,
+    color_id: &ColorIdentifier,
 ) -> Result<CoinSelectionResult, Error> {
     let mut selected_amount = 0;
     let mut fee_amount = 0;
@@ -369,7 +408,7 @@ fn select_sorted_utxos(
 
     let remaining_amount = selected_amount - amount_needed_with_fees;
 
-    let excess = decide_change(remaining_amount, fee_rate, drain_script);
+    let excess = decide_change(remaining_amount, fee_rate, drain_script, color_id);
 
     Ok(CoinSelectionResult {
         selected,
@@ -438,7 +477,12 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error> {
+        let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
+        let optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
+        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
+
         // Mapping every (UTXO, usize) to an output group
         let required_utxos: Vec<OutputGroup> = required_utxos
             .into_iter()
@@ -509,7 +553,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
             // target_amount = amount_needed + (fee_amount - vin_fees)
             let remaining_amount = (curr_value - target_amount) as u64;
 
-            let excess = decide_change(remaining_amount, fee_rate, drain_script);
+            let excess = decide_change(remaining_amount, fee_rate, drain_script, color_id);
 
             return Ok(BranchAndBoundCoinSelection::calculate_cs_result(
                 vec![],
@@ -528,6 +572,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
                 cost_of_change,
                 drain_script,
                 fee_rate,
+                color_id,
             )
             .unwrap_or_else(|_| {
                 self.single_random_draw(
@@ -537,6 +582,7 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
                     target_amount,
                     drain_script,
                     fee_rate,
+                    color_id,
                 )
             }))
     }
@@ -556,6 +602,7 @@ impl BranchAndBoundCoinSelection {
         cost_of_change: u64,
         drain_script: &Script,
         fee_rate: FeeRate,
+        color_id: &ColorIdentifier,
     ) -> Result<CoinSelectionResult, Error> {
         // current_selection[i] will contain true if we are using optional_utxos[i],
         // false otherwise. Note that current_selection.len() could be less than
@@ -656,7 +703,7 @@ impl BranchAndBoundCoinSelection {
         // target_amount = amount_needed + (fee_amount - vin_fees)
         let remaining_amount = (selected_amount - target_amount) as u64;
 
-        let excess = decide_change(remaining_amount, fee_rate, drain_script);
+        let excess = decide_change(remaining_amount, fee_rate, drain_script, color_id);
 
         Ok(BranchAndBoundCoinSelection::calculate_cs_result(
             selected_utxos,
@@ -674,6 +721,7 @@ impl BranchAndBoundCoinSelection {
         target_amount: i64,
         drain_script: &Script,
         fee_rate: FeeRate,
+        color_id: &ColorIdentifier,
     ) -> CoinSelectionResult {
         optional_utxos.shuffle(&mut rand::thread_rng());
         let selected_utxos = optional_utxos.into_iter().fold(
@@ -694,7 +742,7 @@ impl BranchAndBoundCoinSelection {
         // target_amount = amount_needed + (fee_amount - vin_fees)
         let remaining_amount = (selected_utxos.0 - target_amount) as u64;
 
-        let excess = decide_change(remaining_amount, fee_rate, drain_script);
+        let excess = decide_change(remaining_amount, fee_rate, drain_script, color_id);
 
         BranchAndBoundCoinSelection::calculate_cs_result(selected_utxos.1, required_utxos, excess)
     }
@@ -742,8 +790,9 @@ where
 mod test {
     use assert_matches::assert_matches;
     use core::str::FromStr;
+    use tapyrus::hashes::Hash;
 
-    use tapyrus::{Amount, ScriptBuf, TxIn, TxOut};
+    use tapyrus::{Amount, PubkeyHash, PublicKey, ScriptBuf, TxIn, TxOut};
     use tdk_chain::ConfirmationTime;
 
     use super::*;
@@ -783,6 +832,39 @@ mod test {
         }
     }
 
+    fn colored_utxo(
+        value: u64,
+        index: u32,
+        confirmation_time: ConfirmationTime,
+        color_id: &ColorIdentifier,
+    ) -> WeightedUtxo {
+        assert!(index < 10);
+        let outpoint = OutPoint::from_str(&format!(
+            "000000000000000000000000000000000000000000000000000000000000000{}:0",
+            index
+        ))
+        .unwrap();
+        let pubkey = PublicKey::from_str(
+            "0234e6a79c5359c613762d537e0e19d86c77c1666d8c9ab050f23acd198e97f93e",
+        )
+        .unwrap();
+        let pubkey_hash = PubkeyHash::hash(&pubkey.inner.serialize());
+        WeightedUtxo {
+            satisfaction_weight: P2WPKH_SATISFACTION_SIZE,
+            utxo: Utxo::Local(LocalOutput {
+                outpoint,
+                txout: TxOut {
+                    value: Amount::from_tap(value),
+                    script_pubkey: ScriptBuf::new_cp2pkh(&color_id, &pubkey_hash),
+                },
+                keychain: KeychainKind::External,
+                is_spent: false,
+                derivation_index: 42,
+                confirmation_time,
+            }),
+        }
+    }
+
     fn get_test_utxos() -> Vec<WeightedUtxo> {
         vec![
             utxo(100_000, 0, ConfirmationTime::Unconfirmed { last_seen: 0 }),
@@ -792,6 +874,30 @@ mod test {
                 ConfirmationTime::Unconfirmed { last_seen: 0 },
             ),
             utxo(200_000, 2, ConfirmationTime::Unconfirmed { last_seen: 0 }),
+        ]
+    }
+
+    fn get_test_utxos_with_color(color_id: &ColorIdentifier) -> Vec<WeightedUtxo> {
+        vec![
+            utxo(100_000, 0, ConfirmationTime::Unconfirmed { last_seen: 0 }),
+            utxo(
+                FEE_AMOUNT - 40,
+                1,
+                ConfirmationTime::Unconfirmed { last_seen: 0 },
+            ),
+            utxo(200_000, 2, ConfirmationTime::Unconfirmed { last_seen: 0 }),
+            colored_utxo(
+                10,
+                3,
+                ConfirmationTime::Unconfirmed { last_seen: 0 },
+                color_id,
+            ),
+            colored_utxo(
+                10,
+                4,
+                ConfirmationTime::Unconfirmed { last_seen: 0 },
+                color_id,
+            ),
         ]
     }
 
@@ -822,6 +928,62 @@ mod test {
             },
         );
         vec![utxo1, utxo2, utxo3]
+    }
+
+    fn get_oldest_first_test_utxos_with_color(color_id: &ColorIdentifier) -> Vec<WeightedUtxo> {
+        // ensure utxos are from different tx
+        let utxo1 = utxo(
+            120_000,
+            1,
+            ConfirmationTime::Confirmed {
+                height: 1,
+                time: 1231006501,
+            },
+        );
+        let utxo2 = utxo(
+            80_000,
+            2,
+            ConfirmationTime::Confirmed {
+                height: 2,
+                time: 1231006502,
+            },
+        );
+        let utxo3 = utxo(
+            300_000,
+            3,
+            ConfirmationTime::Confirmed {
+                height: 3,
+                time: 1231006503,
+            },
+        );
+        let utxo4 = colored_utxo(
+            10,
+            4,
+            ConfirmationTime::Confirmed {
+                height: 4,
+                time: 1231006504,
+            },
+            color_id,
+        );
+        let utxo5 = colored_utxo(
+            20,
+            5,
+            ConfirmationTime::Confirmed {
+                height: 5,
+                time: 1231006505,
+            },
+            color_id,
+        );
+        let utxo6 = colored_utxo(
+            30,
+            6,
+            ConfirmationTime::Confirmed {
+                height: 6,
+                time: 1231006506,
+            },
+            color_id,
+        );
+        vec![utxo1, utxo2, utxo3, utxo4, utxo5, utxo6]
     }
 
     fn generate_random_utxos(rng: &mut StdRng, utxos_number: usize) -> Vec<WeightedUtxo> {
@@ -901,12 +1063,37 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_010);
         assert_eq!(result.fee_amount, 204)
+    }
+
+    #[test]
+    fn test_largest_first_colored_coin_selection_success() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+        let utxos = get_test_utxos_with_color(&color_id);
+
+        let drain_script = ScriptBuf::default();
+        let target_amount = 15;
+
+        let result = LargestFirstCoinSelection
+            .coin_select(
+                utxos,
+                vec![],
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
+            )
+            .unwrap();
+
+        assert_eq!(result.selected.len(), 2);
+        assert_eq!(result.selected_amount(), 20);
+        assert_eq!(result.fee_amount, 0)
     }
 
     #[test]
@@ -922,6 +1109,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -943,6 +1131,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -965,6 +1154,28 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn test_largest_first_colored_coin_selection_insufficient_funds() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+        let utxos = get_test_utxos_with_color(&color_id);
+
+        let drain_script = ScriptBuf::default();
+        let target_amount = 70;
+
+        LargestFirstCoinSelection
+            .coin_select(
+                vec![],
+                utxos,
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
             )
             .unwrap();
     }
@@ -983,6 +1194,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1000),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1000,12 +1212,38 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
         assert_eq!(result.selected.len(), 2);
         assert_eq!(result.selected_amount(), 200_000);
         assert_eq!(result.fee_amount, 136)
+    }
+
+    #[test]
+    fn test_oldest_first_colored_coin_selection_success() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+
+        let utxos = get_oldest_first_test_utxos_with_color(&color_id);
+
+        let drain_script = ScriptBuf::default();
+        let target_amount = 15;
+
+        let result = OldestFirstCoinSelection
+            .coin_select(
+                vec![],
+                utxos,
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
+            )
+            .unwrap();
+
+        assert_eq!(result.selected.len(), 2);
+        assert_eq!(result.selected_amount(), 30);
+        assert_eq!(result.fee_amount, 0)
     }
 
     #[test]
@@ -1021,12 +1259,37 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 500_000);
         assert_eq!(result.fee_amount, 204);
+    }
+
+    #[test]
+    fn test_oldest_first_colored_coin_selection_use_all() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+        let utxos = get_oldest_first_test_utxos_with_color(&color_id);
+
+        let drain_script = ScriptBuf::default();
+        let target_amount = 15;
+
+        let result = OldestFirstCoinSelection
+            .coin_select(
+                utxos,
+                vec![],
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
+            )
+            .unwrap();
+
+        assert_eq!(result.selected.len(), 3);
+        assert_eq!(result.selected_amount(), 60);
+        assert_eq!(result.fee_amount, 0)
     }
 
     #[test]
@@ -1042,6 +1305,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -1064,6 +1328,27 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn test_oldest_first_colored_coin_selection_insufficient_funds() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+        let utxos = get_oldest_first_test_utxos_with_color(&color_id);
+        let drain_script = ScriptBuf::default();
+        let target_amount = 70;
+
+        OldestFirstCoinSelection
+            .coin_select(
+                vec![],
+                utxos,
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
             )
             .unwrap();
     }
@@ -1087,6 +1372,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1000),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1108,12 +1394,59 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_000);
         assert_eq!(result.fee_amount, 204);
+    }
+
+    #[test]
+    fn test_bnb_colored_coin_selection_success() {
+        let color_id = ColorIdentifier::reissuable(Script::new());
+
+        // In this case bnb won't find a suitable match and single random draw will
+        // select three outputs
+        let mut utxos = generate_same_value_utxos(100_000, 20);
+        utxos.push(colored_utxo(
+            10,
+            1,
+            ConfirmationTime::Unconfirmed { last_seen: 0 },
+            &color_id,
+        ));
+        utxos.push(colored_utxo(
+            20,
+            2,
+            ConfirmationTime::Unconfirmed { last_seen: 0 },
+            &color_id,
+        ));
+        utxos.push(colored_utxo(
+            30,
+            3,
+            ConfirmationTime::Unconfirmed { last_seen: 0 },
+            &color_id,
+        ));
+
+        let drain_script = ScriptBuf::default();
+
+        let target_amount = 55;
+
+        let result = BranchAndBoundCoinSelection::default()
+            .coin_select(
+                vec![],
+                utxos,
+                FeeRate::from_tap_per_vb_unchecked(1),
+                target_amount,
+                &drain_script,
+                &color_id,
+            )
+            .unwrap();
+
+        assert_eq!(result.selected.len(), 3);
+        assert_eq!(result.selected_amount(), 60);
+        assert_eq!(result.fee_amount, 0);
     }
 
     #[test]
@@ -1129,6 +1462,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -1150,6 +1484,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -1187,6 +1522,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
 
@@ -1209,6 +1545,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1227,6 +1564,7 @@ mod test {
                 FeeRate::from_tap_per_vb_unchecked(1000),
                 target_amount,
                 &drain_script,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1239,7 +1577,14 @@ mod test {
         let feerate = FeeRate::BROADCAST_MIN;
 
         let result = BranchAndBoundCoinSelection::new(0)
-            .coin_select(vec![], utxos, feerate, target_amount, &drain_script)
+            .coin_select(
+                vec![],
+                utxos,
+                feerate,
+                target_amount,
+                &drain_script,
+                &ColorIdentifier::default(),
+            )
             .unwrap();
 
         assert_eq!(result.selected.len(), 1);
@@ -1267,6 +1612,7 @@ mod test {
                     FeeRate::ZERO,
                     target_amount,
                     &drain_script,
+                    &ColorIdentifier::default(),
                 )
                 .unwrap();
             assert_eq!(result.selected_amount(), target_amount);
@@ -1299,6 +1645,7 @@ mod test {
                 cost_of_change,
                 &drain_script,
                 fee_rate,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1330,6 +1677,7 @@ mod test {
                 cost_of_change,
                 &drain_script,
                 fee_rate,
+                &ColorIdentifier::default(),
             )
             .unwrap();
     }
@@ -1366,6 +1714,7 @@ mod test {
                 cost_of_change,
                 &drain_script,
                 fee_rate,
+                &ColorIdentifier::default(),
             )
             .unwrap();
         assert_eq!(result.selected_amount(), 100_000);
@@ -1406,6 +1755,7 @@ mod test {
                     0,
                     &drain_script,
                     fee_rate,
+                    &ColorIdentifier::default(),
                 )
                 .unwrap();
             assert_eq!(result.selected_amount(), target_amount as u64);
@@ -1434,6 +1784,7 @@ mod test {
             target_amount as i64,
             &drain_script,
             fee_rate,
+            &ColorIdentifier::default(),
         );
 
         assert!(result.selected_amount() > target_amount);
@@ -1451,6 +1802,7 @@ mod test {
             FeeRate::from_tap_per_vb_unchecked(10),
             500_000,
             &drain_script,
+            &ColorIdentifier::default(),
         );
 
         assert_matches!(
@@ -1477,6 +1829,7 @@ mod test {
             FeeRate::from_tap_per_vb_unchecked(10),
             500_000,
             &drain_script,
+            &ColorIdentifier::default(),
         );
 
         assert_matches!(
@@ -1499,6 +1852,7 @@ mod test {
             FeeRate::from_tap_per_vb_unchecked(10_000),
             500_000,
             &drain_script,
+            &ColorIdentifier::default(),
         );
 
         assert_matches!(

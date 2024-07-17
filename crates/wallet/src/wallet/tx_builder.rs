@@ -43,6 +43,7 @@
 use alloc::{boxed::Box, rc::Rc, string::String, vec::Vec};
 use core::cell::RefCell;
 use core::fmt;
+use tapyrus::script::color_identifier::ColorIdentifier;
 
 use tapyrus::psbt::{self, Psbt};
 use tapyrus::script::PushBytes;
@@ -119,7 +120,7 @@ pub struct TxBuilder<'a, Cs> {
 //TODO: TxParams should eventually be exposed publicly.
 #[derive(Default, Debug, Clone)]
 pub(crate) struct TxParams {
-    pub(crate) recipients: Vec<(ScriptBuf, u64)>,
+    pub(crate) recipients: Vec<(ScriptBuf, u64, ColorIdentifier)>,
     pub(crate) drain_wallet: bool,
     pub(crate) drain_to: Option<ScriptBuf>,
     pub(crate) fee_policy: Option<FeePolicy>,
@@ -598,7 +599,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn set_recipients(&mut self, recipients: Vec<(ScriptBuf, Amount)>) -> &mut Self {
         self.params.recipients = recipients
             .into_iter()
-            .map(|(script, amount)| (script, amount.to_tap()))
+            .map(|(script, amount)| (script, amount.to_tap(), ColorIdentifier::default()))
             .collect();
         self
     }
@@ -607,7 +608,20 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     pub fn add_recipient(&mut self, script_pubkey: ScriptBuf, amount: Amount) -> &mut Self {
         self.params
             .recipients
-            .push((script_pubkey, amount.to_tap()));
+            .push((script_pubkey, amount.to_tap(), ColorIdentifier::default()));
+        self
+    }
+
+    /// Add a recipient with color_id to the internal list
+    pub fn add_recipient_with_color(
+        &mut self,
+        script_pubkey: ScriptBuf,
+        amount: Amount,
+        color_id: ColorIdentifier,
+    ) -> &mut Self {
+        self.params
+            .recipients
+            .push((script_pubkey, amount.to_tap(), color_id));
         self
     }
 

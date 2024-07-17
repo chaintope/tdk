@@ -26,7 +26,11 @@ pub trait IsDust {
 
 impl IsDust for u64 {
     fn is_dust(&self, script: &Script) -> bool {
-        *self < script.dust_value().to_tap()
+        if script.is_colored() {
+            *self == 0
+        } else {
+            *self < script.dust_value().to_tap()
+        }
     }
 }
 

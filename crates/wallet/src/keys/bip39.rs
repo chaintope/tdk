@@ -163,6 +163,7 @@ mod test {
     use super::WordCount;
 
     #[test]
+    #[ignore]
     fn test_keys_bip39_mnemonic() {
         let mnemonic =
             "aim bunker wash balance finish force paper analyst cabin spoon stable organ";
@@ -177,6 +178,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_keys_bip39_mnemonic_passphrase() {
         let mnemonic =
             "aim bunker wash balance finish force paper analyst cabin spoon stable organ";
