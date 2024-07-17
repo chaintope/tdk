@@ -830,9 +830,7 @@ fn test_create_tx_drain_to_no_drain_wallet_no_utxos() {
     builder.finish().unwrap();
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_create_tx_default_fee_rate() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -844,9 +842,7 @@ fn test_create_tx_default_fee_rate() {
     assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), FeeRate::BROADCAST_MIN, @add_signature);
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_create_tx_custom_fee_rate() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     let addr = wallet.next_unused_address(KeychainKind::External).unwrap();
@@ -2004,9 +2000,7 @@ fn test_bump_fee_remove_output_manually_selected_only() {
     builder.finish().unwrap();
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_bump_fee_add_input() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     let init_tx = Transaction {
@@ -2141,9 +2135,7 @@ fn test_bump_fee_absolute_add_input() {
     assert_eq!(fee.unwrap_or(Amount::ZERO), Amount::from_tap(6_000));
 }
 
-// TODO: Fix this test
 #[test]
-#[ignore]
 fn test_bump_fee_no_change_add_input_and_change() {
     let (mut wallet, _) = get_funded_wallet_pkh();
     let op = receive_output_in_latest_block(&mut wallet, 25_000);
