@@ -1604,7 +1604,7 @@ impl Wallet {
             if color_id.is_default() {
                 continue;
             }
-            let mut outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
+            let outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
             let coin_selection = coin_selection.coin_select(
                 required_utxos.clone(),
                 optional_utxos.clone(),
@@ -1630,7 +1630,7 @@ impl Wallet {
             selected_coins.extend(coin_selection.selected);
             match excess {
                 NoChange {
-                    remaining_amount, ..
+                     ..
                 } => {}
                 Change { amount, fee } => {
                     // if self.is_mine(&drain_script) {
@@ -2366,7 +2366,7 @@ impl Wallet {
         // let mut script_pubkey = txo.txout.script_pubkey;
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
-        let mut script = if utxo.txout.script_pubkey.is_colored() {
+        let script = if utxo.txout.script_pubkey.is_colored() {
             ScriptBuf::from_bytes(utxo.txout.script_pubkey.as_bytes()[35..].to_vec())
         } else {
             utxo.txout.script_pubkey

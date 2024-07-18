@@ -1,16 +1,12 @@
-use std::collections::HashSet;
 use std::path::Path;
 use std::str::FromStr;
 
 use assert_matches::assert_matches;
-use tapyrus::consensus::serialize;
 use tapyrus::hashes::Hash;
-use tapyrus::hex::DisplayHex;
 use tapyrus::key::Secp256k1;
 use tapyrus::psbt;
 use tapyrus::script::PushBytesBuf;
-use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
-use tapyrus::taproot::TapNodeHash;
+use tapyrus::sighash::{EcdsaSighashType};
 use tapyrus::{
     absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
     FeeRate, MalFixTxid, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Weight,
@@ -1293,7 +1289,7 @@ fn test_create_tx_with_nft() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(1), color_id);
     let psbt = builder.finish().unwrap();
-    let fee = check_fee!(wallet, psbt);
+    check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 3);
     let sent_received =
         wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &color_id);
@@ -1313,7 +1309,7 @@ fn test_create_tx_with_reissuable() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(98), color_id);
     let psbt = builder.finish().unwrap();
-    let fee = check_fee!(wallet, psbt);
+    check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 4);
     let sent_received =
         wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &color_id);

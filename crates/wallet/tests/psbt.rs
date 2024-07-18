@@ -1,5 +1,4 @@
 use core::str::FromStr;
-use tapyrus::ScriptBuf;
 use tdk_wallet::tapyrus::{Amount, FeeRate, Psbt, TxIn};
 use tdk_wallet::{psbt, KeychainKind, SignOptions};
 mod common;

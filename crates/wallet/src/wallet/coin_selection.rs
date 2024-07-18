@@ -272,7 +272,7 @@ impl CoinSelectionAlgorithm for LargestFirstCoinSelection {
     fn coin_select(
         &self,
         required_utxos: Vec<WeightedUtxo>,
-        mut optional_utxos: Vec<WeightedUtxo>,
+        optional_utxos: Vec<WeightedUtxo>,
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
@@ -307,7 +307,7 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
     fn coin_select(
         &self,
         required_utxos: Vec<WeightedUtxo>,
-        mut optional_utxos: Vec<WeightedUtxo>,
+        optional_utxos: Vec<WeightedUtxo>,
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
@@ -854,7 +854,7 @@ mod test {
                 outpoint,
                 txout: TxOut {
                     value: Amount::from_tap(value),
-                    script_pubkey: ScriptBuf::new_cp2pkh(&color_id, &pubkey_hash),
+                    script_pubkey: ScriptBuf::new_cp2pkh(color_id, &pubkey_hash),
                 },
                 keychain: KeychainKind::External,
                 is_spent: false,
