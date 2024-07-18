@@ -13,7 +13,7 @@ readme = "README.md"
 
 [dependencies]
 tdk_chain = { path = "../chain", version = "0.15.0", default-features = false }
-esplora-client = { git = "https://github.com/chaintope/rust-esplora-client", branch="change_tapyrus_to_bitcoin", default-features = false }
+esplora-client = { git = "https://github.com/chaintope/rust-esplora-client", default-features = false }
 async-trait = { version = "0.1.66", optional = true }
 futures = { version = "0.3.26", optional = true }
 

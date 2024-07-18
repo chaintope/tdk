@@ -14,7 +14,7 @@ readme = "README.md"
 
 [dependencies]
 tdk_chain = { path = "../chain", version = "0.15", default-features = false }
-electrsd = { git = "https://github.com/chaintope/electrsd" , branch="use_rust_tapyrus", features = ["legacy", "electrs_0_5_1", "tapyrusd_0_5_2"] }
+electrsd = { git = "https://github.com/chaintope/electrsd", features = ["legacy", "electrs_0_5_1", "tapyrusd_0_5_2"] }
 
 [features]
 default = ["std"]
