@@ -26,8 +26,8 @@ use descriptor::error::Error as DescriptorError;
 use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
-    absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, Network,
-    OutPoint, Script, ScriptBuf, Sequence, Transaction, TxOut, Txid, Witness,
+    absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, MalFixTxid,
+    Network, OutPoint, Script, ScriptBuf, Sequence, Transaction, TxOut, Witness,
 };
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
@@ -1013,10 +1013,10 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use tapyrus::Txid;
+    /// # use tapyrus::MalFixTxid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
-    /// # let txid:Txid = todo!();
+    /// # let txid:MalFixTxid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
     /// let fee = wallet.calculate_fee(&tx).expect("fee");
     /// ```
@@ -1045,10 +1045,10 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use tapyrus::Txid;
+    /// # use tapyrus::MalFixTxid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
-    /// # let txid:Txid = todo!();
+    /// # let txid:MalFixTxid = todo!();
     /// let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
     /// let fee_rate = wallet.calculate_fee_rate(&tx).expect("fee rate");
     /// ```
@@ -1075,10 +1075,10 @@ impl Wallet {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// # use tapyrus::Txid;
+    /// # use tapyrus::MalFixTxid;
     /// # use tdk_wallet::Wallet;
     /// # let mut wallet: Wallet = todo!();
-    /// # let txid:Txid = todo!();
+    /// # let txid:MalFixTxid = todo!();
     /// let tx = wallet.get_tx(txid).expect("tx exists").tx_node.tx;
     /// let (sent, received) = wallet.sent_and_received(&tx);
     /// ```
@@ -1109,7 +1109,7 @@ impl Wallet {
     /// use tdk_chain::Anchor;
     /// use tdk_wallet::{chain::ChainPosition, Wallet};
     /// # let wallet: Wallet = todo!();
-    /// # let my_txid: tapyrus::Txid = todo!();
+    /// # let my_txid: tapyrus::MalFixTxid = todo!();
     ///
     /// let canonical_tx = wallet.get_tx(my_txid).expect("panic if tx does not exist");
     ///
@@ -1140,7 +1140,7 @@ impl Wallet {
     /// [`Anchor`]: tdk_chain::Anchor
     pub fn get_tx(
         &self,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> Option<CanonicalTx<'_, Arc<Transaction>, ConfirmationTimeHeightAnchor>> {
         let graph = self.indexed_graph.graph();
 
@@ -1216,7 +1216,7 @@ impl Wallet {
         };
 
         let mut changeset = ChangeSet::default();
-        let txid = tx.txid();
+        let txid = tx.malfix_txid();
         changeset.append(self.indexed_graph.insert_tx(tx).into());
         if let Some(anchor) = anchor {
             changeset.append(self.indexed_graph.insert_anchor(txid, anchor).into());
@@ -1761,7 +1761,7 @@ impl Wallet {
     /// let tx = psbt.clone().extract_tx().expect("tx");
     /// // broadcast tx but it's taking too long to confirm so we want to bump the fee
     /// let mut psbt =  {
-    ///     let mut builder = wallet.build_fee_bump(tx.txid())?;
+    ///     let mut builder = wallet.build_fee_bump(tx.malfix_txid())?;
     ///     builder
     ///         .fee_rate(FeeRate::from_tap_per_vb(5).expect("valid feerate"));
     ///     builder.finish()?
@@ -1775,7 +1775,7 @@ impl Wallet {
     // TODO: support for merging multiple transactions while bumping the fees
     pub fn build_fee_bump(
         &mut self,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> Result<TxBuilder<'_, DefaultCoinSelectionAlgorithm>, BuildFeeBumpError> {
         let graph = self.indexed_graph.graph();
         let txout_index = &self.indexed_graph.index;
@@ -1799,7 +1799,9 @@ impl Wallet {
             .iter()
             .any(|txin| txin.sequence.to_consensus_u32() <= 0xFFFFFFFD)
         {
-            return Err(BuildFeeBumpError::IrreplaceableTransaction(tx.txid()));
+            return Err(BuildFeeBumpError::IrreplaceableTransaction(
+                tx.malfix_txid(),
+            ));
         }
 
         let fee = self

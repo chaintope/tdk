@@ -4,7 +4,7 @@ use crate::{
     collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap},
     indexed_tx_graph::Indexer,
 };
-use tapyrus::{Amount, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{Amount, MalFixTxid, OutPoint, Script, ScriptBuf, SignedAmount, Transaction, TxOut};
 
 /// An index storing [`TxOut`]s that have a script pubkey that matches those in a list.
 ///
@@ -86,7 +86,7 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// 2. When getting new data from the chain, you usually scan it before incorporating it into your chain state.
     pub fn scan(&mut self, tx: &Transaction) -> BTreeSet<I> {
         let mut scanned_indices = BTreeSet::new();
-        let txid = tx.txid();
+        let txid = tx.malfix_txid();
         for (i, txout) in tx.output.iter().enumerate() {
             let op = OutPoint::new(txid, i as u32);
             if let Some(spk_i) = self.scan_txout(op, txout) {
@@ -132,7 +132,7 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// Finds all txouts on a transaction that has previously been scanned and indexed.
     pub fn txouts_in_tx(
         &self,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> impl DoubleEndedIterator<Item = (&I, OutPoint, &TxOut)> {
         self.txouts
             .range(OutPoint::new(txid, u32::MIN)..=OutPoint::new(txid, u32::MAX))
@@ -147,11 +147,11 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         use core::ops::Bound::*;
         use tapyrus::hashes::Hash;
         let min_op = OutPoint {
-            txid: Txid::all_zeros(),
+            txid: MalFixTxid::all_zeros(),
             vout: u32::MIN,
         };
         let max_op = OutPoint {
-            txid: Txid::from_byte_array([0xff; Txid::LEN]),
+            txid: MalFixTxid::from_byte_array([0xff; MalFixTxid::LEN]),
             vout: u32::MAX,
         };
 

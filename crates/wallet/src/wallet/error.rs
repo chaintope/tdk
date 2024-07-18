@@ -17,7 +17,7 @@ use crate::wallet::coin_selection;
 use crate::{descriptor, KeychainKind};
 use alloc::string::String;
 use core::fmt;
-use tapyrus::{absolute, psbt, Amount, OutPoint, Sequence, Txid};
+use tapyrus::{absolute, psbt, Amount, MalFixTxid, OutPoint, Sequence};
 
 /// Errors returned by miniscript when updating inconsistent PSBTs
 #[derive(Debug, Clone)]
@@ -230,11 +230,11 @@ pub enum BuildFeeBumpError {
     /// Happens when trying to spend an UTXO that is not in the internal database
     UnknownUtxo(OutPoint),
     /// Thrown when a tx is not found in the internal database
-    TransactionNotFound(Txid),
+    TransactionNotFound(MalFixTxid),
     /// Happens when trying to bump a transaction that is already confirmed
-    TransactionConfirmed(Txid),
+    TransactionConfirmed(MalFixTxid),
     /// Trying to replace a tx that has a sequence >= `0xFFFFFFFE`
-    IrreplaceableTransaction(Txid),
+    IrreplaceableTransaction(MalFixTxid),
     /// Node doesn't have data to estimate a fee rate
     FeeRateUnavailable,
 }

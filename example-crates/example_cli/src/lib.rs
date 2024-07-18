@@ -647,7 +647,7 @@ where
 
             match (broadcast)(chain_specific, &transaction) {
                 Ok(_) => {
-                    println!("Broadcasted Tx : {}", transaction.txid());
+                    println!("Broadcasted Tx : {}", transaction.malfix_txid());
 
                     let keychain_changeset = graph.lock().unwrap().insert_tx(transaction);
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use tdk_chain::{
-    bitcoin::{constants::genesis_block, Address, Network, Txid},
+    bitcoin::{constants::genesis_block, Address, MalFixTxid, Network},
     indexed_tx_graph::{self, IndexedTxGraph},
     keychain,
     local_chain::{self, LocalChain},
@@ -306,7 +306,7 @@ fn main() -> anyhow::Result<()> {
                         .list_chain_txs(&*chain, local_tip.block_id())
                         .filter(|canonical_tx| !canonical_tx.chain_position.is_confirmed())
                         .map(|canonical_tx| canonical_tx.tx_node.txid)
-                        .collect::<Vec<Txid>>();
+                        .collect::<Vec<MalFixTxid>>();
                     request = request.chain_txids(unconfirmed_txids.into_iter().inspect(|txid| {
                         eprint!("Checking if {} is confirmed yet", txid);
                         // Flush early to ensure we print at every iteration.

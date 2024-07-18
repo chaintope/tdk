@@ -818,7 +818,7 @@ impl ComputeSighash for Segwitv0 {
         // Always try first with the non-witness utxo
         let utxo = if let Some(prev_tx) = &psbt_input.non_witness_utxo {
             // Check the provided prev-tx
-            if prev_tx.txid() != tx_input.previous_output.txid {
+            if prev_tx.malfix_txid() != tx_input.previous_output.txid {
                 return Err(SignerError::InvalidNonWitnessUtxo);
             }
 

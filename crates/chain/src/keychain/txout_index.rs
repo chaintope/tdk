@@ -9,7 +9,9 @@ use core::{
     fmt::Debug,
     ops::{Bound, RangeBounds},
 };
-use tapyrus::{hashes::Hash, Amount, OutPoint, Script, SignedAmount, Transaction, TxOut, Txid};
+use tapyrus::{
+    hashes::Hash, Amount, MalFixTxid, OutPoint, Script, SignedAmount, Transaction, TxOut,
+};
 
 use crate::Append;
 
@@ -251,7 +253,7 @@ impl<K: Clone + Ord + Debug> Indexer for KeychainTxOutIndex<K> {
     fn index_tx(&mut self, tx: &tapyrus::Transaction) -> Self::ChangeSet {
         let mut changeset = super::ChangeSet::<K>::default();
         for (op, txout) in tx.output.iter().enumerate() {
-            changeset.append(self.index_txout(OutPoint::new(tx.txid(), op as u32), txout));
+            changeset.append(self.index_txout(OutPoint::new(tx.malfix_txid(), op as u32), txout));
         }
         changeset
     }
@@ -336,7 +338,7 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
     /// Finds all txouts on a transaction that has previously been scanned and indexed.
     pub fn txouts_in_tx(
         &self,
-        txid: Txid,
+        txid: MalFixTxid,
     ) -> impl DoubleEndedIterator<Item = (K, u32, OutPoint, &TxOut)> {
         self.inner
             .txouts_in_tx(txid)

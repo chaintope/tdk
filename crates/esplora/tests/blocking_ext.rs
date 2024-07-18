@@ -7,7 +7,7 @@ use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
 use tdk_chain::tapyrus::hashes::sha256d::Hash;
 use tdk_esplora::EsploraExt;
 
-use tdk_chain::tapyrus::{Address, Amount, Txid};
+use tdk_chain::tapyrus::{Address, Amount, MalFixTxid};
 use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
 #[test]
@@ -100,12 +100,12 @@ pub fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         assert_eq!(fee, tx_fee);
     }
 
-    let mut graph_update_txids: Vec<Hash> = graph_update
+    let mut graph_update_txids: Vec<MalFixTxid> = graph_update
         .full_txs()
         .map(|tx| tx.tx.malfix_txid())
         .collect();
     graph_update_txids.sort();
-    let mut expected_txids: Vec<Hash> = vec![txid1.into(), txid2.into()];
+    let mut expected_txids: Vec<MalFixTxid> = vec![txid1, txid2];
     expected_txids.sort();
     assert_eq!(graph_update_txids, expected_txids);
 
@@ -210,27 +210,28 @@ pub fn test_update_tx_graph_stop_gap() -> anyhow::Result<()> {
             FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
         client.full_scan(request, 5, 1)?
     };
-    let txs: HashSet<Hash> = full_scan_update
+    let txs: HashSet<MalFixTxid> = full_scan_update
         .graph_update
         .full_txs()
         .map(|tx| tx.malfix_txid())
         .collect();
     assert_eq!(txs.len(), 1);
-    assert!(txs.contains::<Hash>(&txid_4th_addr.into()));
+    assert!(txs.contains::<MalFixTxid>(&txid_4th_addr.into()));
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
     let full_scan_update = {
         let request =
             FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
         client.full_scan(request, 6, 1)?
     };
-    let txs: HashSet<Hash> = full_scan_update
+    let txs: HashSet<MalFixTxid> = full_scan_update
         .graph_update
         .full_txs()
         .map(|tx| tx.malfix_txid())
         .collect();
     assert_eq!(txs.len(), 2);
     assert!(
-        txs.contains::<Hash>(&txid_4th_addr.into()) && txs.contains::<Hash>(&txid_last_addr.into())
+        txs.contains::<MalFixTxid>(&txid_4th_addr.into())
+            && txs.contains::<MalFixTxid>(&txid_last_addr.into())
     );
     assert_eq!(full_scan_update.last_active_indices[&0], 9);
 

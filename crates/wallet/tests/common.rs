@@ -4,8 +4,8 @@ use std::str::FromStr;
 use tapyrus::hashes::Hash;
 use tapyrus::script::color_identifier::ColorIdentifier;
 use tapyrus::{
-    transaction, Address, Amount, BlockHash, FeeRate, Network, OutPoint, Transaction, TxIn, TxOut,
-    Txid,
+    transaction, Address, Amount, BlockHash, FeeRate, MalFixTxid, Network, OutPoint, Transaction,
+    TxIn, TxOut,
 };
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
@@ -16,7 +16,10 @@ use tdk_wallet::{KeychainKind, LocalOutput, Wallet};
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
 /// to a foreign address and one returning 50_000 back to the wallet. The remaining 1000
 /// sats are the transaction fee.
-pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet, tapyrus::Txid) {
+pub fn get_funded_wallet_with_change(
+    descriptor: &str,
+    change: &str,
+) -> (Wallet, tapyrus::MalFixTxid) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
@@ -29,7 +32,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: Txid::all_zeros(),
+                txid: MalFixTxid::all_zeros(),
                 vout: 0,
             },
             script_sig: Default::default(),
@@ -47,7 +50,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: tx0.txid(),
+                txid: tx0.malfix_txid(),
                 vout: 0,
             },
             script_sig: Default::default(),
@@ -97,7 +100,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
         )
         .unwrap();
 
-    (wallet, tx1.txid())
+    (wallet, tx1.malfix_txid())
 }
 
 /// Return a fake wallet that appears to be funded for testing.
@@ -109,7 +112,7 @@ pub fn get_funded_wallet_with_change(descriptor: &str, change: &str) -> (Wallet,
 pub fn get_funded_wallet_with_nft_and_change(
     descriptor: &str,
     change: &str,
-) -> (Wallet, tapyrus::Txid, ColorIdentifier) {
+) -> (Wallet, tapyrus::MalFixTxid, ColorIdentifier) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
@@ -122,7 +125,7 @@ pub fn get_funded_wallet_with_nft_and_change(
         lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: Txid::all_zeros(),
+                txid: MalFixTxid::all_zeros(),
                 vout: 0,
             },
             script_sig: Default::default(),
@@ -136,7 +139,7 @@ pub fn get_funded_wallet_with_nft_and_change(
     };
 
     let out_point = OutPoint {
-        txid: tx0.txid(),
+        txid: tx0.malfix_txid(),
         vout: 0,
     };
     let color_id = ColorIdentifier::nft(out_point);
@@ -197,7 +200,7 @@ pub fn get_funded_wallet_with_nft_and_change(
         )
         .unwrap();
 
-    (wallet, tx1.txid(), color_id)
+    (wallet, tx1.malfix_txid(), color_id)
 }
 
 pub fn get_funded_wallet_with_reissuable_and_change(
@@ -216,7 +219,7 @@ pub fn get_funded_wallet_with_reissuable_and_change(
         lock_time: tapyrus::absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: Txid::all_zeros(),
+                txid: MalFixTxid::all_zeros(),
                 vout: 0,
             },
             script_sig: Default::default(),
@@ -230,7 +233,7 @@ pub fn get_funded_wallet_with_reissuable_and_change(
     };
 
     let out_point = OutPoint {
-        txid: tx0.txid(),
+        txid: tx0.malfix_txid(),
         vout: 0,
     };
     let color_id = ColorIdentifier::reissuable(receive_address.script_pubkey().as_script());
@@ -302,12 +305,12 @@ pub fn get_funded_wallet_with_reissuable_and_change(
 /// Note: the change descriptor will have script type `p2wpkh`. If passing some other script type
 /// as argument, make sure you're ok with getting a wallet where the keychains have potentially
 /// different script types. Otherwise, use `get_funded_wallet_with_change`.
-pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::Txid) {
+pub fn get_funded_wallet(descriptor: &str) -> (Wallet, tapyrus::MalFixTxid) {
     let change = get_test_pkh_change();
     get_funded_wallet_with_change(descriptor, change)
 }
 
-pub fn get_funded_wallet_pkh() -> (Wallet, tapyrus::Txid) {
+pub fn get_funded_wallet_pkh() -> (Wallet, tapyrus::MalFixTxid) {
     get_funded_wallet_with_change(get_test_pkh(), get_test_pkh_change())
 }
 
@@ -345,33 +348,9 @@ pub fn get_test_pkh_single_sig() -> &'static str {
     "pkh(cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG)"
 }
 
-pub fn get_test_tr_with_taptree() -> &'static str {
-    "tr(b511bd5771e47ee27558b1765e87b541668304ec567721c7b880edc0a010da55,{pk(cPZzKuNmpuUjD1e8jUU4PVzy2b5LngbSip8mBsxf4e7rSFZVb4Uh),pk(8aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642)})"
-}
-
-pub fn get_test_tr_with_taptree_both_priv() -> &'static str {
-    "tr(b511bd5771e47ee27558b1765e87b541668304ec567721c7b880edc0a010da55,{pk(cPZzKuNmpuUjD1e8jUU4PVzy2b5LngbSip8mBsxf4e7rSFZVb4Uh),pk(cNaQCDwmmh4dS9LzCgVtyy1e1xjCJ21GUDHe9K98nzb689JvinGV)})"
-}
-
-pub fn get_test_tr_repeated_key() -> &'static str {
-    "tr(b511bd5771e47ee27558b1765e87b541668304ec567721c7b880edc0a010da55,{and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),after(100)),and_v(v:pk(cVpPVruEDdmutPzisEsYvtST1usBR3ntr8pXSyt6D2YYqXRyPcFW),after(200))})"
-}
-
-pub fn get_test_tr_single_sig_xprv() -> &'static str {
-    "tr(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/*)"
-}
-
 pub fn get_test_pkh_single_sig_xprv_with_change_desc() -> (&'static str, &'static str) {
     ("pkh(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/0/*)",
     "pkh(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/1/*)")
-}
-
-pub fn get_test_tr_with_taptree_xprv() -> &'static str {
-    "tr(cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG,{pk(tprv8ZgxMBicQKsPdDArR4xSAECuVxeX1jwwSXR4ApKbkYgZiziDc4LdBy2WvJeGDfUSE4UT4hHhbgEwbdq8ajjUHiKDegkwrNU6V55CxcxonVN/*),pk(8aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642)})"
-}
-
-pub fn get_test_tr_dup_keys() -> &'static str {
-    "tr(cNJmN3fH9DDbDt131fQNkVakkpzawJBSeybCUNmP1BovpmGQ45xG,{pk(8aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642),pk(8aee2b8120a5f157f1223f72b5e62b825831a27a9fdf427db7cc697494d4a642)})"
 }
 
 /// Construct a new [`FeeRate`] from the given raw `sat_vb` feerate. This is
