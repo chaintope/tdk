@@ -12,7 +12,6 @@
 extern crate tdk_wallet;
 use std::error::Error;
 
-
 /// This example describes the use of the BDK's [`tdk_wallet::descriptor::policy`] module.
 ///
 /// Policy is higher abstraction representation of the wallet descriptor spending condition.

@@ -227,8 +227,7 @@ pub async fn test_async_update_tx_graph_stop_gap() -> anyhow::Result<()> {
         .collect();
     assert_eq!(txs.len(), 2);
     assert!(
-        txs.contains::<MalFixTxid>(&txid_4th_addr)
-            && txs.contains::<MalFixTxid>(&txid_last_addr)
+        txs.contains::<MalFixTxid>(&txid_4th_addr) && txs.contains::<MalFixTxid>(&txid_last_addr)
     );
     assert_eq!(full_scan_update.last_active_indices[&0], 9);
 

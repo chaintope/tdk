@@ -1093,7 +1093,11 @@ impl Wallet {
     /// let color_id = ColorIdentifier::default();
     /// let (sent, received) = wallet.sent_and_received(tx, &color_id);
     /// ```
-    pub fn sent_and_received(&self, tx: &Transaction, color_id: &ColorIdentifier) -> (Amount, Amount) {
+    pub fn sent_and_received(
+        &self,
+        tx: &Transaction,
+        color_id: &ColorIdentifier,
+    ) -> (Amount, Amount) {
         self.indexed_graph.index.sent_and_received(tx, .., color_id)
     }
 
@@ -1629,9 +1633,7 @@ impl Wallet {
             );
             selected_coins.extend(coin_selection.selected);
             match excess {
-                NoChange {
-                     ..
-                } => {}
+                NoChange { .. } => {}
                 Change { amount, fee } => {
                     // if self.is_mine(&drain_script) {
                     //     received += Amount::from_tap(*amount);

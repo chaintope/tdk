@@ -6,7 +6,7 @@ use tapyrus::hashes::Hash;
 use tapyrus::key::Secp256k1;
 use tapyrus::psbt;
 use tapyrus::script::PushBytesBuf;
-use tapyrus::sighash::{EcdsaSighashType};
+use tapyrus::sighash::EcdsaSighashType;
 use tapyrus::{
     absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
     FeeRate, MalFixTxid, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Weight,
@@ -345,7 +345,12 @@ fn test_get_funded_wallet_sent_and_received() {
 
     let mut tx_amounts: Vec<(MalFixTxid, (Amount, Amount))> = wallet
         .transactions()
-        .map(|ct| (ct.tx_node.txid, wallet.sent_and_received(&ct.tx_node, &ColorIdentifier::default())))
+        .map(|ct| {
+            (
+                ct.tx_node.txid,
+                wallet.sent_and_received(&ct.tx_node, &ColorIdentifier::default()),
+            )
+        })
         .collect();
     tx_amounts.sort_by(|a1, a2| a1.0.cmp(&a2.0));
 
@@ -367,7 +372,12 @@ fn test_get_funded_wallet_with_color_sent_and_received() {
 
     let mut tx_amounts: Vec<(Txid, (Amount, Amount))> = wallet
         .transactions()
-        .map(|ct| (ct.tx_node.txid, wallet.sent_and_received(&ct.tx_node, &color_id)))
+        .map(|ct| {
+            (
+                ct.tx_node.txid,
+                wallet.sent_and_received(&ct.tx_node, &color_id),
+            )
+        })
         .collect();
     tx_amounts.sort_by(|a1, a2| a1.0.cmp(&a2.0));
 
@@ -1129,8 +1139,10 @@ fn test_create_tx_add_utxo() {
         })
         .unwrap();
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
 
     assert_eq!(
         psbt.unsigned_tx.input.len(),
@@ -1291,8 +1303,10 @@ fn test_create_tx_with_nft() {
     let psbt = builder.finish().unwrap();
     check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 3);
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &color_id);
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id,
+    );
     assert_eq!(sent_received, (Amount::from_tap(1), Amount::from_tap(0)));
 }
 
@@ -1311,8 +1325,10 @@ fn test_create_tx_with_reissuable() {
     let psbt = builder.finish().unwrap();
     check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 4);
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &color_id);
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id,
+    );
     assert_eq!(sent_received, (Amount::from_tap(100), Amount::from_tap(2)));
 }
 
@@ -1369,8 +1385,10 @@ fn test_add_foreign_utxo() {
     let mut psbt = builder.finish().unwrap();
     wallet1.insert_txout(utxo.outpoint, utxo.txout);
     let fee = check_fee!(wallet1, psbt);
-    let sent_received =
-        wallet1.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet1.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
 
     assert_eq!(
         (sent_received.0 - sent_received.1),
@@ -1688,8 +1706,10 @@ fn test_bump_fee_reduce_change() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .enable_rbf();
     let psbt = builder.finish().unwrap();
-    let original_sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let original_sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let original_fee = check_fee!(wallet, psbt);
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
@@ -1702,8 +1722,10 @@ fn test_bump_fee_reduce_change() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder.fee_rate(feerate).enable_rbf();
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(sent_received.0, original_sent_received.0);
@@ -1738,8 +1760,10 @@ fn test_bump_fee_reduce_change() {
     builder.fee_absolute(Amount::from_tap(200));
     builder.enable_rbf();
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(sent_received.0, original_sent_received.0);
@@ -1809,8 +1833,10 @@ fn test_bump_fee_reduce_single_recipient() {
         // drain wallet output amount will be re-calculated with new fee rate
         .drain_wallet();
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(sent_received.0, original_sent_received.0);
@@ -1928,7 +1954,10 @@ fn test_bump_fee_drain_wallet() {
         .drain_wallet()
         .fee_rate(FeeRate::from_tap_per_vb_unchecked(5));
     let psbt = builder.finish().unwrap();
-    let sent_received = wallet.sent_and_received(&psbt.extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
 
     assert_eq!(sent_received.0, Amount::from_tap(75_000));
 }
@@ -2038,8 +2067,10 @@ fn test_bump_fee_add_input() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder.fee_rate(FeeRate::from_tap_per_vb_unchecked(50));
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
     assert_eq!(
         sent_received.0,
@@ -2095,8 +2126,10 @@ fn test_bump_fee_absolute_add_input() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder.fee_absolute(Amount::from_tap(6_000));
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(
@@ -2148,8 +2181,10 @@ fn test_bump_fee_no_change_add_input_and_change() {
         .manually_selected_only()
         .enable_rbf();
     let psbt = builder.finish().unwrap();
-    let original_sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let original_sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let original_fee = check_fee!(wallet, psbt);
 
     let tx = psbt.extract_tx().expect("failed to extract tx");
@@ -2163,8 +2198,10 @@ fn test_bump_fee_no_change_add_input_and_change() {
     let mut builder = wallet.build_fee_bump(txid).unwrap();
     builder.fee_rate(FeeRate::from_tap_per_vb_unchecked(50));
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     let original_send_all_amount = original_sent_received.0 - original_fee.unwrap_or(Amount::ZERO);
@@ -2212,8 +2249,10 @@ fn test_bump_fee_add_input_change_dust() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(45_000))
         .enable_rbf();
     let psbt = builder.finish().unwrap();
-    let original_sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let original_sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let original_fee = check_fee!(wallet, psbt);
 
     let mut tx = psbt.extract_tx().expect("failed to extract tx");
@@ -2244,8 +2283,10 @@ fn test_bump_fee_add_input_change_dust() {
     let fee_abs = 50_000 + 25_000 - 45_000 - 10;
     builder.fee_rate(Amount::from_tap(fee_abs) / new_tx_weight);
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(
@@ -2305,8 +2346,10 @@ fn test_bump_fee_force_add_input() {
         .unwrap()
         .fee_rate(FeeRate::from_tap_per_vb_unchecked(5));
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(
@@ -2373,8 +2416,10 @@ fn test_bump_fee_absolute_force_add_input() {
         .unwrap()
         .fee_absolute(Amount::from_tap(250));
     let psbt = builder.finish().unwrap();
-    let sent_received =
-        wallet.sent_and_received(&psbt.clone().extract_tx().expect("failed to extract tx"), &ColorIdentifier::default());
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
     let fee = check_fee!(wallet, psbt);
 
     assert_eq!(
