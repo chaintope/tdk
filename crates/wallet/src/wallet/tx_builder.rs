@@ -135,6 +135,7 @@ pub(crate) struct TxParams {
     pub(crate) rbf: Option<RbfValue>,
     pub(crate) version: Option<Version>,
     pub(crate) change_policy: ChangeSpendPolicy,
+    #[deprecated(since = "0.5.0", note = "Tapyrus does not support segwit transactions")]
     pub(crate) only_witness_utxo: bool,
     pub(crate) add_global_xpubs: bool,
     pub(crate) include_output_redeem_witness_script: bool,
@@ -507,6 +508,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     ///
     /// This reduces the size of the PSBT, but some signers might reject them due to the lack of
     /// the `non_witness_utxo`.
+    #[deprecated(since = "0.5.0", note = "Tapyrus does not support segwit transactions")]
     pub fn only_witness_utxo(&mut self) -> &mut Self {
         self.params.only_witness_utxo = true;
         self
@@ -516,6 +518,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// [`psbt::Output::witness_script`](bitcoin::psbt::Output::witness_script) fields.
     ///
     /// This is useful for signers which always require it, like ColdCard hardware wallets.
+    #[deprecated(since = "0.5.0", note = "Tapyrus does not support segwit transactions")]
     pub fn include_output_redeem_witness_script(&mut self) -> &mut Self {
         self.params.include_output_redeem_witness_script = true;
         self
