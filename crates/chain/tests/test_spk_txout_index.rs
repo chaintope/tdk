@@ -94,7 +94,7 @@ fn spk_txout_sent_and_received() {
         lock_time: absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: tx2.txid(),
+                txid: tx2.malfix_txid(),
                 vout: 0,
             },
             ..Default::default()
@@ -130,7 +130,7 @@ fn spk_txout_sent_and_received() {
         lock_time: absolute::LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
-                txid: tx3.txid(),
+                txid: tx3.malfix_txid(),
                 vout: 1,
             },
             ..Default::default()
