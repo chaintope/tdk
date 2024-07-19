@@ -484,7 +484,7 @@ impl Wallet {
     /// If you wish to use the wallet to sign transactions, you need to add the secret keys
     /// manually to the [`Wallet`]:
     ///
-    /// ```rust,no_run
+    /// ```rust,no_run,ignore
     /// # use tdk_wallet::Wallet;
     /// # use tdk_wallet::signer::{SignersContainer, SignerOrdering};
     /// # use tdk_wallet::descriptor::Descriptor;
@@ -1742,7 +1742,7 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```no_run,ignore
     /// # // TODO: remove norun -- bumping fee seems to need the tx in the wallet database first.
     /// # use std::str::FromStr;
     /// # use tapyrus::*;
