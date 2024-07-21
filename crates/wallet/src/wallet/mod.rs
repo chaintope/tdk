@@ -20,15 +20,18 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
+
 use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
 use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
+use tapyrus::hashes::{Hash, HashEngine};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
     absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, MalFixTxid,
-    Network, OutPoint, Script, ScriptBuf, Sequence, Transaction, TxOut, Witness,
+    Network, OutPoint, PublicKey, Script, ScriptBuf, Sequence, Transaction, TxOut, Witness,
 };
+use tapyrus::{address::NetworkChecked, secp256k1::Scalar};
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
 use tapyrus::{
@@ -401,6 +404,41 @@ impl fmt::Display for ApplyBlockError {
 
 #[cfg(feature = "std")]
 impl std::error::Error for ApplyBlockError {}
+
+const CONTRACT_MAX_SIZE: usize = 256;
+/// An error that may occur when creating p2c-address.
+#[derive(Debug)]
+pub enum GenerateContractError {
+    /// Contract data is empty
+    ContractTooSmall {
+        /// Contract size
+        length: usize,
+    },
+    /// Contract data is too large.
+    ContractTooLarge {
+        /// Contract size
+        length: usize,
+    },
+    /// Invalid address
+    InvalidAddress(tapyrus::address::Error),
+}
+
+impl fmt::Display for GenerateContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GenerateContractError::ContractTooSmall { length } => {
+                write!(f, "contract is too short (size: {})", length)
+            }
+            GenerateContractError::ContractTooLarge { length } => {
+                write!(f, "contract is too large (size: {})", length)
+            }
+            GenerateContractError::InvalidAddress(e) => e.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for GenerateContractError {}
 
 impl Wallet {
     /// Initialize an empty [`Wallet`].
@@ -850,6 +888,65 @@ impl Wallet {
             address: Address::from_script(spk, self.network).expect("must have address form"),
             keychain,
         })
+    }
+
+    /// Generate pay-to-contract address with the specified content hash.
+    pub fn create_pay_to_contract_address(
+        &self,
+        payment_base: &PublicKey,
+        contract: Vec<u8>,
+        color_id: Option<ColorIdentifier>,
+    ) -> Result<Address<NetworkChecked>, GenerateContractError> {
+        if contract.is_empty() {
+            return Err(GenerateContractError::ContractTooSmall { length: 0 });
+        }
+        if contract.len() > CONTRACT_MAX_SIZE {
+            return Err(GenerateContractError::ContractTooLarge {
+                length: contract.len(),
+            });
+        }
+        let p2c_public_key = self.pay_to_contract_key(payment_base, contract)?;
+        let pubkey_hash = p2c_public_key.pubkey_hash();
+        let script: ScriptBuf = match color_id {
+            Some(c) if c.is_colored() => ScriptBuf::new_cp2pkh(&color_id.unwrap(), &pubkey_hash),
+            _ => ScriptBuf::new_p2pkh(&pubkey_hash),
+        };
+        let address = Address::from_script(script.as_script(), self.network)
+            .map_err(GenerateContractError::InvalidAddress)?;
+        Ok(address)
+    }
+
+    /// Generate pay-to-contract public key with the specified content hash.
+    pub fn pay_to_contract_key(
+        &self,
+        payment_base: &PublicKey,
+        contract: Vec<u8>,
+    ) -> Result<PublicKey, GenerateContractError> {
+        let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
+        let pubkey = payment_base
+            .inner
+            .add_exp_tweak(&self.secp, &commitment)
+            .unwrap();
+        let key = PublicKey {
+            compressed: true,
+            inner: pubkey,
+        };
+        Ok(key)
+    }
+
+    /// Compute pay-to-contract commitment as BigInt.
+    pub fn create_pay_to_contract_commitment(
+        &self,
+        payment_base: &PublicKey,
+        contract: Vec<u8>,
+    ) -> Scalar {
+        let mut engine = tapyrus::hashes::sha256::HashEngine::default();
+        let _ = engine.input(&payment_base.inner.serialize());
+        let _ = engine.input(&contract);
+        let result = tapyrus::hashes::sha256::Hash::from_engine(engine);
+        // let n: BigInt = BigInt::from_bytes(&result.to_byte_array()[..]);
+        let bytes = result.to_byte_array();
+        Scalar::from_be_bytes(bytes).unwrap()
     }
 
     /// Marks an address used of the given `keychain` at `index`.
