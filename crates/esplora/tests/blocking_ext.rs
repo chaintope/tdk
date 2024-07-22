@@ -4,7 +4,6 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
-use tdk_chain::tapyrus::hashes::sha256d::Hash;
 use tdk_esplora::EsploraExt;
 
 use tdk_chain::tapyrus::{Address, Amount, MalFixTxid};
@@ -88,7 +87,7 @@ pub fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
         let tx_fee = env
             .tapyrusd
             .client
-            .get_transaction(&tx.malfix_txid().into(), None)
+            .get_transaction(&tx.malfix_txid(), None)
             .expect("Tx must exist")
             .fee
             .expect("Fee must exist")
@@ -183,7 +182,7 @@ pub fn test_update_tx_graph_stop_gap() -> anyhow::Result<()> {
             .next()
             .unwrap()
             .malfix_txid(),
-        txid_4th_addr.into()
+        txid_4th_addr
     );
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
 
@@ -216,7 +215,7 @@ pub fn test_update_tx_graph_stop_gap() -> anyhow::Result<()> {
         .map(|tx| tx.malfix_txid())
         .collect();
     assert_eq!(txs.len(), 1);
-    assert!(txs.contains::<MalFixTxid>(&txid_4th_addr.into()));
+    assert!(txs.contains::<MalFixTxid>(&txid_4th_addr));
     assert_eq!(full_scan_update.last_active_indices[&0], 3);
     let full_scan_update = {
         let request =
@@ -230,8 +229,7 @@ pub fn test_update_tx_graph_stop_gap() -> anyhow::Result<()> {
         .collect();
     assert_eq!(txs.len(), 2);
     assert!(
-        txs.contains::<MalFixTxid>(&txid_4th_addr.into())
-            && txs.contains::<MalFixTxid>(&txid_last_addr.into())
+        txs.contains::<MalFixTxid>(&txid_4th_addr) && txs.contains::<MalFixTxid>(&txid_last_addr)
     );
     assert_eq!(full_scan_update.last_active_indices[&0], 9);
 

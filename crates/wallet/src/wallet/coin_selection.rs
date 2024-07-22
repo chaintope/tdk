@@ -272,7 +272,7 @@ impl CoinSelectionAlgorithm for LargestFirstCoinSelection {
     fn coin_select(
         &self,
         required_utxos: Vec<WeightedUtxo>,
-        mut optional_utxos: Vec<WeightedUtxo>,
+        optional_utxos: Vec<WeightedUtxo>,
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
@@ -307,7 +307,7 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
     fn coin_select(
         &self,
         required_utxos: Vec<WeightedUtxo>,
-        mut optional_utxos: Vec<WeightedUtxo>,
+        optional_utxos: Vec<WeightedUtxo>,
         fee_rate: FeeRate,
         target_amount: u64,
         drain_script: &Script,
@@ -385,7 +385,7 @@ fn select_sorted_utxos(
                 if must_use || **selected_amount < target_amount + **fee_amount {
                     **fee_amount += (fee_rate
                         * Weight::from_wu(
-                            TxIn::default().segwit_weight().to_wu()
+                            TxIn::default().legacy_weight().to_wu()
                                 + weighted_utxo.satisfaction_weight as u64,
                         ))
                     .to_tap();
@@ -431,7 +431,7 @@ impl OutputGroup {
     fn new(weighted_utxo: WeightedUtxo, fee_rate: FeeRate) -> Self {
         let fee = (fee_rate
             * Weight::from_wu(
-                TxIn::default().segwit_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
+                TxIn::default().legacy_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
             ))
         .to_tap();
         let effective_value = weighted_utxo.utxo.txout().value.to_tap() as i64 - fee as i64;
@@ -454,8 +454,8 @@ pub struct BranchAndBoundCoinSelection {
 impl Default for BranchAndBoundCoinSelection {
     fn default() -> Self {
         Self {
-            // P2WPKH cost of change -> value (8 bytes) + script len (1 bytes) + script (22 bytes)
-            size_of_change: 8 + 1 + 22,
+            // P2PKH cost of change -> value (8 bytes) + script len (1 bytes) + script (25 bytes)
+            size_of_change: 8 + 1 + 25,
         }
     }
 }
@@ -803,9 +803,8 @@ mod test {
     use rand::seq::SliceRandom;
     use rand::{Rng, RngCore, SeedableRng};
 
-    // signature len (1WU) + signature and sighash (72WU)
-    // + pubkey len (1WU) + pubkey (33WU)
-    const P2WPKH_SATISFACTION_SIZE: usize = 1 + 72 + 1 + 33;
+    // signature len (1 vbyte) + signature (72 vbytes) + pubkey len (1 vbytes) + pubkey (33 vbytes)
+    const P2PKH_SATISFACTION_SIZE: usize = (1 + 72 + 1 + 33) * 4;
 
     const FEE_AMOUNT: u64 = 50;
 
@@ -817,7 +816,7 @@ mod test {
         ))
         .unwrap();
         WeightedUtxo {
-            satisfaction_weight: P2WPKH_SATISFACTION_SIZE,
+            satisfaction_weight: P2PKH_SATISFACTION_SIZE,
             utxo: Utxo::Local(LocalOutput {
                 outpoint,
                 txout: TxOut {
@@ -850,12 +849,12 @@ mod test {
         .unwrap();
         let pubkey_hash = PubkeyHash::hash(&pubkey.inner.serialize());
         WeightedUtxo {
-            satisfaction_weight: P2WPKH_SATISFACTION_SIZE,
+            satisfaction_weight: P2PKH_SATISFACTION_SIZE,
             utxo: Utxo::Local(LocalOutput {
                 outpoint,
                 txout: TxOut {
                     value: Amount::from_tap(value),
-                    script_pubkey: ScriptBuf::new_cp2pkh(&color_id, &pubkey_hash),
+                    script_pubkey: ScriptBuf::new_cp2pkh(color_id, &pubkey_hash),
                 },
                 keychain: KeychainKind::External,
                 is_spent: false,
@@ -990,7 +989,7 @@ mod test {
         let mut res = Vec::new();
         for i in 0..utxos_number {
             res.push(WeightedUtxo {
-                satisfaction_weight: P2WPKH_SATISFACTION_SIZE,
+                satisfaction_weight: P2PKH_SATISFACTION_SIZE,
                 utxo: Utxo::Local(LocalOutput {
                     outpoint: OutPoint::from_str(&format!(
                         "ebd9813ecebc57ff8f30797de7c205e3c7498ca950ea4341ee51a685ff2fa30a:{}",
@@ -1021,7 +1020,7 @@ mod test {
     fn generate_same_value_utxos(utxos_value: u64, utxos_number: usize) -> Vec<WeightedUtxo> {
         (0..utxos_number)
             .map(|i| WeightedUtxo {
-                satisfaction_weight: P2WPKH_SATISFACTION_SIZE,
+                satisfaction_weight: P2PKH_SATISFACTION_SIZE,
                 utxo: Utxo::Local(LocalOutput {
                     outpoint: OutPoint::from_str(&format!(
                         "ebd9813ecebc57ff8f30797de7c205e3c7498ca950ea4341ee51a685ff2fa30a:{}",
@@ -1069,7 +1068,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_010);
-        assert_eq!(result.fee_amount, 204)
+        assert_eq!(result.fee_amount, 444) // 148(p2pkh input size) * 3
     }
 
     #[test]
@@ -1115,7 +1114,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_010);
-        assert_eq!(result.fee_amount, 204);
+        assert_eq!(result.fee_amount, 444); // 148(p2pkh input size) * 3
     }
 
     #[test]
@@ -1137,7 +1136,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 1);
         assert_eq!(result.selected_amount(), 200_000);
-        assert_eq!(result.fee_amount, 68);
+        assert_eq!(result.fee_amount, 148); // p2pkh input size
     }
 
     #[test]
@@ -1218,7 +1217,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 2);
         assert_eq!(result.selected_amount(), 200_000);
-        assert_eq!(result.fee_amount, 136)
+        assert_eq!(result.fee_amount, 296); // 148 (p2pkh input size) * 2
     }
 
     #[test]
@@ -1265,7 +1264,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 500_000);
-        assert_eq!(result.fee_amount, 204);
+        assert_eq!(result.fee_amount, 444); // 148 (p2pkh input size) * 3
     }
 
     #[test]
@@ -1311,7 +1310,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 1);
         assert_eq!(result.selected_amount(), 120_000);
-        assert_eq!(result.fee_amount, 68);
+        assert_eq!(result.fee_amount, 148); // p2pkh input size
     }
 
     #[test]
@@ -1400,7 +1399,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_000);
-        assert_eq!(result.fee_amount, 204);
+        assert_eq!(result.fee_amount, 444); // 148 (p2pkh input size) * 3
     }
 
     #[test]
@@ -1468,14 +1467,14 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 300_010);
-        assert_eq!(result.fee_amount, 204);
+        assert_eq!(result.fee_amount, 444); // 148 (p2pkh input size) * 3
     }
 
     #[test]
     fn test_bnb_coin_selection_optional_are_enough() {
         let utxos = get_test_utxos();
         let drain_script = ScriptBuf::default();
-        let target_amount = 299756 + FEE_AMOUNT;
+        let target_amount = 299654 + FEE_AMOUNT;
 
         let result = BranchAndBoundCoinSelection::default()
             .coin_select(
@@ -1490,7 +1489,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 2);
         assert_eq!(result.selected_amount(), 300000);
-        assert_eq!(result.fee_amount, 136);
+        assert_eq!(result.fee_amount, 296); // 148 (p2pkh input size) * 2
     }
 
     #[test]
@@ -1573,7 +1572,8 @@ mod test {
     fn test_bnb_coin_selection_check_fee_rate() {
         let utxos = get_test_utxos();
         let drain_script = ScriptBuf::default();
-        let target_amount = 99932; // first utxo's effective value
+        // first utxo's effective value. 100000 - 148(size of p2pkh input bytes) * 1(fee rate)
+        let target_amount = 99852;
         let feerate = FeeRate::BROADCAST_MIN;
 
         let result = BranchAndBoundCoinSelection::new(0)
@@ -1589,8 +1589,7 @@ mod test {
 
         assert_eq!(result.selected.len(), 1);
         assert_eq!(result.selected_amount(), 100_000);
-        let input_weight =
-            TxIn::default().segwit_weight().to_wu() + P2WPKH_SATISFACTION_SIZE as u64;
+        let input_weight = TxIn::default().legacy_weight().to_wu() + P2PKH_SATISFACTION_SIZE as u64;
         // the final fee rate should be exactly the same as the fee rate given
         let result_feerate = Amount::from_tap(result.fee_amount) / Weight::from_wu(input_weight);
         assert_eq!(result_feerate, feerate);
@@ -1686,7 +1685,7 @@ mod test {
     #[test]
     fn test_bnb_function_almost_exact_match_with_fees() {
         let fee_rate = FeeRate::from_tap_per_vb_unchecked(1);
-        let size_of_change = 31;
+        let size_of_change = 34;
         let cost_of_change = (Weight::from_vb_unchecked(size_of_change) * fee_rate).to_tap();
 
         let utxos: Vec<_> = generate_same_value_utxos(50_000, 10)
@@ -1700,7 +1699,7 @@ mod test {
 
         // 2*(value of 1 utxo)  - 2*(1 utxo fees with 1.0sat/vbyte fee rate) -
         // cost_of_change + 5.
-        let target_amount = 2 * 50_000 - 2 * 67 - cost_of_change as i64 + 5;
+        let target_amount = 2 * 50_000 - 2 * 148 - cost_of_change as i64 + 5;
 
         let drain_script = ScriptBuf::default();
 
@@ -1718,7 +1717,7 @@ mod test {
             )
             .unwrap();
         assert_eq!(result.selected_amount(), 100_000);
-        assert_eq!(result.fee_amount, 136);
+        assert_eq!(result.fee_amount, 296); // 148 (p2pkh input size) * 2
     }
 
     // TODO: bnb() function should be optimized, and this test should be done with more utxos
@@ -1788,7 +1787,7 @@ mod test {
         );
 
         assert!(result.selected_amount() > target_amount);
-        assert_eq!(result.fee_amount, (result.selected.len() * 68) as u64);
+        assert_eq!(result.fee_amount, (result.selected.len() * 148) as u64); // 148 (p2pkh input size)
     }
 
     #[test]

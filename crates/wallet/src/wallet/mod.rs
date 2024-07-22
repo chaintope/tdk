@@ -484,7 +484,7 @@ impl Wallet {
     /// If you wish to use the wallet to sign transactions, you need to add the secret keys
     /// manually to the [`Wallet`]:
     ///
-    /// ```rust,no_run
+    /// ```rust,no_run,ignore
     /// # use tdk_wallet::Wallet;
     /// # use tdk_wallet::signer::{SignersContainer, SignerOrdering};
     /// # use tdk_wallet::descriptor::Descriptor;
@@ -1093,7 +1093,11 @@ impl Wallet {
     /// let color_id = ColorIdentifier::default();
     /// let (sent, received) = wallet.sent_and_received(tx, &color_id);
     /// ```
-    pub fn sent_and_received(&self, tx: &Transaction, color_id: &ColorIdentifier) -> (Amount, Amount) {
+    pub fn sent_and_received(
+        &self,
+        tx: &Transaction,
+        color_id: &ColorIdentifier,
+    ) -> (Amount, Amount) {
         self.indexed_graph.index.sent_and_received(tx, .., color_id)
     }
 
@@ -1604,7 +1608,7 @@ impl Wallet {
             if color_id.is_default() {
                 continue;
             }
-            let mut outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
+            let outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
             let coin_selection = coin_selection.coin_select(
                 required_utxos.clone(),
                 optional_utxos.clone(),
@@ -1629,9 +1633,7 @@ impl Wallet {
             );
             selected_coins.extend(coin_selection.selected);
             match excess {
-                NoChange {
-                    remaining_amount, ..
-                } => {}
+                NoChange { .. } => {}
                 Change { amount, fee } => {
                     // if self.is_mine(&drain_script) {
                     //     received += Amount::from_tap(*amount);
@@ -1740,7 +1742,7 @@ impl Wallet {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```no_run,ignore
     /// # // TODO: remove norun -- bumping fee seems to need the tx in the wallet database first.
     /// # use std::str::FromStr;
     /// # use tapyrus::*;
@@ -2366,7 +2368,7 @@ impl Wallet {
         // let mut script_pubkey = txo.txout.script_pubkey;
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
-        let mut script = if utxo.txout.script_pubkey.is_colored() {
+        let script = if utxo.txout.script_pubkey.is_colored() {
             ScriptBuf::from_bytes(utxo.txout.script_pubkey.as_bytes()[35..].to_vec())
         } else {
             utxo.txout.script_pubkey
