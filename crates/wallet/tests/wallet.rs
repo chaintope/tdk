@@ -370,7 +370,7 @@ fn test_get_funded_wallet_with_color_sent_and_received() {
     let (mut wallet, txid, color_id) =
         get_funded_wallet_with_nft_and_change(get_test_pkh(), change_desc);
 
-    let mut tx_amounts: Vec<(Txid, (Amount, Amount))> = wallet
+    let mut tx_amounts: Vec<(MalFixTxid, (Amount, Amount))> = wallet
         .transactions()
         .map(|ct| {
             (
