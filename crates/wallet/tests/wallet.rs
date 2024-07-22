@@ -3125,19 +3125,6 @@ fn test_returns_index_and_address() {
     );
 }
 
-// TODO: Fix this test
-#[test]
-#[ignore]
-fn test_sending_to_bip350_bech32m_address() {
-    let (mut wallet, _) = get_funded_wallet_pkh();
-    let addr = Address::from_str("tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c")
-        .unwrap()
-        .assume_checked();
-    let mut builder = wallet.build_tx();
-    builder.add_recipient(addr.script_pubkey(), Amount::from_tap(45_000));
-    builder.finish().unwrap();
-}
-
 #[test]
 fn test_get_address() {
     use tdk_wallet::descriptor::template::Bip44;
