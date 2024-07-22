@@ -10,7 +10,8 @@ use core::{
     ops::{Bound, RangeBounds},
 };
 use tapyrus::{
-    hashes::Hash, Amount, MalFixTxid, OutPoint, Script, SignedAmount, Transaction, TxOut,
+    hashes::Hash, script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint, Script,
+    SignedAmount, Transaction, TxOut,
 };
 
 use crate::Append;
@@ -441,9 +442,10 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
         &self,
         tx: &Transaction,
         range: impl RangeBounds<K>,
+        color_id: &ColorIdentifier,
     ) -> (Amount, Amount) {
         self.inner
-            .sent_and_received(tx, self.map_to_inner_bounds(range))
+            .sent_and_received(tx, self.map_to_inner_bounds(range), color_id)
     }
 
     /// Computes the net value that this transaction gives to the script pubkeys in the index and
@@ -453,8 +455,14 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
     /// This calls [`SpkTxOutIndex::net_value`] internally.
     ///
     /// [`sent_and_received`]: Self::sent_and_received
-    pub fn net_value(&self, tx: &Transaction, range: impl RangeBounds<K>) -> SignedAmount {
-        self.inner.net_value(tx, self.map_to_inner_bounds(range))
+    pub fn net_value(
+        &self,
+        tx: &Transaction,
+        range: impl RangeBounds<K>,
+        color_id: &ColorIdentifier,
+    ) -> SignedAmount {
+        self.inner
+            .net_value(tx, self.map_to_inner_bounds(range), color_id)
     }
 }
 
