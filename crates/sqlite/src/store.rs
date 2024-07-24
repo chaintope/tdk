@@ -2,18 +2,22 @@ use rusqlite::{named_params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
+use std::io::Read;
 use std::marker::PhantomData;
 use std::str::FromStr;
+use std::string;
 use std::sync::{Arc, Mutex};
 use tdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
 use tdk_chain::tapyrus::consensus::{deserialize, serialize};
 use tdk_chain::tapyrus::hashes::Hash;
-use tdk_chain::tapyrus::{Amount, Network, OutPoint, ScriptBuf, Transaction, TxOut};
+use tdk_chain::tapyrus::hex::DisplayHex;
+use tdk_chain::tapyrus::{Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, TxOut};
 use tdk_chain::tapyrus::{BlockHash, MalFixTxid};
 
 use crate::Error;
 use tdk_chain::{
-    indexed_tx_graph, keychain, local_chain, tx_graph, Anchor, Append, DescriptorExt, DescriptorId,
+    contract, indexed_tx_graph, keychain, local_chain, tx_graph, Anchor, Append, Contract,
+    DescriptorExt, DescriptorId,
 };
 use tdk_persist::CombinedChangeSet;
 
@@ -486,6 +490,53 @@ where
     }
 }
 
+/// Functions related with contract table
+impl<K, A> Store<K, A> {
+    fn insert_contracts(
+        db_transaction: &rusqlite::Transaction,
+        contract_changeset: &contract::ChangeSet,
+    ) -> Result<(), Error> {
+        for c in contract_changeset.into_iter() {
+            let insert_contract_stmt = &mut db_transaction
+                .prepare_cached("INSERT INTO contract (contract_id, contract, payment_base, spendable) VALUES (:contract_id, :contract, :payment_base, :spendable)")
+                .expect("insert contract statement");
+            let contract_id: String = c.contract_id.clone();
+            let contract: Vec<u8> = c.contract.clone();
+            let payment_base: Vec<u8> = c.payment_base.to_bytes();
+            let spendable: u32 = if c.spendable { 1 } else { 0 };
+            insert_contract_stmt.execute(named_params! {
+                ":contract_id": contract_id, ":contract": contract, ":payment_base": payment_base, ":spendable": spendable})
+                .map_err(Error::Sqlite)?;
+        }
+        Ok(())
+    }
+
+    fn select_contracts(db_transaction: &rusqlite::Transaction) -> Result<Vec<Contract>, Error> {
+        let mut select_contract_stmt = db_transaction
+            .prepare_cached("SELECT contract_id, contract, payment_base, spendable FROM contract")
+            .expect("select contract statement");
+        let contracts = select_contract_stmt
+            .query_map([], |row| {
+                let contract_id: String = row.get_unwrap::<usize, String>(0);
+                let contract_content: Vec<u8> = row.get_unwrap::<usize, Vec<u8>>(1);
+                let payment_base: PublicKey =
+                    PublicKey::from_slice(&row.get_unwrap::<usize, Vec<u8>>(2)[..]).unwrap();
+                let spendable: bool = row.get_unwrap::<usize, u32>(3) == 1;
+                Ok(Contract {
+                    contract_id,
+                    contract: contract_content,
+                    payment_base,
+                    spendable,
+                })
+            })
+            .map_err(Error::Sqlite)?;
+        contracts
+            .into_iter()
+            .map(|row| row.map_err(Error::Sqlite))
+            .collect()
+    }
+}
+
 /// Functions to read and write all [`ChangeSet`] data.
 impl<K, A> Store<K, A>
 where
@@ -503,6 +554,9 @@ where
         let network_changeset = &changeset.network;
         let current_network = Self::select_network(&db_transaction)?;
         Self::insert_network(&current_network, &db_transaction, network_changeset)?;
+
+        let contract_changeset = &changeset.contract;
+        Self::insert_contracts(&db_transaction, contract_changeset)?;
 
         let chain_changeset = &changeset.chain;
         Self::insert_or_delete_blocks(&db_transaction, chain_changeset)?;
@@ -528,7 +582,7 @@ where
         let last_seen = Self::select_last_seen(&db_transaction)?;
         let txouts = Self::select_txouts(&db_transaction)?;
         let anchors = Self::select_anchors(&db_transaction)?;
-
+        let contract = Self::select_contracts(&db_transaction)?;
         let graph: tx_graph::ChangeSet<A> = tx_graph::ChangeSet {
             txs,
             txouts,
@@ -544,13 +598,18 @@ where
         let indexed_tx_graph: indexed_tx_graph::ChangeSet<A, keychain::ChangeSet<K>> =
             indexed_tx_graph::ChangeSet { graph, indexer };
 
-        if network.is_none() && chain.is_empty() && indexed_tx_graph.is_empty() {
+        if network.is_none()
+            && chain.is_empty()
+            && indexed_tx_graph.is_empty()
+            && contract.is_empty()
+        {
             Ok(None)
         } else {
             Ok(Some(CombinedChangeSet {
                 chain,
                 indexed_tx_graph,
                 network,
+                contract,
             }))
         }
     }
@@ -729,6 +788,7 @@ mod test {
             chain: block_changeset,
             indexed_tx_graph: graph_changeset,
             network: network_changeset,
+            contract: Default::default(),
         });
 
         // create changeset that sets the whole tx2 and updates it's lastseen where before there was only the txid and last_seen
@@ -749,6 +809,7 @@ mod test {
             chain: local_chain::ChangeSet::default(),
             indexed_tx_graph: graph_changeset2,
             network: None,
+            contract: Default::default(),
         });
 
         // create changeset that adds a new anchor2 for tx0 and tx1
@@ -765,10 +826,25 @@ mod test {
                 indexer: keychain::ChangeSet::default(),
             };
 
+        let mut contract: contract::ChangeSet = contract::ChangeSet::new();
+        contract.push(Contract {
+            contract_id: "id".to_string(),
+            contract: vec![
+                0x00, 0x00, 0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44, 0x66,
+                0x55, 0x44, 0x00, 0x00,
+            ],
+            payment_base: PublicKey::from_str(
+                "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+            )
+            .unwrap(),
+            spendable: true,
+        });
+
         changesets.push(CombinedChangeSet {
             chain: local_chain::ChangeSet::default(),
             indexed_tx_graph: graph_changeset3,
             network: None,
+            contract: contract,
         });
 
         // aggregated test changesets

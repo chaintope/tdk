@@ -68,3 +68,11 @@ CREATE TABLE anchor_tx
     UNIQUE (anchor, txid),
     FOREIGN KEY (block_hash) REFERENCES block(hash)
 ) STRICT;
+
+CREATE TABLE contract
+(
+    contract_id        TEXT NOT NULL,
+    contract           BLOB NOT NULL,
+    payment_base       BLOB NOT NULL,
+    spendable          INTEGER
+) STRICT;

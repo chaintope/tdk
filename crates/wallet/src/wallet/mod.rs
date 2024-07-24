@@ -47,8 +47,8 @@ use tdk_chain::{
     },
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
     tx_graph::{CanonicalTx, TxGraph},
-    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, FullTxOut,
-    IndexedTxGraph,
+    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, Contract,
+    FullTxOut, IndexedTxGraph,
 };
 use tdk_persist::{Persist, PersistBackend};
 
@@ -511,6 +511,7 @@ impl Wallet {
             chain: chain_changeset,
             indexed_tx_graph: indexed_graph.initial_changeset(),
             network: Some(network),
+            contract: Default::default(),
         });
         persist.commit().map_err(NewError::Persist)?;
 
@@ -2685,6 +2686,23 @@ impl Wallet {
             .indexed_graph
             .batch_insert_relevant_unconfirmed(unconfirmed_txs);
         self.persist.stage(ChangeSet::from(indexed_graph_changeset));
+    }
+
+    pub fn store_contract(
+        &mut self,
+        contract_id: String,
+        contract: Vec<u8>,
+        payment_base: PublicKey,
+        spendable: bool,
+    ) {
+        let mut changeset = ChangeSet::default();
+        changeset.contract.push(Contract {
+            contract_id,
+            contract,
+            payment_base,
+            spendable,
+        });
+        self.persist.stage_and_commit(changeset);
     }
 }
 
