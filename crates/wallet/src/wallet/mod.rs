@@ -79,10 +79,22 @@ use crate::signer::SignerError;
 use crate::types::*;
 use crate::wallet::coin_selection::Excess::{Change, NoChange};
 use crate::wallet::error::{BuildFeeBumpError, CreateTxError, MiniscriptPsbtError};
+use num_bigint::BigUint;
 
 use self::coin_selection::Error;
 
 const COINBASE_MATURITY: u32 = 100;
+
+/// Generate Scalar from bytes
+pub fn scalar_from(bytes: &[u8]) -> Scalar {
+    let order: BigUint = BigUint::from_bytes_be(&Scalar::MAX.to_be_bytes()) + 1u32;
+    let n: BigUint = BigUint::from_bytes_be(bytes);
+    let n = n % order;
+    let bytes = n.to_bytes_be();
+    let mut value = [0u8; 32];
+    value[32 - bytes.len()..].copy_from_slice(&bytes);
+    Scalar::from_be_bytes(value).unwrap()
+}
 
 /// A Bitcoin wallet
 ///
@@ -897,14 +909,6 @@ impl Wallet {
         contract: Vec<u8>,
         color_id: Option<ColorIdentifier>,
     ) -> Result<Address<NetworkChecked>, GenerateContractError> {
-        if contract.is_empty() {
-            return Err(GenerateContractError::ContractTooSmall { length: 0 });
-        }
-        if contract.len() > CONTRACT_MAX_SIZE {
-            return Err(GenerateContractError::ContractTooLarge {
-                length: contract.len(),
-            });
-        }
         let p2c_public_key = self.pay_to_contract_key(payment_base, contract)?;
         let pubkey_hash = p2c_public_key.pubkey_hash();
         let script: ScriptBuf = match color_id {
@@ -922,6 +926,14 @@ impl Wallet {
         payment_base: &PublicKey,
         contract: Vec<u8>,
     ) -> Result<PublicKey, GenerateContractError> {
+        if contract.is_empty() {
+            return Err(GenerateContractError::ContractTooSmall { length: 0 });
+        }
+        if contract.len() > CONTRACT_MAX_SIZE {
+            return Err(GenerateContractError::ContractTooLarge {
+                length: contract.len(),
+            });
+        }
         let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
         let pubkey = payment_base
             .inner
@@ -934,19 +946,17 @@ impl Wallet {
         Ok(key)
     }
 
-    /// Compute pay-to-contract commitment as BigInt.
+    /// Compute pay-to-contract commitment as Scalar.
     pub fn create_pay_to_contract_commitment(
         &self,
         payment_base: &PublicKey,
         contract: Vec<u8>,
     ) -> Scalar {
         let mut engine = tapyrus::hashes::sha256::HashEngine::default();
-        let _ = engine.input(&payment_base.inner.serialize());
-        let _ = engine.input(&contract);
+        engine.input(&payment_base.inner.serialize());
+        engine.input(&contract);
         let result = tapyrus::hashes::sha256::Hash::from_engine(engine);
-        // let n: BigInt = BigInt::from_bytes(&result.to_byte_array()[..]);
-        let bytes = result.to_byte_array();
-        Scalar::from_be_bytes(bytes).unwrap()
+        scalar_from(&result.to_byte_array()[..])
     }
 
     /// Marks an address used of the given `keychain` at `index`.

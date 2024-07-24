@@ -1,10 +1,14 @@
 use std::path::Path;
 use std::str::FromStr;
+use std::thread::sleep;
+use std::time::Duration;
 
 use assert_matches::assert_matches;
+use rand::random;
 use tapyrus::hashes::Hash;
 use tapyrus::key::Secp256k1;
 use tapyrus::script::PushBytesBuf;
+use tapyrus::secp256k1::Scalar;
 use tapyrus::sighash::EcdsaSighashType;
 use tapyrus::{
     absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
@@ -22,10 +26,9 @@ use tdk_wallet::signer::{SignOptions, SignerError};
 use tdk_wallet::wallet::coin_selection::{self, LargestFirstCoinSelection};
 use tdk_wallet::wallet::error::CreateTxError;
 use tdk_wallet::wallet::tx_builder::AddForeignUtxoError;
-use tdk_wallet::wallet::NewError;
+use tdk_wallet::wallet::{scalar_from, NewError};
 use tdk_wallet::wallet::{AddressInfo, Balance, Wallet};
 use tdk_wallet::KeychainKind;
-use uuid::{uuid, Uuid};
 
 mod common;
 use common::*;
@@ -2861,8 +2864,7 @@ fn test_create_pay_to_contract_address() {
     let payment_base =
         PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
             .unwrap();
-    let id: Uuid = uuid!("67e55044-10b1-426f-9247-bb680e5fe0c8");
-    let contract = id.into_bytes().to_vec();
+    let contract = vec![0x00, 0x01, 0x02, 0x03];
 
     let address = wallet
         .create_pay_to_contract_address(&payment_base, contract.clone(), None)
@@ -2947,6 +2949,23 @@ fn test_create_pay_to_contract_commitment() {
         0x90, 0xf7,
     ];
     assert_eq!(commitment.to_be_bytes(), expected);
+}
+
+#[test]
+fn test_bytes_to_scalar() {
+    let bytes = [
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff,
+    ];
+    let scalar = scalar_from(&bytes);
+    /// 0xFFFFF.... - Scalar::MAX
+    let expected = [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x45, 0x51, 0x23, 0x19, 0x50, 0xB7, 0x5F, 0xC4, 0x40, 0x2D, 0xA1, 0x73, 0x2F, 0xC9,
+        0xBE, 0xBE,
+    ];
+    assert_eq!(scalar.to_be_bytes(), expected);
 }
 
 // TODO: Fix this test
