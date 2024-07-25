@@ -71,7 +71,7 @@ CREATE TABLE anchor_tx
 
 CREATE TABLE contract
 (
-    contract_id        TEXT NOT NULL,
+    contract_id        TEXT PRIMARY KEY NOT NULL,
     contract           BLOB NOT NULL,
     payment_base       BLOB NOT NULL,
     spendable          INTEGER

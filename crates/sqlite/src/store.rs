@@ -2,15 +2,12 @@ use rusqlite::{named_params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
-use std::io::Read;
 use std::marker::PhantomData;
 use std::str::FromStr;
-use std::string;
 use std::sync::{Arc, Mutex};
 use tdk_chain::miniscript::descriptor::{Descriptor, DescriptorPublicKey};
 use tdk_chain::tapyrus::consensus::{deserialize, serialize};
 use tdk_chain::tapyrus::hashes::Hash;
-use tdk_chain::tapyrus::hex::DisplayHex;
 use tdk_chain::tapyrus::{Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, TxOut};
 use tdk_chain::tapyrus::{BlockHash, MalFixTxid};
 
@@ -638,6 +635,43 @@ mod test {
     enum Keychain {
         External { account: u32, name: String },
         Internal { account: u32, name: String },
+    }
+
+    #[test]
+    fn test_store_contract() {
+        let (_, agg_test_changesets) =
+            create_test_changesets(&|height, time, hash| ConfirmationTimeHeightAnchor {
+                confirmation_height: height,
+                confirmation_time: time,
+                anchor_block: (height, hash).into(),
+            });
+        let conn = Connection::open_in_memory().expect("in memory connection");
+        let mut store = Store::<Keychain, ConfirmationTimeHeightAnchor>::new(conn)
+            .expect("create new memory db store");
+
+        let result = store.write_changes(&agg_test_changesets);
+        assert!(result.is_ok());
+
+        // let mut changesets = Vec::new();
+        let mut contract: contract::ChangeSet = contract::ChangeSet::new();
+        contract.push(Contract {
+            contract_id: "id".to_string(),
+            contract: vec![0x00, 0x01, 0x02],
+            payment_base: PublicKey::from_str(
+                "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+            )
+            .unwrap(),
+            spendable: false,
+        });
+        let changeset = CombinedChangeSet::<Keychain, ConfirmationTimeHeightAnchor> {
+            chain: local_chain::ChangeSet::default(),
+            indexed_tx_graph: indexed_tx_graph::ChangeSet::default(),
+            network: None,
+            contract: contract,
+        };
+        //The DB error occurrs when storing again (unique constraint)
+        let result = store.write_changes(&changeset);
+        assert!(result.is_err());
     }
 
     #[test]
