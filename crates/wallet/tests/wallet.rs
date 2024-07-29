@@ -1,16 +1,20 @@
 use std::path::Path;
 use std::str::FromStr;
+use std::thread::sleep;
+use std::time::Duration;
 
 use assert_matches::assert_matches;
+use rand::random;
 use tapyrus::hashes::Hash;
 use tapyrus::key::Secp256k1;
-use tapyrus::psbt;
 use tapyrus::script::PushBytesBuf;
+use tapyrus::secp256k1::Scalar;
 use tapyrus::sighash::EcdsaSighashType;
 use tapyrus::{
     absolute, script::color_identifier::ColorIdentifier, transaction, Address, Amount, BlockHash,
     FeeRate, MalFixTxid, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Weight,
 };
+use tapyrus::{psbt, AddressType, PublicKey};
 use tdk_chain::collections::BTreeMap;
 use tdk_chain::COINBASE_MATURITY;
 use tdk_chain::{BlockId, ConfirmationTime};
@@ -22,7 +26,7 @@ use tdk_wallet::signer::{SignOptions, SignerError};
 use tdk_wallet::wallet::coin_selection::{self, LargestFirstCoinSelection};
 use tdk_wallet::wallet::error::CreateTxError;
 use tdk_wallet::wallet::tx_builder::AddForeignUtxoError;
-use tdk_wallet::wallet::NewError;
+use tdk_wallet::wallet::{scalar_from, NewError};
 use tdk_wallet::wallet::{AddressInfo, Balance, Wallet};
 use tdk_wallet::KeychainKind;
 
@@ -2849,6 +2853,119 @@ fn test_unused_address() {
             .to_string(),
         "tb1q6yn66vajcctph75pvylgkksgpp6nq04ppwct9a"
     );
+}
+
+#[test]
+fn test_create_pay_to_contract_address() {
+    let desc = "pkh(xprv9s21ZrQH143K4EXURwMHuLS469fFzZyXk7UUpdKfQwhoHcAiYTakpe8pMU2RiEdvrU9McyuE7YDoKcXkoAwEGoK53WBDnKKv2zZbb9BzttX)";
+    let change_desc = get_test_pkh();
+    let wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
+
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+    let contract = vec![0x00, 0x01, 0x02, 0x03];
+
+    let address = wallet
+        .create_pay_to_contract_address(&payment_base, contract.clone(), None)
+        .unwrap();
+    assert_eq!(address.address_type().unwrap(), AddressType::P2pkh);
+
+    let address = wallet
+        .create_pay_to_contract_address(
+            &payment_base,
+            contract.clone(),
+            Some(ColorIdentifier::default()),
+        )
+        .unwrap();
+    assert_eq!(address.address_type().unwrap(), AddressType::P2pkh);
+
+    let out_point = OutPoint::default();
+    let address = wallet
+        .create_pay_to_contract_address(
+            &payment_base,
+            contract,
+            Some(ColorIdentifier::nft(out_point)),
+        )
+        .unwrap();
+    assert_eq!(address.address_type().unwrap(), AddressType::Cp2pkh);
+}
+
+#[test]
+fn test_create_pay_to_contract_address_error() {
+    let desc = "pkh(xprv9s21ZrQH143K4EXURwMHuLS469fFzZyXk7UUpdKfQwhoHcAiYTakpe8pMU2RiEdvrU9McyuE7YDoKcXkoAwEGoK53WBDnKKv2zZbb9BzttX)";
+    let change_desc = get_test_pkh();
+    let wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
+
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+
+    let result = wallet.create_pay_to_contract_address(&payment_base, Vec::new(), None);
+    assert!(result.is_err());
+
+    let vec: Vec<u8> = vec![0; 256];
+    let result = wallet.create_pay_to_contract_address(&payment_base, vec, None);
+    assert!(result.is_ok());
+
+    let vec: Vec<u8> = vec![0; 257];
+    let result = wallet.create_pay_to_contract_address(&payment_base, vec, None);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_pay_to_contract_key() {
+    let desc = "pkh(xprv9s21ZrQH143K4EXURwMHuLS469fFzZyXk7UUpdKfQwhoHcAiYTakpe8pMU2RiEdvrU9McyuE7YDoKcXkoAwEGoK53WBDnKKv2zZbb9BzttX)";
+    let change_desc = get_test_pkh();
+    let wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
+
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+    let contract = "metadata".as_bytes().to_vec();
+
+    let key = wallet.pay_to_contract_key(&payment_base, contract).unwrap();
+    assert_eq!(
+        key,
+        PublicKey::from_str("0248be1e77d5b063e555681faa3824ad32d738569faec75844d7c4ce5cd963d229")
+            .unwrap()
+    )
+}
+
+#[test]
+fn test_create_pay_to_contract_commitment() {
+    let desc = "pkh(xprv9s21ZrQH143K4EXURwMHuLS469fFzZyXk7UUpdKfQwhoHcAiYTakpe8pMU2RiEdvrU9McyuE7YDoKcXkoAwEGoK53WBDnKKv2zZbb9BzttX)";
+    let change_desc = get_test_pkh();
+    let wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
+
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+    let contract = "metadata".as_bytes().to_vec();
+    let commitment = wallet.create_pay_to_contract_commitment(&payment_base, contract);
+    let expected = [
+        0xb3, 0x09, 0x1b, 0x18, 0x71, 0x39, 0xe7, 0xd1, 0xfc, 0x66, 0x1b, 0x25, 0xf3, 0xc0, 0x5c,
+        0x07, 0x78, 0x11, 0xbb, 0x8c, 0xb2, 0x8e, 0x49, 0xc1, 0xda, 0xba, 0x16, 0x6b, 0xf6, 0x5e,
+        0x90, 0xf7,
+    ];
+    assert_eq!(commitment.to_be_bytes(), expected);
+}
+
+#[test]
+fn test_bytes_to_scalar() {
+    let bytes = [
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff,
+    ];
+    let scalar = scalar_from(&bytes);
+    /// 0xFFFFF.... - Scalar::MAX
+    let expected = [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x45, 0x51, 0x23, 0x19, 0x50, 0xB7, 0x5F, 0xC4, 0x40, 0x2D, 0xA1, 0x73, 0x2F, 0xC9,
+        0xBE, 0xBE,
+    ];
+    assert_eq!(scalar.to_be_bytes(), expected);
 }
 
 // TODO: Fix this test
