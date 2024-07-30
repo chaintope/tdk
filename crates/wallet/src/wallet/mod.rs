@@ -2737,6 +2737,7 @@ impl Wallet {
         self.persist.stage(ChangeSet::from(indexed_graph_changeset));
     }
 
+    /// Store pay-to-contract information to the wallet.
     pub fn store_contract(
         &mut self,
         contract_id: String,
@@ -2765,6 +2766,9 @@ impl Wallet {
         return Ok(());
     }
 
+    /// Update pay-to-contract information to the wallet.
+    ///
+    /// A spendable flag is only field to be updated.
     pub fn update_contract(
         &mut self,
         contract_id: String,
