@@ -3595,4 +3595,7 @@ fn test_store_contract() {
 
     let result = wallet.update_contract("contract_id".to_string(), false);
     assert!(result.is_ok());
+
+    let result = wallet.update_contract("invalid_id".to_string(), false);
+    assert!(result.is_err());
 }

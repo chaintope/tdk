@@ -495,7 +495,7 @@ impl<K, A> Store<K, A> {
     ) -> Result<(), Error> {
         for (_, c) in contract_changeset.into_iter() {
             let insert_contract_stmt = &mut db_transaction
-                .prepare_cached("INSERT INTO contract (contract_id, contract, payment_base, spendable) VALUES (:contract_id, :contract, :payment_base, :spendable)")
+                .prepare_cached("INSERT INTO contract (contract_id, contract, payment_base, spendable) VALUES (:contract_id, :contract, :payment_base, :spendable) ON CONFLICT(contract_id) DO UPDATE SET spendable = :spendable")
                 .expect("insert contract statement");
             let contract_id: String = c.contract_id.clone();
             let contract: Vec<u8> = c.contract.clone();
@@ -503,26 +503,6 @@ impl<K, A> Store<K, A> {
             let spendable: u32 = if c.spendable { 1 } else { 0 };
             insert_contract_stmt.execute(named_params! {
                 ":contract_id": contract_id, ":contract": contract, ":payment_base": payment_base, ":spendable": spendable})
-                .map_err(Error::Sqlite)?;
-        }
-        Ok(())
-    }
-
-    pub fn update_contracts(
-        db_transaction: &rusqlite::Transaction,
-        contract_changeset: &contract::ChangeSet,
-    ) -> Result<(), Error> {
-        for (_, c) in contract_changeset.into_iter() {
-            let update_contract_stmt = &mut db_transaction
-                .prepare_cached(
-                    "UPDATE contract SET spendable = :spendable WHERE contract_id = :contract_id",
-                )
-                .expect("update contract statement");
-            let contract_id: String = c.contract_id.clone();
-            let spendable: u32 = if c.spendable { 1 } else { 0 };
-            update_contract_stmt
-                .execute(named_params! {
-                ":contract_id": contract_id, ":spendable": spendable})
                 .map_err(Error::Sqlite)?;
         }
         Ok(())
@@ -677,6 +657,13 @@ mod test {
         let result = store.write_changes(&agg_test_changesets);
         assert!(result.is_ok());
 
+        let agg_changeset: Option<CombinedChangeSet<Keychain, ConfirmationTimeHeightAnchor>> =
+            store.load_from_persistence().expect("aggregated changeset");
+        assert_eq!(
+            agg_changeset.unwrap().contract.get("id").unwrap().spendable,
+            true
+        );
+
         let mut contract: contract::ChangeSet = contract::ChangeSet::new();
         contract.insert(
             "id".to_string(),
@@ -694,51 +681,18 @@ mod test {
             chain: local_chain::ChangeSet::default(),
             indexed_tx_graph: indexed_tx_graph::ChangeSet::default(),
             network: None,
-            contract: contract,
+            contract,
         };
-        //The DB error occurrs when storing again (unique constraint)
         let result = store.write_changes(&changeset);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_update_contract() {
-        let (_, agg_test_changesets) =
-            create_test_changesets(&|height, time, hash| ConfirmationTimeHeightAnchor {
-                confirmation_height: height,
-                confirmation_time: time,
-                anchor_block: (height, hash).into(),
-            });
-        let conn = Connection::open_in_memory().expect("in memory connection");
-        let mut store = Store::<Keychain, ConfirmationTimeHeightAnchor>::new(conn)
-            .expect("create new memory db store");
-
-        let result = store.write_changes(&agg_test_changesets);
         assert!(result.is_ok());
 
-        // Update spendable flag
-        let mut contract: contract::ChangeSet = contract::ChangeSet::new();
-        contract.insert(
-            "id".to_string(),
-            Contract {
-                contract_id: "id".to_string(),
-                contract: vec![0x00, 0x01, 0x02],
-                payment_base: PublicKey::from_str(
-                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
-                )
-                .unwrap(),
-                spendable: false,
-            },
+        // Update spendable flag to false.
+        let agg_changeset: Option<CombinedChangeSet<Keychain, ConfirmationTimeHeightAnchor>> =
+            store.load_from_persistence().expect("aggregated changeset");
+        assert_eq!(
+            agg_changeset.unwrap().contract.get("id").unwrap().spendable,
+            false
         );
-        let changeset = CombinedChangeSet::<Keychain, ConfirmationTimeHeightAnchor> {
-            chain: local_chain::ChangeSet::default(),
-            indexed_tx_graph: indexed_tx_graph::ChangeSet::default(),
-            network: None,
-            contract: contract,
-        };
-        //The DB error occurrs when storing again (unique constraint)
-        let result = store.write_changes(&changeset);
-        assert!(result.is_err());
     }
 
     #[test]
