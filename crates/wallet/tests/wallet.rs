@@ -3566,3 +3566,33 @@ fn test_thread_safety() {
     fn thread_safe<T: Send + Sync>() {}
     thread_safe::<Wallet>(); // compiles only if true
 }
+
+#[test]
+fn test_store_contract() {
+    let (desc, change_desc) = get_test_pkh_with_change_desc();
+    let temp_dir = tempfile::tempdir().expect("must create tempdir");
+    let file_path = temp_dir.path().join("sqlite3.db");
+    let db = tdk_file_store::Store::create_new(DB_MAGIC, file_path).expect("must create db");
+    let mut wallet = Wallet::new(desc, change_desc, db, Network::Dev).expect("must init wallet");
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+    let result = wallet.store_contract(
+        "contract_id".to_string(),
+        vec![0x00, 0x01, 0x02, 0x03],
+        payment_base.clone(),
+        true,
+    );
+    assert!(result.is_ok());
+
+    let result = wallet.store_contract(
+        "contract_id".to_string(),
+        vec![0x00, 0x01, 0x02, 0x03, 0x04],
+        payment_base.clone(),
+        true,
+    );
+    assert!(result.is_err());
+
+    let result = wallet.update_contract("contract_id".to_string(), false);
+    assert!(result.is_ok());
+}

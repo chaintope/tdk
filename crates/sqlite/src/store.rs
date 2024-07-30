@@ -508,6 +508,26 @@ impl<K, A> Store<K, A> {
         Ok(())
     }
 
+    pub fn update_contracts(
+        db_transaction: &rusqlite::Transaction,
+        contract_changeset: &contract::ChangeSet,
+    ) -> Result<(), Error> {
+        for (_, c) in contract_changeset.into_iter() {
+            let update_contract_stmt = &mut db_transaction
+                .prepare_cached(
+                    "UPDATE contract SET spendable = :spendable WHERE contract_id = :contract_id",
+                )
+                .expect("update contract statement");
+            let contract_id: String = c.contract_id.clone();
+            let spendable: u32 = if c.spendable { 1 } else { 0 };
+            update_contract_stmt
+                .execute(named_params! {
+                ":contract_id": contract_id, ":spendable": spendable})
+                .map_err(Error::Sqlite)?;
+        }
+        Ok(())
+    }
+
     fn select_contracts(
         db_transaction: &rusqlite::Transaction,
     ) -> Result<BTreeMap<String, Contract>, Error> {

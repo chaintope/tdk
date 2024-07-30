@@ -453,6 +453,48 @@ impl fmt::Display for GenerateContractError {
 #[cfg(feature = "std")]
 impl std::error::Error for GenerateContractError {}
 
+/// An error that may occur when registering contract data.
+#[derive(Debug)]
+pub enum CreateContractError {
+    ContractAlreadyExist { contract_id: String },
+    Error { e: anyhow::Error },
+}
+
+impl fmt::Display for CreateContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CreateContractError::ContractAlreadyExist { contract_id } => {
+                write!(f, "contract already exists (contract_id: {})", contract_id)
+            }
+            CreateContractError::Error { e } => e.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for CreateContractError {}
+
+/// An error that may occur when updating contract.
+#[derive(Debug)]
+pub enum UpdateContractError {
+    ContractNotFound { contract_id: String },
+    Error { e: anyhow::Error },
+}
+
+impl fmt::Display for UpdateContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UpdateContractError::ContractNotFound { contract_id } => {
+                write!(f, "contract does not found (contract_id: {})", contract_id)
+            }
+            UpdateContractError::Error { e } => e.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for UpdateContractError {}
+
 impl Wallet {
     /// Initialize an empty [`Wallet`].
     pub fn new<E: IntoWalletDescriptor>(
@@ -2701,7 +2743,7 @@ impl Wallet {
         contract: Vec<u8>,
         payment_base: PublicKey,
         spendable: bool,
-    ) {
+    ) -> Result<(), CreateContractError> {
         let mut changeset = ChangeSet::default();
         if let Some(c) = self.contracts.get(&contract_id) {
             return Err(CreateContractError::ContractAlreadyExist { contract_id });
@@ -2719,6 +2761,32 @@ impl Wallet {
             self.persist
                 .stage_and_commit(changeset)
                 .map_err(|e| CreateContractError::Error { e })?;
+        }
+        return Ok(());
+    }
+
+    pub fn update_contract(
+        &mut self,
+        contract_id: String,
+        spendable: bool,
+    ) -> Result<(), UpdateContractError> {
+        let mut changeset = ChangeSet::default();
+        if let Some(contract) = self.contracts.get(&contract_id) {
+            let new_contract = Contract {
+                contract_id: contract_id.clone(),
+                contract: contract.contract.clone(),
+                payment_base: contract.payment_base,
+                spendable,
+            };
+            changeset
+                .contract
+                .insert(contract_id.clone(), new_contract.clone());
+            self.contracts.insert(contract_id.clone(), new_contract);
+            self.persist
+                .stage_and_commit(changeset)
+                .map_err(|e| UpdateContractError::Error { e })?;
+        } else {
+            return Err(UpdateContractError::ContractNotFound { contract_id });
         }
         return Ok(());
     }
