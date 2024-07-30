@@ -40,7 +40,7 @@ use tapyrus::{
 };
 pub use tdk_chain::keychain::Balance;
 use tdk_chain::{
-    indexed_tx_graph,
+    contract, indexed_tx_graph,
     keychain::KeychainTxOutIndex,
     local_chain::{
         self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
@@ -114,6 +114,7 @@ pub struct Wallet {
     persist: Persist<ChangeSet>,
     network: Network,
     secp: SecpCtx,
+    contracts: BTreeMap<String, Contract>,
 }
 
 /// An update to [`Wallet`].
@@ -506,6 +507,8 @@ impl Wallet {
 
         let indexed_graph = IndexedTxGraph::new(index);
 
+        let contracts = contract::ChangeSet::new();
+
         let mut persist = Persist::new(db);
         persist.stage(ChangeSet {
             chain: chain_changeset,
@@ -523,6 +526,7 @@ impl Wallet {
             indexed_graph,
             persist,
             secp,
+            contracts,
         })
     }
 
@@ -609,6 +613,8 @@ impl Wallet {
         let mut indexed_graph = IndexedTxGraph::new(index);
         indexed_graph.apply_changeset(changeset.indexed_tx_graph);
 
+        let contracts = changeset.contract;
+
         let persist = Persist::new(db);
 
         Ok(Wallet {
@@ -619,6 +625,7 @@ impl Wallet {
             persist,
             network,
             secp,
+            contracts,
         })
     }
 
@@ -2696,13 +2703,24 @@ impl Wallet {
         spendable: bool,
     ) {
         let mut changeset = ChangeSet::default();
-        changeset.contract.push(Contract {
-            contract_id,
-            contract,
-            payment_base,
-            spendable,
-        });
-        self.persist.stage_and_commit(changeset);
+        if let Some(c) = self.contracts.get(&contract_id) {
+            return Err(CreateContractError::ContractAlreadyExist { contract_id });
+        } else {
+            let new_contract = Contract {
+                contract_id: contract_id.clone(),
+                contract,
+                payment_base,
+                spendable,
+            };
+            changeset
+                .contract
+                .insert(contract_id.clone(), new_contract.clone());
+            self.contracts.insert(contract_id.clone(), new_contract);
+            self.persist
+                .stage_and_commit(changeset)
+                .map_err(|e| CreateContractError::Error { e })?;
+        }
+        return Ok(());
     }
 }
 

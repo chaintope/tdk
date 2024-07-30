@@ -493,7 +493,7 @@ impl<K, A> Store<K, A> {
         db_transaction: &rusqlite::Transaction,
         contract_changeset: &contract::ChangeSet,
     ) -> Result<(), Error> {
-        for c in contract_changeset.into_iter() {
+        for (_, c) in contract_changeset.into_iter() {
             let insert_contract_stmt = &mut db_transaction
                 .prepare_cached("INSERT INTO contract (contract_id, contract, payment_base, spendable) VALUES (:contract_id, :contract, :payment_base, :spendable)")
                 .expect("insert contract statement");
@@ -508,7 +508,9 @@ impl<K, A> Store<K, A> {
         Ok(())
     }
 
-    fn select_contracts(db_transaction: &rusqlite::Transaction) -> Result<Vec<Contract>, Error> {
+    fn select_contracts(
+        db_transaction: &rusqlite::Transaction,
+    ) -> Result<BTreeMap<String, Contract>, Error> {
         let mut select_contract_stmt = db_transaction
             .prepare_cached("SELECT contract_id, contract, payment_base, spendable FROM contract")
             .expect("select contract statement");
@@ -519,12 +521,15 @@ impl<K, A> Store<K, A> {
                 let payment_base: PublicKey =
                     PublicKey::from_slice(&row.get_unwrap::<usize, Vec<u8>>(2)[..]).unwrap();
                 let spendable: bool = row.get_unwrap::<usize, u32>(3) == 1;
-                Ok(Contract {
-                    contract_id,
-                    contract: contract_content,
-                    payment_base,
-                    spendable,
-                })
+                Ok((
+                    contract_id.clone(),
+                    Contract {
+                        contract_id,
+                        contract: contract_content,
+                        payment_base,
+                        spendable,
+                    },
+                ))
             })
             .map_err(Error::Sqlite)?;
         contracts
@@ -652,17 +657,59 @@ mod test {
         let result = store.write_changes(&agg_test_changesets);
         assert!(result.is_ok());
 
-        // let mut changesets = Vec::new();
         let mut contract: contract::ChangeSet = contract::ChangeSet::new();
-        contract.push(Contract {
-            contract_id: "id".to_string(),
-            contract: vec![0x00, 0x01, 0x02],
-            payment_base: PublicKey::from_str(
-                "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
-            )
-            .unwrap(),
-            spendable: false,
-        });
+        contract.insert(
+            "id".to_string(),
+            Contract {
+                contract_id: "id".to_string(),
+                contract: vec![0x00, 0x01, 0x02],
+                payment_base: PublicKey::from_str(
+                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+                )
+                .unwrap(),
+                spendable: false,
+            },
+        );
+        let changeset = CombinedChangeSet::<Keychain, ConfirmationTimeHeightAnchor> {
+            chain: local_chain::ChangeSet::default(),
+            indexed_tx_graph: indexed_tx_graph::ChangeSet::default(),
+            network: None,
+            contract: contract,
+        };
+        //The DB error occurrs when storing again (unique constraint)
+        let result = store.write_changes(&changeset);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_contract() {
+        let (_, agg_test_changesets) =
+            create_test_changesets(&|height, time, hash| ConfirmationTimeHeightAnchor {
+                confirmation_height: height,
+                confirmation_time: time,
+                anchor_block: (height, hash).into(),
+            });
+        let conn = Connection::open_in_memory().expect("in memory connection");
+        let mut store = Store::<Keychain, ConfirmationTimeHeightAnchor>::new(conn)
+            .expect("create new memory db store");
+
+        let result = store.write_changes(&agg_test_changesets);
+        assert!(result.is_ok());
+
+        // Update spendable flag
+        let mut contract: contract::ChangeSet = contract::ChangeSet::new();
+        contract.insert(
+            "id".to_string(),
+            Contract {
+                contract_id: "id".to_string(),
+                contract: vec![0x00, 0x01, 0x02],
+                payment_base: PublicKey::from_str(
+                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+                )
+                .unwrap(),
+                spendable: false,
+            },
+        );
         let changeset = CombinedChangeSet::<Keychain, ConfirmationTimeHeightAnchor> {
             chain: local_chain::ChangeSet::default(),
             indexed_tx_graph: indexed_tx_graph::ChangeSet::default(),
@@ -861,24 +908,27 @@ mod test {
             };
 
         let mut contract: contract::ChangeSet = contract::ChangeSet::new();
-        contract.push(Contract {
-            contract_id: "id".to_string(),
-            contract: vec![
-                0x00, 0x00, 0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44, 0x66,
-                0x55, 0x44, 0x00, 0x00,
-            ],
-            payment_base: PublicKey::from_str(
-                "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
-            )
-            .unwrap(),
-            spendable: true,
-        });
+        contract.insert(
+            "id".to_string(),
+            Contract {
+                contract_id: "id".to_string(),
+                contract: vec![
+                    0x00, 0x00, 0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44,
+                    0x66, 0x55, 0x44, 0x00, 0x00,
+                ],
+                payment_base: PublicKey::from_str(
+                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+                )
+                .unwrap(),
+                spendable: true,
+            },
+        );
 
         changesets.push(CombinedChangeSet {
             chain: local_chain::ChangeSet::default(),
             indexed_tx_graph: graph_changeset3,
             network: None,
-            contract: contract,
+            contract,
         });
 
         // aggregated test changesets

@@ -1,11 +1,13 @@
 //! Module for Pay-To-Contract
 //!
 //! This module contains an implementation for storing Contract information and using it in a wallet.
+use alloc::collections::BTreeMap;
+
 use alloc::{string::String, vec::Vec};
 use tapyrus::PublicKey;
 
 /// The [`ChangeSet`] represents changes to [`Contract`].
-pub type ChangeSet = Vec<Contract>;
+pub type ChangeSet = BTreeMap<String, Contract>;
 
 /// Contract is a data structure for holding information for receiving payments to pay-to-contract.
 #[derive(Debug, Clone, PartialEq)]
