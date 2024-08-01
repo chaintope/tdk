@@ -950,7 +950,7 @@ pub mod test {
             bip32::Xpriv::generate_with_entropy_default(TEST_ENTROPY).unwrap();
 
         assert_eq!(generated_xprv.valid_networks, any_network());
-        assert_eq!(generated_xprv.to_string(), "xprv9s21ZrQH143K4Xr1cJyqTvuL2FWR8eicgY9boWqMBv8MDVUZ65AXHnzBrK1nyomu6wdcabRgmGTaAKawvhAno1V5FowGpTLVx3jxzE5uk3Q");
+        assert_eq!(generated_xprv.to_string(), "xprv9s21ZrQH143K4PCd1hPh4WUM3fP51MuYbWRbuMXKCLqDywh7wnTpUwAfED1NkAJ5cKzC1Hk9cP7YdC2LPWzLQxWPFhSQQXpSX7ZdcA3SfAc");
     }
 
     #[test]

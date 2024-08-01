@@ -646,6 +646,7 @@ pub struct SignOptions {
     /// of the PSBT.
     ///
     /// For more details see: <https://blog.trezor.io/details-of-firmware-updates-for-trezor-one-version-1-9-1-and-trezor-model-t-version-2-3-1-1eba8f60f2dd>
+    #[deprecated(since = "0.5.0", note = "Tapyrus does not support segwit transactions")]
     pub trust_witness_utxo: bool,
 
     /// Whether the wallet should assume a specific height has been reached when trying to finalize
