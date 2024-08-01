@@ -40,15 +40,15 @@ use tapyrus::{
 };
 pub use tdk_chain::keychain::Balance;
 use tdk_chain::{
-    indexed_tx_graph,
+    contract, indexed_tx_graph,
     keychain::KeychainTxOutIndex,
     local_chain::{
         self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
     },
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
     tx_graph::{CanonicalTx, TxGraph},
-    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, FullTxOut,
-    IndexedTxGraph,
+    Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, Contract,
+    FullTxOut, IndexedTxGraph,
 };
 use tdk_persist::{Persist, PersistBackend};
 
@@ -114,6 +114,7 @@ pub struct Wallet {
     persist: Persist<ChangeSet>,
     network: Network,
     secp: SecpCtx,
+    contracts: BTreeMap<String, Contract>,
 }
 
 /// An update to [`Wallet`].
@@ -452,6 +453,48 @@ impl fmt::Display for GenerateContractError {
 #[cfg(feature = "std")]
 impl std::error::Error for GenerateContractError {}
 
+/// An error that may occur when registering contract data.
+#[derive(Debug)]
+pub enum CreateContractError {
+    ContractAlreadyExist { contract_id: String },
+    Error { e: anyhow::Error },
+}
+
+impl fmt::Display for CreateContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CreateContractError::ContractAlreadyExist { contract_id } => {
+                write!(f, "contract already exists (contract_id: {})", contract_id)
+            }
+            CreateContractError::Error { e } => e.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for CreateContractError {}
+
+/// An error that may occur when updating contract.
+#[derive(Debug)]
+pub enum UpdateContractError {
+    ContractNotFound { contract_id: String },
+    Error { e: anyhow::Error },
+}
+
+impl fmt::Display for UpdateContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UpdateContractError::ContractNotFound { contract_id } => {
+                write!(f, "contract does not found (contract_id: {})", contract_id)
+            }
+            UpdateContractError::Error { e } => e.fmt(f),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for UpdateContractError {}
+
 impl Wallet {
     /// Initialize an empty [`Wallet`].
     pub fn new<E: IntoWalletDescriptor>(
@@ -506,11 +549,14 @@ impl Wallet {
 
         let indexed_graph = IndexedTxGraph::new(index);
 
+        let contracts = contract::ChangeSet::new();
+
         let mut persist = Persist::new(db);
         persist.stage(ChangeSet {
             chain: chain_changeset,
             indexed_tx_graph: indexed_graph.initial_changeset(),
             network: Some(network),
+            contract: Default::default(),
         });
         persist.commit().map_err(NewError::Persist)?;
 
@@ -522,6 +568,7 @@ impl Wallet {
             indexed_graph,
             persist,
             secp,
+            contracts,
         })
     }
 
@@ -608,6 +655,8 @@ impl Wallet {
         let mut indexed_graph = IndexedTxGraph::new(index);
         indexed_graph.apply_changeset(changeset.indexed_tx_graph);
 
+        let contracts = changeset.contract;
+
         let persist = Persist::new(db);
 
         Ok(Wallet {
@@ -618,6 +667,7 @@ impl Wallet {
             persist,
             network,
             secp,
+            contracts,
         })
     }
 
@@ -2685,6 +2735,64 @@ impl Wallet {
             .indexed_graph
             .batch_insert_relevant_unconfirmed(unconfirmed_txs);
         self.persist.stage(ChangeSet::from(indexed_graph_changeset));
+    }
+
+    /// Store pay-to-contract information to the wallet.
+    pub fn store_contract(
+        &mut self,
+        contract_id: String,
+        contract: Vec<u8>,
+        payment_base: PublicKey,
+        spendable: bool,
+    ) -> Result<(), CreateContractError> {
+        let mut changeset = ChangeSet::default();
+        if let Some(c) = self.contracts.get(&contract_id) {
+            return Err(CreateContractError::ContractAlreadyExist { contract_id });
+        } else {
+            let new_contract = Contract {
+                contract_id: contract_id.clone(),
+                contract,
+                payment_base,
+                spendable,
+            };
+            changeset
+                .contract
+                .insert(contract_id.clone(), new_contract.clone());
+            self.contracts.insert(contract_id.clone(), new_contract);
+            self.persist
+                .stage_and_commit(changeset)
+                .map_err(|e| CreateContractError::Error { e })?;
+        }
+        return Ok(());
+    }
+
+    /// Update pay-to-contract information to the wallet.
+    ///
+    /// A spendable flag is only field to be updated.
+    pub fn update_contract(
+        &mut self,
+        contract_id: String,
+        spendable: bool,
+    ) -> Result<(), UpdateContractError> {
+        let mut changeset = ChangeSet::default();
+        if let Some(contract) = self.contracts.get(&contract_id) {
+            let new_contract = Contract {
+                contract_id: contract_id.clone(),
+                contract: contract.contract.clone(),
+                payment_base: contract.payment_base,
+                spendable,
+            };
+            changeset
+                .contract
+                .insert(contract_id.clone(), new_contract.clone());
+            self.contracts.insert(contract_id.clone(), new_contract);
+            self.persist
+                .stage_and_commit(changeset)
+                .map_err(|e| UpdateContractError::Error { e })?;
+        } else {
+            return Err(UpdateContractError::ContractNotFound { contract_id });
+        }
+        return Ok(());
     }
 }
 

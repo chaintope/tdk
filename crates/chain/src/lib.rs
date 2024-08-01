@@ -35,6 +35,8 @@ pub use tx_data_traits::*;
 pub use tx_graph::TxGraph;
 mod chain_oracle;
 pub use chain_oracle::*;
+pub mod contract;
+pub use contract::*;
 
 #[doc(hidden)]
 pub mod example_utils;

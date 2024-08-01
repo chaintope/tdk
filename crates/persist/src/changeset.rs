@@ -1,6 +1,8 @@
 #![cfg(feature = "miniscript")]
 
-use tdk_chain::{indexed_tx_graph, keychain, local_chain, tapyrus::Network, Anchor, Append};
+use tdk_chain::{
+    contract, indexed_tx_graph, keychain, local_chain, tapyrus::Network, Anchor, Append,
+};
 
 /// Changes from a combination of [`tdk_chain`] structures.
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +24,8 @@ pub struct CombinedChangeSet<K, A> {
     pub indexed_tx_graph: indexed_tx_graph::ChangeSet<A, keychain::ChangeSet<K>>,
     /// Stores the network type of the transaction data.
     pub network: Option<Network>,
+    /// Stores the contract for pay-to-contract
+    pub contract: contract::ChangeSet,
 }
 
 impl<K, A> Default for CombinedChangeSet<K, A> {
@@ -30,6 +34,7 @@ impl<K, A> Default for CombinedChangeSet<K, A> {
             chain: Default::default(),
             indexed_tx_graph: Default::default(),
             network: None,
+            contract: Default::default(),
         }
     }
 }
@@ -45,10 +50,14 @@ impl<K: Ord, A: Anchor> Append for CombinedChangeSet<K, A> {
             );
             self.network = other.network;
         }
+        Append::append(&mut self.contract, other.contract);
     }
 
     fn is_empty(&self) -> bool {
-        self.chain.is_empty() && self.indexed_tx_graph.is_empty() && self.network.is_none()
+        self.chain.is_empty()
+            && self.indexed_tx_graph.is_empty()
+            && self.network.is_none()
+            && self.contract.is_empty()
     }
 }
 
