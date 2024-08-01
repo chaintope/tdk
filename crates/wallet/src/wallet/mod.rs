@@ -1724,6 +1724,7 @@ impl Wallet {
                 &drain_script,
                 &color_id,
             )?;
+            fee_amount += coin_selection.fee_amount;
             let excess = &coin_selection.excess;
 
             tx.input.extend(
@@ -1742,10 +1743,7 @@ impl Wallet {
             match excess {
                 NoChange { .. } => {}
                 Change { amount, fee } => {
-                    // if self.is_mine(&drain_script) {
-                    //     received += Amount::from_tap(*amount);
-                    // }
-                    // fee_amount += fee;
+                    fee_amount += fee;
 
                     // create drain output
                     let drain_output = TxOut {

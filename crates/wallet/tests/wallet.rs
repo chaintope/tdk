@@ -1305,7 +1305,11 @@ fn test_create_tx_with_nft() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(1), color_id);
     let psbt = builder.finish().unwrap();
-    check_fee!(wallet, psbt);
+
+    let fee = check_fee!(wallet, psbt);
+    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+
     assert_eq!(psbt.unsigned_tx.output.len(), 3);
     let sent_received = wallet.sent_and_received(
         &psbt.clone().extract_tx().expect("failed to extract tx"),
@@ -1327,8 +1331,13 @@ fn test_create_tx_with_reissuable() {
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(98), color_id);
     let psbt = builder.finish().unwrap();
-    check_fee!(wallet, psbt);
+
+    let fee = check_fee!(wallet, psbt);
+    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+
     assert_eq!(psbt.unsigned_tx.output.len(), 4);
+
     let sent_received = wallet.sent_and_received(
         &psbt.clone().extract_tx().expect("failed to extract tx"),
         &color_id,
