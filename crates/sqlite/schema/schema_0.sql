@@ -74,5 +74,5 @@ CREATE TABLE contract
     contract_id        TEXT PRIMARY KEY NOT NULL,
     contract           BLOB NOT NULL,
     payment_base       BLOB NOT NULL,
-    spendable          INTEGER
+    spendable          INTEGER NOT NULL
 ) STRICT;
