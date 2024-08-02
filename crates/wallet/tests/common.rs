@@ -206,7 +206,7 @@ pub fn get_funded_wallet_with_nft_and_change(
 pub fn get_funded_wallet_with_reissuable_and_change(
     descriptor: &str,
     change: &str,
-) -> (Wallet, tapyrus::Txid, ColorIdentifier) {
+) -> (Wallet, MalFixTxid, ColorIdentifier) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
@@ -294,7 +294,99 @@ pub fn get_funded_wallet_with_reissuable_and_change(
         )
         .unwrap();
 
-    (wallet, tx1.txid(), color_id)
+    (wallet, tx1.malfix_txid(), color_id)
+}
+
+pub fn get_funded_wallet_with_two_colored_coin_and_change(
+    descriptor: &str,
+    change: &str,
+) -> (Wallet, MalFixTxid, ColorIdentifier, ColorIdentifier) {
+    let (mut wallet, txid, color_id1) =
+        get_funded_wallet_with_reissuable_and_change(descriptor, change);
+
+    let receive_address = wallet.peek_address(KeychainKind::External, 1).address;
+    let color_id2 = ColorIdentifier::reissuable(receive_address.script_pubkey().as_script());
+
+    let tx0 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: txid,
+                vout: 1,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![TxOut {
+            value: Amount::from_tap(45_000),
+            script_pubkey: receive_address.script_pubkey(),
+        }],
+    };
+
+    let out_point = OutPoint {
+        txid: tx0.malfix_txid(),
+        vout: 0,
+    };
+    let color_id = ColorIdentifier::reissuable(receive_address.script_pubkey().as_script());
+
+    let tx1 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: out_point,
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(150),
+                script_pubkey: receive_address
+                    .script_pubkey()
+                    .add_color(color_id2)
+                    .unwrap(),
+            },
+            TxOut {
+                value: Amount::from_tap(40_000),
+                script_pubkey: receive_address.script_pubkey(),
+            },
+        ],
+    };
+
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 3_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 4_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx0,
+            ConfirmationTime::Confirmed {
+                height: 3_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx1.clone(),
+            ConfirmationTime::Confirmed {
+                height: 4_000,
+                time: 200,
+            },
+        )
+        .unwrap();
+
+    (wallet, tx1.malfix_txid(), color_id1, color_id2)
 }
 /// Return a fake wallet that appears to be funded for testing.
 ///

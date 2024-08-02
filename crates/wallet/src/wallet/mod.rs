@@ -1641,8 +1641,9 @@ impl Wallet {
             return Err(CreateTxError::NoUtxosSelected);
         }
 
-        let mut outgoings: HashMap<ColorIdentifier, Amount> = HashMap::new();
-        // let mut outgoing = Amount::ZERO;
+        let mut outgoings: BTreeMap<ColorIdentifier, Amount> = BTreeMap::new();
+        outgoings.insert(ColorIdentifier::default(), Amount::from_tap(0));
+
         let mut received = Amount::ZERO;
 
         let recipients = params.recipients.iter().map(|(r, v, c)| (r, *v, *c));
@@ -1710,20 +1711,23 @@ impl Wallet {
 
         let mut selected_coins: Vec<Utxo> = Vec::new();
 
-        // for Colored Coin
-        for (script_pubkey, value, color_id) in recipients {
-            if color_id.is_default() {
-                continue;
-            }
-            let outgoing = *outgoings.get(&color_id).unwrap_or(&Amount::ZERO);
+        // Reverse the outgoings so that it ends with the default color (TPC)
+        for (color_id, outgoing) in outgoings.iter().rev() {
+            let target_amount = if color_id.is_default() {
+                outgoing.to_tap() + fee_amount
+            } else {
+                outgoing.to_tap()
+            };
+
             let coin_selection = coin_selection.coin_select(
                 required_utxos.clone(),
                 optional_utxos.clone(),
                 fee_rate,
-                outgoing.to_tap(),
+                target_amount,
                 &drain_script,
-                &color_id,
+                color_id,
             )?;
+
             fee_amount += coin_selection.fee_amount;
             let excess = &coin_selection.excess;
 
@@ -1740,15 +1744,80 @@ impl Wallet {
                     .collect::<Vec<TxIn>>(),
             );
             selected_coins.extend(coin_selection.selected);
+
+            let output_exists =
+                tx.output
+                    .iter()
+                    .any(|output| match output.script_pubkey.color_id() {
+                        None => color_id.is_default(),
+                        Some(this_color_id) => this_color_id == *color_id,
+                    });
+
+            if !output_exists {
+                // Uh oh, our transaction has no outputs.
+                // We allow this when:
+                // - We have a drain_to address and the utxos we must spend (this happens,
+                // for example, when we RBF)
+                // - We have a drain_to address and drain_wallet set
+                // - We have an output for colored coin sending but we don't have TPC output.(This
+                // case we should have TPC inputs and an output for bear fees.)
+                // Otherwise, we don't know who we should send the funds to, and how much
+                // we should send!
+
+                let utxo_exists = params.utxos.iter().any(|utxo| {
+                    match utxo.utxo.txout().script_pubkey.color_id() {
+                        None => color_id.is_default(),
+                        Some(this_color_id) => this_color_id == *color_id,
+                    }
+                });
+
+                if (color_id.is_default() && outgoings.len() > 1)
+                    || (params.drain_to.is_some() && (params.drain_wallet || utxo_exists))
+                {
+                    if let NoChange {
+                        dust_threshold,
+                        remaining_amount,
+                        change_fee,
+                    } = excess
+                    {
+                        let available = if color_id.is_default() {
+                            remaining_amount.saturating_sub(*change_fee)
+                        } else {
+                            *remaining_amount
+                        };
+                        return Err(CreateTxError::CoinSelection(Error::InsufficientFunds {
+                            needed: *dust_threshold,
+                            available,
+                        }));
+                    }
+                } else {
+                    return Err(CreateTxError::NoRecipients);
+                }
+            }
+
             match excess {
-                NoChange { .. } => {}
+                NoChange {
+                    remaining_amount, ..
+                } => {
+                    if color_id.is_default() {
+                        fee_amount += remaining_amount;
+                    }
+                }
                 Change { amount, fee } => {
+                    if color_id.is_default() && self.is_mine(&drain_script) {
+                        received += Amount::from_tap(*amount);
+                    }
                     fee_amount += fee;
 
                     // create drain output
+                    let script = if color_id.is_default() {
+                        drain_script.clone()
+                    } else {
+                        drain_script.add_color(*color_id).unwrap()
+                    };
                     let drain_output = TxOut {
                         value: Amount::from_tap(*amount),
-                        script_pubkey: drain_script.add_color(color_id).unwrap(),
+                        script_pubkey: script,
                     };
 
                     // TODO: We should pay attention when adding a new output: this might increase
@@ -1758,79 +1827,6 @@ impl Wallet {
                 }
             };
         }
-
-        // for TPC
-        let outgoing = outgoings
-            .get(&ColorIdentifier::default())
-            .unwrap_or(&Amount::ZERO);
-        let coin_selection = coin_selection.coin_select(
-            required_utxos,
-            optional_utxos,
-            fee_rate,
-            outgoing.to_tap() + fee_amount,
-            &drain_script,
-            &ColorIdentifier::default(),
-        )?;
-
-        fee_amount += coin_selection.fee_amount;
-        let excess = &coin_selection.excess;
-
-        tx.input
-            .extend(coin_selection.selected.iter().map(|u| tapyrus::TxIn {
-                previous_output: u.outpoint(),
-                script_sig: ScriptBuf::default(),
-                sequence: u.sequence().unwrap_or(n_sequence),
-                witness: Witness::new(),
-            }));
-        selected_coins.extend(coin_selection.selected);
-
-        if tx.output.is_empty() {
-            // Uh oh, our transaction has no outputs.
-            // We allow this when:
-            // - We have a drain_to address and the utxos we must spend (this happens,
-            // for example, when we RBF)
-            // - We have a drain_to address and drain_wallet set
-            // Otherwise, we don't know who we should send the funds to, and how much
-            // we should send!
-            if params.drain_to.is_some() && (params.drain_wallet || !params.utxos.is_empty()) {
-                if let NoChange {
-                    dust_threshold,
-                    remaining_amount,
-                    change_fee,
-                } = excess
-                {
-                    return Err(CreateTxError::CoinSelection(Error::InsufficientFunds {
-                        needed: *dust_threshold,
-                        available: remaining_amount.saturating_sub(*change_fee),
-                    }));
-                }
-            } else {
-                return Err(CreateTxError::NoRecipients);
-            }
-        }
-
-        match excess {
-            NoChange {
-                remaining_amount, ..
-            } => fee_amount += remaining_amount,
-            Change { amount, fee } => {
-                if self.is_mine(&drain_script) {
-                    received += Amount::from_tap(*amount);
-                }
-                fee_amount += fee;
-
-                // create drain output
-                let drain_output = TxOut {
-                    value: Amount::from_tap(*amount),
-                    script_pubkey: drain_script,
-                };
-
-                // TODO: We should pay attention when adding a new output: this might increase
-                // the length of the "number of vouts" parameter by 2 bytes, potentially making
-                // our feerate too low
-                tx.output.push(drain_output);
-            }
-        };
 
         // sort input/outputs according to the chosen algorithm
         params.ordering.sort_tx(&mut tx);

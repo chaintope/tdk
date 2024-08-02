@@ -6,6 +6,7 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use rand::random;
 use tapyrus::hashes::Hash;
+use tapyrus::hex::DisplayHex;
 use tapyrus::key::Secp256k1;
 use tapyrus::script::PushBytesBuf;
 use tapyrus::secp256k1::Scalar;
@@ -1343,6 +1344,77 @@ fn test_create_tx_with_reissuable() {
         &color_id,
     );
     assert_eq!(sent_received, (Amount::from_tap(100), Amount::from_tap(2)));
+}
+
+#[test]
+fn test_create_tx_multi_colored_coin_recipients() {
+    let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
+    let (mut wallet, _, color_id) =
+        get_funded_wallet_with_reissuable_and_change(get_test_pkh(), change_desc);
+    let addr1 = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+    let addr2 = Address::from_str("16wow9KqkSfdLL4bjP83N5wa5cUU48HwQM")
+        .unwrap()
+        .assume_checked();
+    let mut builder = wallet.build_tx();
+    builder
+        .add_recipient_with_color(addr1.script_pubkey(), Amount::from_tap(10), color_id)
+        .add_recipient_with_color(addr2.script_pubkey(), Amount::from_tap(25), color_id)
+        .add_recipient_with_color(addr2.script_pubkey(), Amount::from_tap(15), color_id);
+    let psbt = builder.finish().unwrap();
+
+    let fee = check_fee!(wallet, psbt);
+    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+
+    assert_eq!(psbt.unsigned_tx.output.len(), 5);
+
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id,
+    );
+    assert_eq!(sent_received, (Amount::from_tap(100), Amount::from_tap(50)));
+}
+
+#[test]
+fn test_create_tx_multi_color_id() {
+    let (desc, change) = get_test_pkh_single_sig_xprv_with_change_desc();
+    let (mut wallet, _, color_id1, color_id2) =
+        get_funded_wallet_with_two_colored_coin_and_change(desc, change);
+
+    let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+    let mut builder = wallet.build_tx();
+    builder
+        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(10), color_id1)
+        .add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(20), color_id2);
+    let psbt = builder.finish().unwrap();
+
+    let fee = check_fee!(wallet, psbt);
+    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+
+    assert_eq!(psbt.unsigned_tx.output.len(), 5);
+
+    let sent_received1 = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id1,
+    );
+    assert_eq!(
+        sent_received1,
+        (Amount::from_tap(100), Amount::from_tap(90))
+    );
+
+    let sent_received2 = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id2,
+    );
+    assert_eq!(
+        sent_received2,
+        (Amount::from_tap(150), Amount::from_tap(130))
+    );
 }
 
 #[test]
