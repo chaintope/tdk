@@ -459,8 +459,16 @@ impl std::error::Error for GenerateContractError {}
 /// An error that may occur when registering contract data.
 #[derive(Debug)]
 pub enum CreateContractError {
-    ContractAlreadyExist { contract_id: String },
-    Error { e: anyhow::Error },
+    /// Contract with the specified contract_id already exists.
+    ContractAlreadyExist {
+        /// identifier of contract.
+        contract_id: String,
+    },
+    /// Other error.
+    Error {
+        /// An error that caused this error.
+        e: anyhow::Error,
+    },
 }
 
 impl fmt::Display for CreateContractError {
@@ -480,8 +488,16 @@ impl std::error::Error for CreateContractError {}
 /// An error that may occur when updating contract.
 #[derive(Debug)]
 pub enum UpdateContractError {
-    ContractNotFound { contract_id: String },
-    Error { e: anyhow::Error },
+    /// No contract with the specified contract_id has been found.
+    ContractNotFound {
+        /// identifier of contract.
+        contract_id: String,
+    },
+    /// Other error.
+    Error {
+        /// An error that caused this error.
+        e: anyhow::Error,
+    },
 }
 
 impl fmt::Display for UpdateContractError {
