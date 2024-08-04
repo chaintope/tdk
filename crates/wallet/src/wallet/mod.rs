@@ -24,7 +24,10 @@ use alloc::{
 use core::fmt;
 use core::ops::Deref;
 use descriptor::error::Error as DescriptorError;
-use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
+use miniscript::{
+    psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier},
+    Descriptor, DescriptorPublicKey,
+};
 use tapyrus::hashes::{Hash, HashEngine};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
@@ -39,20 +42,20 @@ use tapyrus::{
     TxIn,
 };
 pub use tdk_chain::keychain::Balance;
+use tdk_chain::tx_graph::CalculateFeeError;
 use tdk_chain::{
-    contract, indexed_tx_graph,
-    keychain::KeychainTxOutIndex,
+    contract,
+    indexed_tx_graph::{self},
+    keychain::{self, KeychainTxOutIndex},
     local_chain::{
         self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
     },
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
     tx_graph::{CanonicalTx, TxGraph},
     Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, Contract,
-    FullTxOut, IndexedTxGraph,
+    DescriptorExt, DescriptorId, FullTxOut, IndexedTxGraph,
 };
 use tdk_persist::{Persist, PersistBackend};
-
-use tdk_chain::tx_graph::CalculateFeeError;
 
 pub mod coin_selection;
 pub mod export;
@@ -2654,6 +2657,17 @@ impl Wallet {
         &self.indexed_graph.index
     }
 
+    /// Insert a descriptor with a keychain associated to it.
+    pub fn insert_descriptor(
+        &mut self,
+        keychain: KeychainKind,
+        descriptor: Descriptor<DescriptorPublicKey>,
+    ) -> tdk_chain::keychain::txout_index::ChangeSet<KeychainKind> {
+        self.indexed_graph
+            .index
+            .insert_descriptor(keychain, descriptor)
+    }
+
     /// Get a reference to the inner [`LocalChain`].
     pub fn local_chain(&self) -> &LocalChain {
         &self.chain
@@ -2745,19 +2759,29 @@ impl Wallet {
         } else {
             let new_contract = Contract {
                 contract_id: contract_id.clone(),
-                contract,
+                contract: contract.clone(),
                 payment_base,
                 spendable,
             };
             changeset
                 .contract
                 .insert(contract_id.clone(), new_contract.clone());
+            let p2c_public_key =
+                self.pay_to_contract_key(&payment_base, contract)
+                    .map_err(|e| CreateContractError::Error {
+                        e: anyhow::Error::new(e),
+                    })?;
+            let descriptor_str = format!("pkh({})", p2c_public_key);
+            let (descriptor, _) =
+                Descriptor::<DescriptorPublicKey>::parse_descriptor(&self.secp, &descriptor_str)
+                    .unwrap();
+            let _ = self.insert_descriptor(KeychainKind::External, descriptor);
             self.contracts.insert(contract_id.clone(), new_contract);
             self.persist
                 .stage_and_commit(changeset)
                 .map_err(|e| CreateContractError::Error { e })?;
         }
-        return Ok(());
+        Ok(())
     }
 
     /// Update pay-to-contract information to the wallet.
@@ -2786,7 +2810,7 @@ impl Wallet {
         } else {
             return Err(UpdateContractError::ContractNotFound { contract_id });
         }
-        return Ok(());
+        Ok(())
     }
 }
 
