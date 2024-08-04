@@ -11,7 +11,7 @@
 //! [`SpkTxOutIndex`]: crate::SpkTxOutIndex
 
 #[cfg(feature = "miniscript")]
-mod txout_index;
+pub mod txout_index;
 use tapyrus::Amount;
 #[cfg(feature = "miniscript")]
 pub use txout_index::*;

@@ -345,6 +345,27 @@ fn test_get_funded_wallet_colored_balance() {
 }
 
 #[test]
+fn test_get_funded_wallet_p2c_balance() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (wallet, _, _) =
+        get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+
+    assert_eq!(
+        wallet.balance(ColorIdentifier::default()).confirmed,
+        Amount::from_tap(50_000)
+    );
+}
+
+#[test]
+fn test_get_funded_wallet_colored_p2c_balance() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (wallet, _, _, color_id) =
+        get_funded_wallet_with_colored_p2c_and_change(get_test_pkh(), change_desc);
+
+    assert_eq!(wallet.balance(color_id).confirmed, Amount::from_tap(100));
+}
+
+#[test]
 fn test_get_funded_wallet_sent_and_received() {
     let (wallet, txid) = get_funded_wallet_pkh();
 
@@ -391,6 +412,18 @@ fn test_get_funded_wallet_with_color_sent_and_received() {
 
     assert_eq!(sent.to_tap(), 0);
     assert_eq!(received.to_tap(), 1);
+}
+
+#[test]
+fn test_get_funded_wallet_with_p2c_sent_and_received() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (wallet, txid, _, color_id) =
+        get_funded_wallet_with_colored_p2c_and_change(get_test_pkh(), change_desc);
+
+    let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
+    let (sent, received) = wallet.sent_and_received(&tx, &color_id);
+    assert_eq!(sent.to_tap(), 0);
+    assert_eq!(received.to_tap(), 100);
 }
 
 #[test]
