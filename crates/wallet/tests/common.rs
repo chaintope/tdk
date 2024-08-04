@@ -2,10 +2,10 @@
 
 use std::str::FromStr;
 use tapyrus::hashes::Hash;
-use tapyrus::script::color_identifier::ColorIdentifier;
+use tapyrus::script::color_identifier::{self, ColorIdentifier};
 use tapyrus::{
-    transaction, Address, Amount, BlockHash, FeeRate, MalFixTxid, Network, OutPoint, Transaction,
-    TxIn, TxOut,
+    transaction, Address, Amount, BlockHash, FeeRate, MalFixTxid, Network, OutPoint, PublicKey,
+    Transaction, TxIn, TxOut,
 };
 use tdk_chain::indexed_tx_graph::Indexer;
 use tdk_chain::{BlockId, ConfirmationTime};
@@ -388,6 +388,208 @@ pub fn get_funded_wallet_with_two_colored_coin_and_change(
 
     (wallet, tx1.malfix_txid(), color_id1, color_id2)
 }
+
+fn get_p2c_address(wallet: &mut Wallet, color_id: Option<ColorIdentifier>) -> Address {
+    let payment_base =
+        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
+            .unwrap();
+    let contract = "metadata".as_bytes().to_vec();
+    wallet.store_contract(
+        "contract_id".to_string(),
+        contract.clone(),
+        payment_base,
+        true,
+    );
+    wallet
+        .create_pay_to_contract_address(&payment_base, contract.clone(), color_id)
+        .unwrap()
+}
+
+pub fn get_funded_wallet_with_p2c_and_change(
+    descriptor: &str,
+    change: &str,
+) -> (Wallet, MalFixTxid, Address) {
+    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
+    let fund_address = wallet.peek_address(KeychainKind::External, 0).address;
+    let sendto_address: Address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
+        .expect("address")
+        .require_network(Network::Dev)
+        .unwrap();
+
+    let tx0 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: MalFixTxid::all_zeros(),
+                vout: 0,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![TxOut {
+            value: Amount::from_tap(76_000),
+            script_pubkey: fund_address.script_pubkey(),
+        }],
+    };
+
+    let out_point = OutPoint {
+        txid: tx0.malfix_txid(),
+        vout: 0,
+    };
+
+    let receive_address = get_p2c_address(&mut wallet, None);
+
+    let tx1 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: out_point,
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(50_000),
+                script_pubkey: receive_address.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(25_000),
+                script_pubkey: sendto_address.script_pubkey(),
+            },
+        ],
+    };
+
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 1_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 2_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx0,
+            ConfirmationTime::Confirmed {
+                height: 1_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx1.clone(),
+            ConfirmationTime::Confirmed {
+                height: 2_000,
+                time: 200,
+            },
+        )
+        .unwrap();
+
+    (wallet, tx1.malfix_txid(), receive_address)
+}
+
+pub fn get_funded_wallet_with_colored_p2c_and_change(
+    descriptor: &str,
+    change: &str,
+) -> (Wallet, MalFixTxid, Address, ColorIdentifier) {
+    let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
+    let fund_address = wallet.peek_address(KeychainKind::External, 0).address;
+    let sendto_address: Address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
+        .expect("address")
+        .require_network(Network::Dev)
+        .unwrap();
+
+    let tx0 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: MalFixTxid::all_zeros(),
+                vout: 0,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![TxOut {
+            value: Amount::from_tap(76_000),
+            script_pubkey: fund_address.script_pubkey(),
+        }],
+    };
+
+    let out_point = OutPoint {
+        txid: tx0.malfix_txid(),
+        vout: 0,
+    };
+    let color_id = ColorIdentifier::reissuable(fund_address.script_pubkey().as_script());
+    let receive_address = get_p2c_address(&mut wallet, Some(color_id));
+    let tx1 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: out_point,
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(100),
+                script_pubkey: receive_address.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(50_000),
+                script_pubkey: fund_address.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(25_000),
+                script_pubkey: sendto_address.script_pubkey(),
+            },
+        ],
+    };
+
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 1_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 2_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx0,
+            ConfirmationTime::Confirmed {
+                height: 1_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx1.clone(),
+            ConfirmationTime::Confirmed {
+                height: 2_000,
+                time: 200,
+            },
+        )
+        .unwrap();
+
+    (wallet, tx1.malfix_txid(), receive_address, color_id)
+}
+
 /// Return a fake wallet that appears to be funded for testing.
 ///
 /// The funded wallet contains a tx with a 76_000 sats input and two outputs, one spending 25_000
