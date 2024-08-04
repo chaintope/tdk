@@ -347,8 +347,7 @@ fn test_get_funded_wallet_colored_balance() {
 #[test]
 fn test_get_funded_wallet_p2c_balance() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
-    let (wallet, _, _) =
-        get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+    let (wallet, _, _) = get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
 
     assert_eq!(
         wallet.balance(ColorIdentifier::default()).confirmed,
@@ -393,7 +392,7 @@ fn test_get_funded_wallet_sent_and_received() {
 #[test]
 fn test_get_funded_wallet_with_color_sent_and_received() {
     let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
-    let (mut wallet, txid, color_id) =
+    let (wallet, txid, color_id) =
         get_funded_wallet_with_nft_and_change(get_test_pkh(), change_desc);
 
     let mut tx_amounts: Vec<(MalFixTxid, (Amount, Amount))> = wallet
