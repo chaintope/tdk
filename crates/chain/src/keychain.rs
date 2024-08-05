@@ -10,6 +10,7 @@
 //!
 //! [`SpkTxOutIndex`]: crate::SpkTxOutIndex
 
+/// Indexer for TxOut
 #[cfg(feature = "miniscript")]
 pub mod txout_index;
 use tapyrus::Amount;
