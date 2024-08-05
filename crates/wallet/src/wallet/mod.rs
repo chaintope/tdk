@@ -467,7 +467,7 @@ pub enum CreateContractError {
     /// Other error.
     Error {
         /// An error that caused this error.
-        e: anyhow::Error,
+        reason: String,
     },
 }
 
@@ -477,7 +477,9 @@ impl fmt::Display for CreateContractError {
             CreateContractError::ContractAlreadyExist { contract_id } => {
                 write!(f, "contract already exists (contract_id: {})", contract_id)
             }
-            CreateContractError::Error { e } => e.fmt(f),
+            CreateContractError::Error { reason } => {
+                write!(f, "can not create contract address (reason: {})", reason)
+            }
         }
     }
 }
@@ -496,7 +498,7 @@ pub enum UpdateContractError {
     /// Other error.
     Error {
         /// An error that caused this error.
-        e: anyhow::Error,
+        reason: String,
     },
 }
 
@@ -506,7 +508,9 @@ impl fmt::Display for UpdateContractError {
             UpdateContractError::ContractNotFound { contract_id } => {
                 write!(f, "contract does not found (contract_id: {})", contract_id)
             }
-            UpdateContractError::Error { e } => e.fmt(f),
+            UpdateContractError::Error { reason } => {
+                write!(f, "can not update contract address (reason: {})", reason)
+            }
         }
     }
 }
@@ -2785,7 +2789,7 @@ impl Wallet {
             let p2c_public_key =
                 self.pay_to_contract_key(&payment_base, contract)
                     .map_err(|e| CreateContractError::Error {
-                        e: anyhow::Error::new(e),
+                        reason: e.to_string(),
                     })?;
             let descriptor_str = format!("pkh({})", p2c_public_key);
             let (descriptor, _) =
@@ -2795,7 +2799,9 @@ impl Wallet {
             self.contracts.insert(contract_id.clone(), new_contract);
             self.persist
                 .stage_and_commit(changeset)
-                .map_err(|e| CreateContractError::Error { e })?;
+                .map_err(|e| CreateContractError::Error {
+                    reason: e.to_string(),
+                })?;
         }
         Ok(())
     }
@@ -2822,7 +2828,9 @@ impl Wallet {
             self.contracts.insert(contract_id.clone(), new_contract);
             self.persist
                 .stage_and_commit(changeset)
-                .map_err(|e| UpdateContractError::Error { e })?;
+                .map_err(|e| UpdateContractError::Error {
+                    reason: e.to_string(),
+                })?;
         } else {
             return Err(UpdateContractError::ContractNotFound { contract_id });
         }
