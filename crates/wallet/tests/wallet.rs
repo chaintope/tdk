@@ -1347,6 +1347,72 @@ fn test_create_tx_with_reissuable() {
 }
 
 #[test]
+fn test_create_tx_with_reissuable_no_tpc_change() {
+    let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
+    let (mut wallet, txid, color_id) =
+        get_funded_wallet_with_reissuable_and_change(get_test_pkh(), change_desc);
+    let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+
+    // Transfer all remaining funds, leaving a balance slightly greater than the dust limit 600 tapyrus.
+    let receive_address = wallet.peek_address(KeychainKind::External, 0).address;
+    let tx = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint { txid, vout: 1 },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(600),
+                script_pubkey: receive_address.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(48_400),
+                script_pubkey: addr.script_pubkey(),
+            },
+        ],
+    };
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 3_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx.clone(),
+            ConfirmationTime::Confirmed {
+                height: 3_000,
+                time: 300,
+            },
+        )
+        .unwrap();
+
+    let mut builder = wallet.build_tx();
+    builder.add_recipient_with_color(addr.script_pubkey(), Amount::from_tap(98), color_id);
+    let psbt = builder.finish().unwrap();
+
+    let fee = check_fee!(wallet, psbt);
+    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+
+    // colored coin sending output and colored coin change output
+    assert_eq!(psbt.unsigned_tx.output.len(), 2);
+    assert_eq!(psbt.unsigned_tx.input.len(), 2);
+
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &color_id,
+    );
+    assert_eq!(sent_received, (Amount::from_tap(100), Amount::from_tap(2)));
+}
+
+#[test]
 fn test_create_tx_multi_colored_coin_recipients() {
     let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
     let (mut wallet, _, color_id) =
