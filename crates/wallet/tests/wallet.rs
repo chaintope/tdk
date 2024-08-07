@@ -1386,6 +1386,36 @@ fn test_create_tx_with_reissuable() {
 }
 
 #[test]
+fn test_create_tx_with_contract() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (mut wallet, txid, address) =
+        get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+
+    let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+    let mut builder = wallet.build_tx();
+    builder
+        .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
+        .add_contract_utxo(OutPoint { txid, vout: 0 });
+    let psbt = builder.finish().unwrap();
+    check_fee!(wallet, psbt);
+    assert_eq!(psbt.unsigned_tx.output.len(), 2);
+    let sent_received = wallet.sent_and_received(
+        &psbt.clone().extract_tx().expect("failed to extract tx"),
+        &ColorIdentifier::default(),
+    );
+    assert_eq!(
+        sent_received,
+        (
+            Amount::from_tap(50_000),
+            Amount::from_tap(25_000) - psbt.fee_amount().unwrap()
+        )
+    );
+}
+
+// TODO: Fix this test
+#[test]
 fn test_create_tx_multi_colored_coin_recipients() {
     let change_desc = "pkh(cVbZ8ovhye9AoAHFsqobCf7LxbXDAECy9Kb8TZdfsDYMZGBUyCnm)";
     let (mut wallet, _, color_id) =
