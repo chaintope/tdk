@@ -1026,6 +1026,7 @@ impl Wallet {
         };
         Ok(script)
     }
+
     /// Generate pay-to-contract public key with the specified content hash.
     pub fn pay_to_contract_key(
         &self,
@@ -2375,8 +2376,33 @@ impl Wallet {
         descriptor.at_derivation_index(child).ok()
     }
 
+    pub fn contract_for_utxo(
+        &self,
+        utxo: &LocalOutput,
+    ) -> Result<Option<Contract>, GenerateContractError> {
+        for (contract_id, contract) in self.contracts.iter() {
+            let color_id = utxo.txout.script_pubkey.color_id();
+            let p2c_script = self.create_pay_to_contract_script(
+                &contract.payment_base,
+                contract.contract.clone(),
+                color_id,
+            )?;
+            if p2c_script == utxo.txout.script_pubkey {
+                return Ok(Some(contract.clone()));
+            }
+        }
+        Ok(None)
+    }
+
     fn get_available_utxos(&self) -> Vec<(LocalOutput, usize)> {
         self.list_unspent()
+            .filter(|utxo| {
+                if let Some(contract) = self.contract_for_utxo(&utxo).unwrap_or(None) {
+                    contract.spendable
+                } else {
+                    true
+                }
+            })
             .map(|utxo| {
                 let keychain = utxo.keychain;
                 (utxo, {

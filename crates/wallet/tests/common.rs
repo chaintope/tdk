@@ -398,7 +398,7 @@ fn get_p2c_address(wallet: &mut Wallet, color_id: Option<ColorIdentifier>) -> Ad
         "contract_id".to_string(),
         contract.clone(),
         payment_base,
-        true,
+        false,
     );
     wallet
         .create_pay_to_contract_address(&payment_base, contract.clone(), color_id)
