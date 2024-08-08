@@ -1307,8 +1307,8 @@ fn test_create_tx_with_nft() {
     let psbt = builder.finish().unwrap();
 
     let fee = check_fee!(wallet, psbt);
-    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+    let fee_rate = FeeRate::from_tap_per_kwu(250); // 1 tap/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), fee_rate, @add_signature);
 
     assert_eq!(psbt.unsigned_tx.output.len(), 3);
     let sent_received = wallet.sent_and_received(
@@ -1333,8 +1333,8 @@ fn test_create_tx_with_reissuable() {
     let psbt = builder.finish().unwrap();
 
     let fee = check_fee!(wallet, psbt);
-    let feerate = FeeRate::from_tap_per_kwu(250); // 1 sat/vb
-    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), feerate, @add_signature);
+    let fee_rate = FeeRate::from_tap_per_kwu(250); // 1 tap/vb
+    assert_fee_rate!(psbt, fee.unwrap_or(Amount::ZERO), fee_rate, @add_signature);
 
     assert_eq!(psbt.unsigned_tx.output.len(), 4);
 
