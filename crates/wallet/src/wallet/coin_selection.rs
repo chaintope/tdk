@@ -107,8 +107,9 @@ use crate::wallet::utils::IsDust;
 use crate::Utxo;
 use crate::WeightedUtxo;
 use tapyrus::script::color_identifier::ColorIdentifier;
-use tapyrus::FeeRate;
+use tapyrus::{FeeRate, ScriptBuf};
 
+use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 use tapyrus::consensus::encode::serialize;
 use tapyrus::OutPoint;
@@ -252,15 +253,6 @@ fn filter_by_color_id(utxos: Vec<WeightedUtxo>, color_id: &ColorIdentifier) -> V
         .collect()
 }
 
-/// Return 0 if a colored coin is being processed, otherwise return ree_rate itself.
-fn disable_fee_rate_for_color(fee_rate: FeeRate, color_id: &ColorIdentifier) -> FeeRate {
-    if color_id.is_colored() {
-        FeeRate::ZERO
-    } else {
-        fee_rate
-    }
-}
-
 /// Simple and dumb coin selection
 ///
 /// This coin selection algorithm sorts the available UTXOs by value and then picks them starting
@@ -280,7 +272,6 @@ impl CoinSelectionAlgorithm for LargestFirstCoinSelection {
     ) -> Result<CoinSelectionResult, Error> {
         let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
         let mut optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
-        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
 
         // We put the "required UTXOs" first and make sure the optional UTXOs are sorted,
         // initially smallest to largest, before being reversed with `.rev()`.
@@ -315,7 +306,6 @@ impl CoinSelectionAlgorithm for OldestFirstCoinSelection {
     ) -> Result<CoinSelectionResult, Error> {
         let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
         let mut optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
-        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
 
         // We put the "required UTXOs" first and make sure the optional UTXOs are sorted from
         // oldest to newest according to blocktime
@@ -346,13 +336,24 @@ pub fn decide_change(
     drain_script: &Script,
     color_id: &ColorIdentifier,
 ) -> Excess {
+    let drain_script = if color_id.is_default() {
+        drain_script.to_owned()
+    } else {
+        drain_script.to_owned().add_color(color_id.clone()).unwrap()
+    };
+
     // drain_output_len = size(len(script_pubkey)) + len(script_pubkey) + size(output_value)
-    let drain_output_len = serialize(drain_script).len() + 8usize;
+    let drain_output_len = serialize(drain_script.as_script()).len() + 8usize;
     let change_fee =
         (fee_rate * Weight::from_vb(drain_output_len as u64).expect("overflow occurred")).to_tap();
-    let drain_val = remaining_amount.saturating_sub(change_fee);
 
-    if (drain_val.is_dust(drain_script) && color_id.is_default())
+    let drain_val = if color_id.is_default() {
+        remaining_amount.saturating_sub(change_fee)
+    } else {
+        remaining_amount
+    };
+
+    if (drain_val.is_dust(&drain_script) && color_id.is_default())
         || (drain_val == 0 && color_id.is_colored())
     {
         let dust_threshold = drain_script.dust_value().to_tap();
@@ -382,7 +383,10 @@ fn select_sorted_utxos(
         .scan(
             (&mut selected_amount, &mut fee_amount),
             |(selected_amount, fee_amount), (must_use, weighted_utxo)| {
-                if must_use || **selected_amount < target_amount + **fee_amount {
+                if must_use
+                    || color_id.is_default() && **selected_amount < target_amount + **fee_amount
+                    || color_id.is_colored() && **selected_amount < target_amount
+                {
                     **fee_amount += (fee_rate
                         * Weight::from_wu(
                             TxIn::default().legacy_weight().to_wu()
@@ -398,7 +402,13 @@ fn select_sorted_utxos(
         )
         .collect::<Vec<_>>();
 
-    let amount_needed_with_fees = target_amount + fee_amount;
+    let amount_needed_with_fees = if color_id.is_default() {
+        target_amount + fee_amount
+    } else {
+        // If we are dealing with colored coins, we don't need to add the fee to the target amount.
+        target_amount
+    };
+
     if selected_amount < amount_needed_with_fees {
         return Err(Error::InsufficientFunds {
             needed: amount_needed_with_fees,
@@ -434,7 +444,16 @@ impl OutputGroup {
                 TxIn::default().legacy_weight().to_wu() + weighted_utxo.satisfaction_weight as u64,
             ))
         .to_tap();
-        let effective_value = weighted_utxo.utxo.txout().value.to_tap() as i64 - fee as i64;
+
+        let color_id = weighted_utxo.utxo.txout().script_pubkey.color_id();
+        let value = weighted_utxo.utxo.txout().value.to_tap() as i64;
+
+        let effective_value = if color_id.is_none() {
+            value - fee as i64
+        } else {
+            value
+        };
+
         OutputGroup {
             weighted_utxo,
             fee,
@@ -481,7 +500,6 @@ impl CoinSelectionAlgorithm for BranchAndBoundCoinSelection {
     ) -> Result<CoinSelectionResult, Error> {
         let required_utxos: Vec<WeightedUtxo> = filter_by_color_id(required_utxos, color_id);
         let optional_utxos: Vec<WeightedUtxo> = filter_by_color_id(optional_utxos, color_id);
-        let fee_rate = disable_fee_rate_for_color(fee_rate, color_id);
 
         // Mapping every (UTXO, usize) to an output group
         let required_utxos: Vec<OutputGroup> = required_utxos
@@ -1076,7 +1094,9 @@ mod test {
         let color_id = ColorIdentifier::reissuable(Script::new());
         let utxos = get_test_utxos_with_color(&color_id);
 
-        let drain_script = ScriptBuf::default();
+        // P2PKH Script
+        let drain_script =
+            ScriptBuf::from_hex("76a91493ce48570b55c42c2af816aeaba06cfee1224fae88ac").unwrap();
         let target_amount = 15;
 
         let result = LargestFirstCoinSelection
@@ -1092,7 +1112,8 @@ mod test {
 
         assert_eq!(result.selected.len(), 2);
         assert_eq!(result.selected_amount(), 20);
-        assert_eq!(result.fee_amount, 0)
+        assert_eq!(result.fee_amount, 296); // 148 (cp2pkh input size) * 2
+        assert_matches!(result.excess, Excess::Change { amount: 5, fee: 69 }); // 69 (cp2pkh output size)
     }
 
     #[test]
@@ -1226,7 +1247,9 @@ mod test {
 
         let utxos = get_oldest_first_test_utxos_with_color(&color_id);
 
-        let drain_script = ScriptBuf::default();
+        // P2PKH Script
+        let drain_script =
+            ScriptBuf::from_hex("76a91493ce48570b55c42c2af816aeaba06cfee1224fae88ac").unwrap();
         let target_amount = 15;
 
         let result = OldestFirstCoinSelection
@@ -1242,7 +1265,14 @@ mod test {
 
         assert_eq!(result.selected.len(), 2);
         assert_eq!(result.selected_amount(), 30);
-        assert_eq!(result.fee_amount, 0)
+        assert_eq!(result.fee_amount, 296); // 148 (cp2pkh input size) * 2
+        assert_matches!(
+            result.excess,
+            Excess::Change {
+                amount: 15,
+                fee: 69
+            }
+        ); // 69 (cp2pkh output size)
     }
 
     #[test]
@@ -1272,7 +1302,9 @@ mod test {
         let color_id = ColorIdentifier::reissuable(Script::new());
         let utxos = get_oldest_first_test_utxos_with_color(&color_id);
 
-        let drain_script = ScriptBuf::default();
+        // P2PKH Script
+        let drain_script =
+            ScriptBuf::from_hex("76a91493ce48570b55c42c2af816aeaba06cfee1224fae88ac").unwrap();
         let target_amount = 15;
 
         let result = OldestFirstCoinSelection
@@ -1288,7 +1320,14 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 60);
-        assert_eq!(result.fee_amount, 0)
+        assert_eq!(result.fee_amount, 444); // 148 (cp2pkh input size) * 3
+        assert_matches!(
+            result.excess,
+            Excess::Change {
+                amount: 45,
+                fee: 69
+            }
+        ); // 69 (cp2pkh output size)
     }
 
     #[test]
@@ -1428,7 +1467,9 @@ mod test {
             &color_id,
         ));
 
-        let drain_script = ScriptBuf::default();
+        // P2PKH Script
+        let drain_script =
+            ScriptBuf::from_hex("76a91493ce48570b55c42c2af816aeaba06cfee1224fae88ac").unwrap();
 
         let target_amount = 55;
 
@@ -1445,7 +1486,8 @@ mod test {
 
         assert_eq!(result.selected.len(), 3);
         assert_eq!(result.selected_amount(), 60);
-        assert_eq!(result.fee_amount, 0);
+        assert_eq!(result.fee_amount, 444); // 148 (cp2pkh input size) * 3
+        assert_matches!(result.excess, Excess::Change { amount: 5, fee: 69 }); // 69 (cp2pkh output size)
     }
 
     #[test]
