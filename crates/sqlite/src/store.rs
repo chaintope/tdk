@@ -502,7 +502,7 @@ impl<K, A> Store<K, A> {
             let payment_base: Vec<u8> = c.payment_base.to_bytes();
             let spendable: u32 = if c.spendable { 1 } else { 0 };
             insert_contract_stmt.execute(named_params! {
-                ":contract_id": contract_id, ":contract": contract, ":payment_base": payment_base, ":spendable": spendable})
+                ":contract_id": contract_id, ":contract": contract, ":payment_base": payment_base, ":spendable": spendable })
                 .map_err(Error::Sqlite)?;
         }
         Ok(())
@@ -663,17 +663,17 @@ mod test {
             agg_changeset.unwrap().contract.get("id").unwrap().spendable,
             true
         );
-
+        let payment_base = PublicKey::from_str(
+            "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+        )
+        .unwrap();
         let mut contract: contract::ChangeSet = contract::ChangeSet::new();
         contract.insert(
             "id".to_string(),
             Contract {
                 contract_id: "id".to_string(),
                 contract: vec![0x00, 0x01, 0x02],
-                payment_base: PublicKey::from_str(
-                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
-                )
-                .unwrap(),
+                payment_base,
                 spendable: false,
             },
         );
@@ -881,6 +881,11 @@ mod test {
                 indexer: keychain::ChangeSet::default(),
             };
 
+        let payment_base = PublicKey::from_str(
+            "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
+        )
+        .unwrap();
+
         let mut contract: contract::ChangeSet = contract::ChangeSet::new();
         contract.insert(
             "id".to_string(),
@@ -890,10 +895,7 @@ mod test {
                     0x00, 0x00, 0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44,
                     0x66, 0x55, 0x44, 0x00, 0x00,
                 ],
-                payment_base: PublicKey::from_str(
-                    "028bde91b10013e08949a318018fedbd896534a549a278e220169ee2a36517c7aa",
-                )
-                .unwrap(),
+                payment_base,
                 spendable: true,
             },
         );

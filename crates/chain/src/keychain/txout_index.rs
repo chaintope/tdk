@@ -10,8 +10,8 @@ use core::{
     ops::{Bound, RangeBounds},
 };
 use tapyrus::{
-    hashes::Hash, script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint, Script,
-    SignedAmount, Transaction, TxOut,
+    hashes::Hash, script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint,
+    PublicKey, Script, ScriptBuf, SignedAmount, Transaction, TxOut,
 };
 
 use crate::Append;
@@ -376,6 +376,11 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
         let (desc_id, last_index) = self.inner.index_of_spk(script)?;
         let keychain = self.keychain_of_desc_id(desc_id)?;
         Some((keychain.clone(), *last_index))
+    }
+
+    /// Insert payment base key for pay-to-contract script pubkey
+    pub fn insert_p2c_spk(&mut self, spk: ScriptBuf, payment_base: PublicKey) {
+        self.inner.insert_p2c_spk(spk, payment_base);
     }
 
     /// Returns whether the spk under the `keychain`'s `index` has been used.
