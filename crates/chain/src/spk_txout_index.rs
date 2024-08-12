@@ -206,6 +206,11 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         self.p2c_spks.insert(spk, p2c_spk);
     }
 
+    /// Returns script pubkey of payment base for pay-to-contract script
+    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&ScriptBuf> {
+        self.p2c_spks.get(spk)
+    }
+
     /// Adds a script pubkey to scan for. Returns `false` and does nothing if spk already exists in the map
     ///
     /// the index will look for outputs spending to this spk whenever it scans new data.

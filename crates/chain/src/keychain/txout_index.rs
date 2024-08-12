@@ -383,6 +383,11 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
         self.inner.insert_p2c_spk(spk, payment_base);
     }
 
+    /// Returns script pubkey of payment base for pay-to-contract script
+    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&ScriptBuf> {
+        self.inner.p2c_spk(spk)
+    }
+
     /// Returns whether the spk under the `keychain`'s `index` has been used.
     ///
     /// Here, "unused" means that after the script pubkey was stored in the index, the index has
