@@ -455,7 +455,7 @@ pub fn get_funded_wallet_with_p2c_and_change(
         }],
         output: vec![TxOut {
             value: Amount::from_tap(76_000),
-            script_pubkey: sendto_address.script_pubkey(),
+            script_pubkey: fund_address.script_pubkey(),
         }],
     };
 
