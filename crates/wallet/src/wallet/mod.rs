@@ -2602,15 +2602,23 @@ impl Wallet {
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
         let script = if utxo.txout.script_pubkey.is_colored() {
-            ScriptBuf::from_bytes(utxo.txout.script_pubkey.as_bytes()[35..].to_vec())
+            utxo.txout.script_pubkey.remove_color()
         } else {
             utxo.txout.script_pubkey
         };
-        let (keychain, child) = self
-            .indexed_graph
-            .index
-            .index_of_spk(&script)
-            .ok_or(CreateTxError::UnknownUtxo)?;
+        let payment_base = self.spk_index().p2c_spk(&script);
+
+        let (keychain, child) = if let Some(p) = payment_base {
+            self.indexed_graph
+                .index
+                .index_of_spk(p.clone().as_script())
+                .ok_or(CreateTxError::UnknownUtxo)?
+        } else {
+            self.indexed_graph
+                .index
+                .index_of_spk(&script)
+                .ok_or(CreateTxError::UnknownUtxo)?
+        };
 
         let mut psbt_input = psbt::Input {
             sighash_type,
