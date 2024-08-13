@@ -19,8 +19,8 @@ use tapyrus::{
 };
 use tapyrus::{psbt, AddressType, PublicKey};
 use tdk_chain::collections::BTreeMap;
-use tdk_chain::COINBASE_MATURITY;
 use tdk_chain::{BlockId, ConfirmationTime};
+use tdk_chain::{Contract, COINBASE_MATURITY};
 use tdk_persist::PersistBackend;
 use tdk_sqlite::rusqlite::Connection;
 use tdk_wallet::descriptor::{calc_checksum, DescriptorError, IntoWalletDescriptor};
@@ -30,8 +30,8 @@ use tdk_wallet::signer::{SignOptions, SignerError};
 use tdk_wallet::wallet::coin_selection::{self, LargestFirstCoinSelection};
 use tdk_wallet::wallet::error::CreateTxError;
 use tdk_wallet::wallet::tx_builder::AddForeignUtxoError;
-use tdk_wallet::wallet::{scalar_from, CreateContractError, NewError};
 use tdk_wallet::wallet::{AddressInfo, Balance, Wallet};
+use tdk_wallet::wallet::{CreateContractError, NewError};
 use tdk_wallet::KeychainKind;
 
 mod common;
@@ -350,7 +350,7 @@ fn test_get_funded_wallet_colored_balance() {
 #[test]
 fn test_get_funded_wallet_p2c_balance() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
-    let (wallet, _, _) = get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+    let (wallet, _, _, _) = get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
 
     assert_eq!(
         wallet.balance(ColorIdentifier::default()).confirmed,
@@ -361,7 +361,7 @@ fn test_get_funded_wallet_p2c_balance() {
 #[test]
 fn test_get_funded_wallet_colored_p2c_balance() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
-    let (wallet, _, _, color_id) =
+    let (wallet, _, _, _, color_id) =
         get_funded_wallet_with_colored_p2c_and_change(get_test_pkh(), change_desc);
 
     assert_eq!(wallet.balance(color_id).confirmed, Amount::from_tap(100));
@@ -423,7 +423,7 @@ fn test_get_funded_wallet_with_color_sent_and_received() {
 #[test]
 fn test_get_funded_wallet_with_p2c_sent_and_received() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
-    let (wallet, txid, _, color_id) =
+    let (wallet, txid, _, _, color_id) =
         get_funded_wallet_with_colored_p2c_and_change(get_test_pkh(), change_desc);
 
     let tx = wallet.get_tx(txid).expect("transaction").tx_node.tx;
@@ -1388,8 +1388,10 @@ fn test_create_tx_with_reissuable() {
 #[test]
 fn test_create_tx_with_contract() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
-    let (mut wallet, txid, address) =
+    let (mut wallet, txid, address, contract) =
         get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+    let mut contracts = BTreeMap::new();
+    contracts.insert(contract.clone().contract_id, contract.clone());
 
     let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
         .unwrap()
@@ -1398,7 +1400,7 @@ fn test_create_tx_with_contract() {
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
         .add_contract_utxo(OutPoint { txid, vout: 0 });
-    let psbt = builder.finish().unwrap();
+    let mut psbt = builder.finish().unwrap();
     check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 2);
     let sent_received = wallet.sent_and_received(
@@ -1412,6 +1414,18 @@ fn test_create_tx_with_contract() {
             Amount::from_tap(25_000) - psbt.fee_amount().unwrap()
         )
     );
+
+    let finished = wallet.sign(
+        &mut psbt,
+        SignOptions {
+            contracts,
+            trust_witness_utxo: true,
+            ..Default::default()
+        },
+    );
+
+    let ret = finished.unwrap();
+    assert!(ret, "transaction should be signed");
 }
 
 // TODO: Fix this test
@@ -3093,7 +3107,7 @@ fn test_create_pay_to_contract_commitment() {
         PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
             .unwrap();
     let contract = "metadata".as_bytes().to_vec();
-    let commitment = wallet.create_pay_to_contract_commitment(&payment_base, contract);
+    let commitment = Contract::create_pay_to_contract_commitment(&payment_base, contract);
     let expected = [
         0xb3, 0x09, 0x1b, 0x18, 0x71, 0x39, 0xe7, 0xd1, 0xfc, 0x66, 0x1b, 0x25, 0xf3, 0xc0, 0x5c,
         0x07, 0x78, 0x11, 0xbb, 0x8c, 0xb2, 0x8e, 0x49, 0xc1, 0xda, 0xba, 0x16, 0x6b, 0xf6, 0x5e,
@@ -3109,7 +3123,7 @@ fn test_bytes_to_scalar() {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         0xff, 0xff,
     ];
-    let scalar = scalar_from(&bytes);
+    let scalar = Contract::scalar_from(&bytes);
     /// 0xFFFFF.... - Scalar::MAX
     let expected = [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

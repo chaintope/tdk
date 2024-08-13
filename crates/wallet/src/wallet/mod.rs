@@ -28,7 +28,6 @@ use miniscript::{
     psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier},
     Descriptor, DescriptorPublicKey,
 };
-use tapyrus::hashes::{Hash, HashEngine};
 use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
     absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, MalFixTxid,
@@ -37,6 +36,7 @@ use tapyrus::{
 use tapyrus::{address::NetworkChecked, secp256k1::Scalar};
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
+use tapyrus::{secp256k1::SecretKey, PrivateKey};
 use tapyrus::{
     secp256k1::{All, Secp256k1},
     TxIn,
@@ -53,7 +53,7 @@ use tdk_chain::{
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
     tx_graph::{CanonicalTx, TxGraph},
     Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, Contract,
-    DescriptorExt, DescriptorId, FullTxOut, IndexedTxGraph,
+    DescriptorId, FullTxOut, IndexedTxGraph,
 };
 use tdk_persist::{Persist, PersistBackend};
 
@@ -87,17 +87,6 @@ use num_bigint::BigUint;
 use self::coin_selection::Error;
 
 const COINBASE_MATURITY: u32 = 100;
-
-/// Generate Scalar from bytes
-pub fn scalar_from(bytes: &[u8]) -> Scalar {
-    let order: BigUint = BigUint::from_bytes_be(&Scalar::MAX.to_be_bytes()) + 1u32;
-    let n: BigUint = BigUint::from_bytes_be(bytes);
-    let n = n % order;
-    let bytes = n.to_bytes_be();
-    let mut value = [0u8; 32];
-    value[32 - bytes.len()..].copy_from_slice(&bytes);
-    Scalar::from_be_bytes(value).unwrap()
-}
 
 /// A Bitcoin wallet
 ///
@@ -442,6 +431,8 @@ pub enum GenerateContractError {
         /// public key(payment base).
         public_key: PublicKey,
     },
+    /// Can not create private key.
+    InvalidPrivateKey,
 }
 
 impl fmt::Display for GenerateContractError {
@@ -457,6 +448,9 @@ impl fmt::Display for GenerateContractError {
                 write!(f, "invalid payment base  ({})", public_key)
             }
             GenerateContractError::InvalidAddress(e) => e.fmt(f),
+            GenerateContractError::InvalidPrivateKey => {
+                write!(f, "invalid private key")
+            }
         }
     }
 }
@@ -611,7 +605,7 @@ impl Wallet {
         });
         persist.commit().map_err(NewError::Persist)?;
 
-        let mut wallet = Wallet {
+        let wallet = Wallet {
             signers,
             change_signers,
             network,
@@ -1061,7 +1055,8 @@ impl Wallet {
                 })
             }
         };
-        let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
+        let commitment: Scalar =
+            Contract::create_pay_to_contract_commitment(payment_base, contract);
         let pubkey = payment_base
             .inner
             .add_exp_tweak(&self.secp, &commitment)
@@ -1071,19 +1066,6 @@ impl Wallet {
             inner: pubkey,
         };
         Ok(key)
-    }
-
-    /// Compute pay-to-contract commitment as Scalar.
-    pub fn create_pay_to_contract_commitment(
-        &self,
-        payment_base: &PublicKey,
-        contract: Vec<u8>,
-    ) -> Scalar {
-        let mut engine = tapyrus::hashes::sha256::HashEngine::default();
-        engine.input(&payment_base.inner.serialize());
-        engine.input(&contract);
-        let result = tapyrus::hashes::sha256::Hash::from_engine(engine);
-        scalar_from(&result.to_byte_array()[..])
     }
 
     /// Marks an address used of the given `keychain` at `index`.
@@ -2388,10 +2370,14 @@ impl Wallet {
     }
 
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
-        let (keychain, child) = self
-            .indexed_graph
-            .index
-            .index_of_spk(&txout.script_pubkey)?;
+        let payment_base = self.spk_index().p2c_spk(&txout.script_pubkey);
+        let script_pubkey_ref = if let Some(p) = payment_base {
+            p
+        } else {
+            &txout.script_pubkey
+        };
+
+        let (keychain, child) = self.indexed_graph.index.index_of_spk(script_pubkey_ref)?;
         let descriptor = self.get_descriptor_for_keychain(keychain);
         descriptor.at_derivation_index(child).ok()
     }
@@ -2417,7 +2403,7 @@ impl Wallet {
     fn get_available_utxos(&self) -> Vec<(LocalOutput, usize)> {
         self.list_unspent()
             .filter(|utxo| {
-                if let Some(contract) = self.contract_for_utxo(&utxo).unwrap_or(None) {
+                if let Some(contract) = self.contract_for_utxo(utxo).unwrap_or(None) {
                     contract.spendable
                 } else {
                     true

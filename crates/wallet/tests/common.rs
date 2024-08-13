@@ -391,18 +391,19 @@ pub fn get_funded_wallet_with_two_colored_coin_and_change(
     (wallet, tx1.malfix_txid(), color_id1, color_id2)
 }
 
-fn get_p2c_address(wallet: &mut Wallet, color_id: Option<ColorIdentifier>) -> Address {
+fn get_p2c_address(wallet: &mut Wallet, color_id: Option<ColorIdentifier>) -> (Address, Contract) {
     let payment_base = get_payment_base(wallet);
     let contract = "metadata".as_bytes().to_vec();
-    wallet.store_contract(
+    let ret = wallet.store_contract(
         "contract_id".to_string(),
         contract.clone(),
         payment_base,
         false,
     );
-    wallet
+    let address = wallet
         .create_pay_to_contract_address(&payment_base, contract.clone(), color_id)
-        .unwrap()
+        .unwrap();
+    (address, ret.unwrap())
 }
 pub fn get_payment_base(wallet: &Wallet) -> PublicKey {
     let descriptor = wallet.get_descriptor_for_keychain(KeychainKind::External);
@@ -433,7 +434,7 @@ pub fn descriptor_to_public_key(descriptor: &Descriptor<DescriptorPublicKey>) ->
 pub fn get_funded_wallet_with_p2c_and_change(
     descriptor: &str,
     change: &str,
-) -> (Wallet, MalFixTxid, Address) {
+) -> (Wallet, MalFixTxid, Address, Contract) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let fund_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address: Address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
@@ -464,7 +465,7 @@ pub fn get_funded_wallet_with_p2c_and_change(
         vout: 0,
     };
 
-    let receive_address = get_p2c_address(&mut wallet, None);
+    let (receive_address, contract) = get_p2c_address(&mut wallet, None);
 
     let tx1 = Transaction {
         version: transaction::Version::ONE,
@@ -518,13 +519,13 @@ pub fn get_funded_wallet_with_p2c_and_change(
         )
         .unwrap();
 
-    (wallet, tx1.malfix_txid(), receive_address)
+    (wallet, tx1.malfix_txid(), receive_address, contract)
 }
 
 pub fn get_funded_wallet_with_colored_p2c_and_change(
     descriptor: &str,
     change: &str,
-) -> (Wallet, MalFixTxid, Address, ColorIdentifier) {
+) -> (Wallet, MalFixTxid, Address, Contract, ColorIdentifier) {
     let mut wallet = Wallet::new_no_persist(descriptor, change, Network::Dev).unwrap();
     let fund_address = wallet.peek_address(KeychainKind::External, 0).address;
     let sendto_address: Address = Address::from_str("msvWktzSViRZ5kiepVr6W8VrgE8a6mbiVu")
@@ -555,7 +556,7 @@ pub fn get_funded_wallet_with_colored_p2c_and_change(
         vout: 0,
     };
     let color_id = ColorIdentifier::reissuable(fund_address.script_pubkey().as_script());
-    let receive_address = get_p2c_address(&mut wallet, Some(color_id));
+    let (receive_address, contract) = get_p2c_address(&mut wallet, Some(color_id));
     let tx1 = Transaction {
         version: transaction::Version::ONE,
         lock_time: tapyrus::absolute::LockTime::ZERO,
@@ -612,7 +613,13 @@ pub fn get_funded_wallet_with_colored_p2c_and_change(
         )
         .unwrap();
 
-    (wallet, tx1.malfix_txid(), receive_address, color_id)
+    (
+        wallet,
+        tx1.malfix_txid(),
+        receive_address,
+        contract,
+        color_id,
+    )
 }
 
 pub fn get_p2c_tx(wallet: &mut Wallet, contract: &Contract) -> Vec<tapyrus::Transaction> {
