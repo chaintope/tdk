@@ -36,7 +36,7 @@ pub struct Contract {
 
 impl Contract {
     /// Create private key for Pay-to-Contract
-    pub fn create_private_key(
+    pub fn create_pay_to_contract_private_key(
         &self,
         payment_base_private_key: &PrivateKey,
         payment_base: &PublicKey,
@@ -98,7 +98,7 @@ mod signers_container_tests {
     use crate::tapyrus::hashes::hex::FromHex;
 
     #[test]
-    fn test_create_private_key() {
+    fn test_create_pay_to_contract_private_key() {
         let payment_base_private_key = PrivateKey::from_slice(
             &Vec::<u8>::from_hex(
                 "c5580f6c26f83fb513dd5e0d1b03c36be26fcefa139b1720a7ca7c0dedd439c2",
@@ -116,7 +116,7 @@ mod signers_container_tests {
             spendable: true,
         };
         let key =
-            contract.create_private_key(&payment_base_private_key, &payment_base, Network::Dev);
+            contract.create_pay_to_contract_private_key(&payment_base_private_key, &payment_base, Network::Dev);
         assert!(key.is_ok());
         assert_eq!(
             key.unwrap(),
