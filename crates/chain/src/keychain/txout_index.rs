@@ -384,7 +384,7 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
     }
 
     /// Returns script pubkey of payment base for pay-to-contract script
-    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&ScriptBuf> {
+    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&PublicKey> {
         self.inner.p2c_spk(spk)
     }
 
