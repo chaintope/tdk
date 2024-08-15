@@ -452,7 +452,7 @@ impl SignerWrapper<PrivateKey> {
     ) -> Option<(SecretKey, PublicKey)> {
         sign_options.contracts.iter().find_map(|(_, contract)| {
             let p2c_private_key = contract
-                .create_private_key(&self, pubkey, self.network)
+                .create_pay_to_contract_private_key(&self, pubkey, self.network)
                 .ok()?;
             let p2c_public_key = p2c_private_key.public_key(secp);
             if self.same_pubkey_hash(script_pubkey, &p2c_public_key) {
