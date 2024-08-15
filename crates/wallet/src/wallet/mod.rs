@@ -21,14 +21,14 @@ use alloc::{
     vec::Vec,
 };
 
-use core::fmt;
 use core::ops::Deref;
+use core::{fmt, str::FromStr};
 use descriptor::error::Error as DescriptorError;
 use miniscript::{
+    descriptor::{SinglePub, SinglePubKey},
     psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier},
-    Descriptor, DescriptorPublicKey,
+    DefiniteDescriptorKey, Descriptor, DescriptorPublicKey, ToPublicKey,
 };
-use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
 use tapyrus::{
     absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, MalFixTxid,
     Network, OutPoint, PublicKey, Script, ScriptBuf, Sequence, Transaction, TxOut, Witness,
@@ -36,6 +36,10 @@ use tapyrus::{
 use tapyrus::{address::NetworkChecked, secp256k1::Scalar};
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
+use tapyrus::{
+    hex::DisplayHex,
+    sighash::{EcdsaSighashType, TapSighashType},
+};
 use tapyrus::{secp256k1::SecretKey, PrivateKey};
 use tapyrus::{
     secp256k1::{All, Secp256k1},
@@ -2345,14 +2349,27 @@ impl Wallet {
 
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
         let payment_base = self.spk_index().p2c_spk(&txout.script_pubkey);
-        let script_pubkey_ref = if let Some(p) = payment_base {
-            p
-        } else {
-            &txout.script_pubkey
-        };
-
-        let (keychain, child) = self.indexed_graph.index.index_of_spk(script_pubkey_ref)?;
-        let descriptor = self.get_descriptor_for_keychain(keychain);
+        if let Some(p) = payment_base {
+            // find pay-to-contract
+            let contract = self.contracts.values().find(|c| *p == c.payment_base);
+            if let Some(c) = contract {
+                let public_key = Contract::create_pay_to_contract_public_key(
+                    &c.payment_base,
+                    c.contract.clone(),
+                    &self.secp_ctx(),
+                );
+                if let Ok(ddk) = DefiniteDescriptorKey::from_str(&public_key.to_string()) {
+                    return Some(Descriptor::<DefiniteDescriptorKey>::new_pk(ddk));
+                }
+            }
+            return None;
+        }
+        let (keychain, child) = self
+            .indexed_graph
+            .index
+            .index_of_spk(&txout.script_pubkey)?;
+        let descriptor: &Descriptor<DescriptorPublicKey> =
+            self.get_descriptor_for_keychain(keychain);
         descriptor.at_derivation_index(child).ok()
     }
 
@@ -2591,7 +2608,7 @@ impl Wallet {
         let (keychain, child) = if let Some(p) = payment_base {
             self.indexed_graph
                 .index
-                .index_of_spk(p.clone().as_script())
+                .index_of_spk(&ScriptBuf::new_p2pkh(&p.pubkey_hash()))
                 .ok_or(CreateTxError::UnknownUtxo)?
         } else {
             self.indexed_graph
