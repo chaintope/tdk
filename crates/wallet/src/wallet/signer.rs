@@ -433,11 +433,12 @@ impl SignerCommon for SignerWrapper<PrivateKey> {
 }
 
 impl SignerWrapper<PrivateKey> {
-    // Return if a script is related
+    /// Return if a script is related
     fn is_relevant_script(&self, script_pubkey: &ScriptBuf) -> bool {
         script_pubkey.is_cp2pkh() || script_pubkey.is_p2pkh()
     }
 
+    /// Return if script_pubkey equals to p2pkh generated with specified public key
     fn same_pubkey_hash(&self, script_pubkey: &ScriptBuf, public_key: &PublicKey) -> bool {
         *script_pubkey == ScriptBuf::new_p2pkh(&public_key.pubkey_hash())
     }
@@ -450,7 +451,9 @@ impl SignerWrapper<PrivateKey> {
         secp: &SecpCtx,
     ) -> Option<(SecretKey, PublicKey)> {
         sign_options.contracts.iter().find_map(|(_, contract)| {
-            let p2c_private_key = contract.create_private_key(pubkey, self.network).ok()?;
+            let p2c_private_key = contract
+                .create_private_key(&self, pubkey, self.network)
+                .ok()?;
             let p2c_public_key = p2c_private_key.public_key(secp);
             if self.same_pubkey_hash(script_pubkey, &p2c_public_key) {
                 Some((p2c_private_key.inner, p2c_public_key))

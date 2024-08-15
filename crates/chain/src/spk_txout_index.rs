@@ -42,7 +42,7 @@ pub struct SpkTxOutIndex<I> {
     /// Lookup from spk index to outpoints that had that spk
     spk_txouts: BTreeSet<(I, OutPoint)>,
     /// Pay-to-contract payment_base lookup by p2c spk
-    p2c_spks: HashMap<ScriptBuf, ScriptBuf>,
+    p2c_spks: HashMap<ScriptBuf, PublicKey>,
 }
 
 impl<I> Default for SpkTxOutIndex<I> {
@@ -114,7 +114,8 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         let payment_base = self.p2c_spks.get(&script_pubkey);
 
         let spk_i = if let Some(p) = payment_base {
-            self.spk_indices.get(p.as_script())
+            self.spk_indices
+                .get(&ScriptBuf::new_p2pkh(&p.pubkey_hash()))
         } else {
             self.spk_indices.get(&script_pubkey)
         };
@@ -202,12 +203,11 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
 
     /// Insert payment base key for pay-to-contract script pubkey
     pub fn insert_p2c_spk(&mut self, spk: ScriptBuf, payment_base: PublicKey) {
-        let p2c_spk = ScriptBuf::new_p2pkh(&payment_base.pubkey_hash());
-        self.p2c_spks.insert(spk, p2c_spk);
+        self.p2c_spks.insert(spk, payment_base);
     }
 
     /// Returns script pubkey of payment base for pay-to-contract script
-    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&ScriptBuf> {
+    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&PublicKey> {
         self.p2c_spks.get(spk)
     }
 
@@ -328,12 +328,13 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
                 txout.script_pubkey.clone()
             };
             let payment_base = self.p2c_spks.get(&script_pubkey);
-            let script_pubkey_ref = if let Some(p) = payment_base {
-                p
+            let script_pubkey = if let Some(p) = payment_base {
+                let hash = p.pubkey_hash();
+                ScriptBuf::new_p2pkh(&hash)
             } else {
-                &script_pubkey
+                script_pubkey
             };
-            if let Some(index) = self.index_of_spk(script_pubkey_ref) {
+            if let Some(index) = self.index_of_spk(&script_pubkey) {
                 if range.contains(index)
                     && txout.script_pubkey.color_id().unwrap_or_default() == *color_id
                 {
