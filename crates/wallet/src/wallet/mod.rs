@@ -21,12 +21,14 @@ use alloc::{
     vec::Vec,
 };
 
-use core::fmt;
 use core::ops::Deref;
+use core::{fmt, str::FromStr};
 use descriptor::error::Error as DescriptorError;
-use miniscript::psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier};
-use tapyrus::hashes::{Hash, HashEngine};
-use tapyrus::sighash::{EcdsaSighashType, TapSighashType};
+use miniscript::{
+    descriptor::{SinglePub, SinglePubKey},
+    psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier},
+    DefiniteDescriptorKey, Descriptor, DescriptorPublicKey, ToPublicKey,
+};
 use tapyrus::{
     absolute, psbt, script::color_identifier::ColorIdentifier, Address, Block, FeeRate, MalFixTxid,
     Network, OutPoint, PublicKey, Script, ScriptBuf, Sequence, Transaction, TxOut, Witness,
@@ -35,24 +37,29 @@ use tapyrus::{address::NetworkChecked, secp256k1::Scalar};
 use tapyrus::{consensus::encode::serialize, transaction, BlockHash, Psbt};
 use tapyrus::{constants::mainnet_genesis_block, constants::testnet_genesis_block, Amount};
 use tapyrus::{
+    hex::DisplayHex,
+    sighash::{EcdsaSighashType, TapSighashType},
+};
+use tapyrus::{secp256k1::SecretKey, PrivateKey};
+use tapyrus::{
     secp256k1::{All, Secp256k1},
     TxIn,
 };
 pub use tdk_chain::keychain::Balance;
+use tdk_chain::tx_graph::CalculateFeeError;
 use tdk_chain::{
-    contract, indexed_tx_graph,
-    keychain::KeychainTxOutIndex,
+    contract,
+    indexed_tx_graph::{self},
+    keychain::{self, KeychainTxOutIndex},
     local_chain::{
         self, ApplyHeaderError, CannotConnectError, CheckPoint, CheckPointIter, LocalChain,
     },
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
     tx_graph::{CanonicalTx, TxGraph},
     Append, BlockId, ChainPosition, ConfirmationTime, ConfirmationTimeHeightAnchor, Contract,
-    FullTxOut, IndexedTxGraph,
+    DescriptorId, FullTxOut, IndexedTxGraph,
 };
 use tdk_persist::{Persist, PersistBackend};
-
-use tdk_chain::tx_graph::CalculateFeeError;
 
 pub mod coin_selection;
 pub mod export;
@@ -84,17 +91,6 @@ use num_bigint::BigUint;
 use self::coin_selection::Error;
 
 const COINBASE_MATURITY: u32 = 100;
-
-/// Generate Scalar from bytes
-pub fn scalar_from(bytes: &[u8]) -> Scalar {
-    let order: BigUint = BigUint::from_bytes_be(&Scalar::MAX.to_be_bytes()) + 1u32;
-    let n: BigUint = BigUint::from_bytes_be(bytes);
-    let n = n % order;
-    let bytes = n.to_bytes_be();
-    let mut value = [0u8; 32];
-    value[32 - bytes.len()..].copy_from_slice(&bytes);
-    Scalar::from_be_bytes(value).unwrap()
-}
 
 /// A Bitcoin wallet
 ///
@@ -434,6 +430,13 @@ pub enum GenerateContractError {
     },
     /// Invalid address
     InvalidAddress(tapyrus::address::Error),
+    /// Payment base is invalid.
+    InvalidPublicKey {
+        /// public key(payment base).
+        public_key: PublicKey,
+    },
+    /// Can not create private key.
+    InvalidPrivateKey,
 }
 
 impl fmt::Display for GenerateContractError {
@@ -445,7 +448,13 @@ impl fmt::Display for GenerateContractError {
             GenerateContractError::ContractTooLarge { length } => {
                 write!(f, "contract is too large (size: {})", length)
             }
+            GenerateContractError::InvalidPublicKey { public_key } => {
+                write!(f, "invalid payment base  ({})", public_key)
+            }
             GenerateContractError::InvalidAddress(e) => e.fmt(f),
+            GenerateContractError::InvalidPrivateKey => {
+                write!(f, "invalid private key")
+            }
         }
     }
 }
@@ -456,8 +465,21 @@ impl std::error::Error for GenerateContractError {}
 /// An error that may occur when registering contract data.
 #[derive(Debug)]
 pub enum CreateContractError {
-    ContractAlreadyExist { contract_id: String },
-    Error { e: anyhow::Error },
+    /// Contract with the specified contract_id already exists.
+    ContractAlreadyExist {
+        /// identifier of contract.
+        contract_id: String,
+    },
+    /// Payment base is invalid.
+    InvalidPublicKey {
+        /// public key(payment base).
+        public_key: PublicKey,
+    },
+    /// Other error.
+    Error {
+        /// An error that caused this error.
+        reason: String,
+    },
 }
 
 impl fmt::Display for CreateContractError {
@@ -466,7 +488,12 @@ impl fmt::Display for CreateContractError {
             CreateContractError::ContractAlreadyExist { contract_id } => {
                 write!(f, "contract already exists (contract_id: {})", contract_id)
             }
-            CreateContractError::Error { e } => e.fmt(f),
+            CreateContractError::InvalidPublicKey { public_key } => {
+                write!(f, "invalid payment base  ({})", public_key)
+            }
+            CreateContractError::Error { reason } => {
+                write!(f, "can not create contract address (reason: {})", reason)
+            }
         }
     }
 }
@@ -477,8 +504,16 @@ impl std::error::Error for CreateContractError {}
 /// An error that may occur when updating contract.
 #[derive(Debug)]
 pub enum UpdateContractError {
-    ContractNotFound { contract_id: String },
-    Error { e: anyhow::Error },
+    /// No contract with the specified contract_id has been found.
+    ContractNotFound {
+        /// identifier of contract.
+        contract_id: String,
+    },
+    /// Other error.
+    Error {
+        /// An error that caused this error.
+        reason: String,
+    },
 }
 
 impl fmt::Display for UpdateContractError {
@@ -487,7 +522,9 @@ impl fmt::Display for UpdateContractError {
             UpdateContractError::ContractNotFound { contract_id } => {
                 write!(f, "contract does not found (contract_id: {})", contract_id)
             }
-            UpdateContractError::Error { e } => e.fmt(f),
+            UpdateContractError::Error { reason } => {
+                write!(f, "can not update contract address (reason: {})", reason)
+            }
         }
     }
 }
@@ -523,6 +560,18 @@ impl Wallet {
         )
     }
 
+    fn build_p2c_spk_from_contract(wallet: &mut Wallet, contracts: contract::ChangeSet) {
+        for (_, contract) in contracts {
+            let payment_base = contract.payment_base;
+            match wallet.create_pay_to_contract_script(&payment_base, contract.contract, None) {
+                Ok(spk) => {
+                    wallet.insert_p2c_spk(spk, payment_base);
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Initialize an empty [`Wallet`] with a custom genesis hash.
     ///
     /// This is like [`Wallet::new`] with an additional `genesis_hash` parameter. This is useful
@@ -549,7 +598,7 @@ impl Wallet {
 
         let indexed_graph = IndexedTxGraph::new(index);
 
-        let contracts = contract::ChangeSet::new();
+        let contracts: BTreeMap<String, Contract> = contract::ChangeSet::new();
 
         let mut persist = Persist::new(db);
         persist.stage(ChangeSet {
@@ -560,7 +609,7 @@ impl Wallet {
         });
         persist.commit().map_err(NewError::Persist)?;
 
-        Ok(Wallet {
+        let wallet = Wallet {
             signers,
             change_signers,
             network,
@@ -568,8 +617,10 @@ impl Wallet {
             indexed_graph,
             persist,
             secp,
-            contracts,
-        })
+            contracts: contracts.clone(),
+        };
+
+        Ok(wallet)
     }
 
     /// Load [`Wallet`] from the given persistence backend.
@@ -659,7 +710,7 @@ impl Wallet {
 
         let persist = Persist::new(db);
 
-        Ok(Wallet {
+        let mut wallet = Wallet {
             signers,
             change_signers,
             chain,
@@ -667,8 +718,10 @@ impl Wallet {
             persist,
             network,
             secp,
-            contracts,
-        })
+            contracts: contracts.clone(),
+        };
+        Self::build_p2c_spk_from_contract(&mut wallet, contracts);
+        Ok(wallet)
     }
 
     /// Either loads [`Wallet`] from persistence, or initializes it if it does not exist.
@@ -959,15 +1012,25 @@ impl Wallet {
         contract: Vec<u8>,
         color_id: Option<ColorIdentifier>,
     ) -> Result<Address<NetworkChecked>, GenerateContractError> {
+        let script = self.create_pay_to_contract_script(payment_base, contract, color_id)?;
+        let address = Address::from_script(script.as_script(), self.network)
+            .map_err(GenerateContractError::InvalidAddress)?;
+        Ok(address)
+    }
+
+    fn create_pay_to_contract_script(
+        &self,
+        payment_base: &PublicKey,
+        contract: Vec<u8>,
+        color_id: Option<ColorIdentifier>,
+    ) -> Result<ScriptBuf, GenerateContractError> {
         let p2c_public_key = self.pay_to_contract_key(payment_base, contract)?;
         let pubkey_hash = p2c_public_key.pubkey_hash();
         let script: ScriptBuf = match color_id {
             Some(c) if c.is_colored() => ScriptBuf::new_cp2pkh(&color_id.unwrap(), &pubkey_hash),
             _ => ScriptBuf::new_p2pkh(&pubkey_hash),
         };
-        let address = Address::from_script(script.as_script(), self.network)
-            .map_err(GenerateContractError::InvalidAddress)?;
-        Ok(address)
+        Ok(script)
     }
 
     /// Generate pay-to-contract public key with the specified content hash.
@@ -984,29 +1047,21 @@ impl Wallet {
                 length: contract.len(),
             });
         }
-        let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
-        let pubkey = payment_base
-            .inner
-            .add_exp_tweak(&self.secp, &commitment)
-            .unwrap();
-        let key = PublicKey {
-            compressed: true,
-            inner: pubkey,
+        let index = match self
+            .indexed_graph
+            .index
+            .index_of_spk(ScriptBuf::new_p2pkh(&payment_base.pubkey_hash()).as_script())
+        {
+            Some(i) => i,
+            None => {
+                return Err(GenerateContractError::InvalidPublicKey {
+                    public_key: payment_base.clone(),
+                })
+            }
         };
+        let key =
+            Contract::create_pay_to_contract_public_key(payment_base, contract, self.secp_ctx());
         Ok(key)
-    }
-
-    /// Compute pay-to-contract commitment as Scalar.
-    pub fn create_pay_to_contract_commitment(
-        &self,
-        payment_base: &PublicKey,
-        contract: Vec<u8>,
-    ) -> Scalar {
-        let mut engine = tapyrus::hashes::sha256::HashEngine::default();
-        engine.input(&payment_base.inner.serialize());
-        engine.input(&contract);
-        let result = tapyrus::hashes::sha256::Hash::from_engine(engine);
-        scalar_from(&result.to_byte_array()[..])
     }
 
     /// Marks an address used of the given `keychain` at `index`.
@@ -2311,16 +2366,58 @@ impl Wallet {
     }
 
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
+        let payment_base = self.spk_index().p2c_spk(&txout.script_pubkey);
+        if let Some(p) = payment_base {
+            // find pay-to-contract
+            let contract = self.contracts.values().find(|c| *p == c.payment_base);
+            if let Some(c) = contract {
+                let public_key = Contract::create_pay_to_contract_public_key(
+                    &c.payment_base,
+                    c.contract.clone(),
+                    &self.secp_ctx(),
+                );
+                if let Ok(ddk) = DefiniteDescriptorKey::from_str(&public_key.to_string()) {
+                    return Some(Descriptor::<DefiniteDescriptorKey>::new_pk(ddk));
+                }
+            }
+            return None;
+        }
         let (keychain, child) = self
             .indexed_graph
             .index
             .index_of_spk(&txout.script_pubkey)?;
-        let descriptor = self.get_descriptor_for_keychain(keychain);
+        let descriptor: &Descriptor<DescriptorPublicKey> =
+            self.get_descriptor_for_keychain(keychain);
         descriptor.at_derivation_index(child).ok()
+    }
+
+    pub fn contract_for_utxo(
+        &self,
+        utxo: &LocalOutput,
+    ) -> Result<Option<Contract>, GenerateContractError> {
+        for (contract_id, contract) in self.contracts.iter() {
+            let color_id = utxo.txout.script_pubkey.color_id();
+            let p2c_script = self.create_pay_to_contract_script(
+                &contract.payment_base,
+                contract.contract.clone(),
+                color_id,
+            )?;
+            if p2c_script == utxo.txout.script_pubkey {
+                return Ok(Some(contract.clone()));
+            }
+        }
+        Ok(None)
     }
 
     fn get_available_utxos(&self) -> Vec<(LocalOutput, usize)> {
         self.list_unspent()
+            .filter(|utxo| {
+                if let Some(contract) = self.contract_for_utxo(utxo).unwrap_or(None) {
+                    contract.spendable
+                } else {
+                    true
+                }
+            })
             .map(|utxo| {
                 let keychain = utxo.keychain;
                 (utxo, {
@@ -2520,15 +2617,23 @@ impl Wallet {
         // Try to find the prev_script in our db to figure out if this is internal or external,
         // and the derivation index
         let script = if utxo.txout.script_pubkey.is_colored() {
-            ScriptBuf::from_bytes(utxo.txout.script_pubkey.as_bytes()[35..].to_vec())
+            utxo.txout.script_pubkey.remove_color()
         } else {
             utxo.txout.script_pubkey
         };
-        let (keychain, child) = self
-            .indexed_graph
-            .index
-            .index_of_spk(&script)
-            .ok_or(CreateTxError::UnknownUtxo)?;
+        let payment_base = self.spk_index().p2c_spk(&script);
+
+        let (keychain, child) = if let Some(p) = payment_base {
+            self.indexed_graph
+                .index
+                .index_of_spk(&ScriptBuf::new_p2pkh(&p.pubkey_hash()))
+                .ok_or(CreateTxError::UnknownUtxo)?
+        } else {
+            self.indexed_graph
+                .index
+                .index_of_spk(&script)
+                .ok_or(CreateTxError::UnknownUtxo)?
+        };
 
         let mut psbt_input = psbt::Input {
             sighash_type,
@@ -2654,6 +2759,10 @@ impl Wallet {
         &self.indexed_graph.index
     }
 
+    fn insert_p2c_spk(&mut self, spk: ScriptBuf, payment_base: PublicKey) {
+        self.indexed_graph.index.insert_p2c_spk(spk, payment_base)
+    }
+
     /// Get a reference to the inner [`LocalChain`].
     pub fn local_chain(&self) -> &LocalChain {
         &self.chain
@@ -2738,26 +2847,38 @@ impl Wallet {
         contract: Vec<u8>,
         payment_base: PublicKey,
         spendable: bool,
-    ) -> Result<(), CreateContractError> {
+    ) -> Result<Contract, CreateContractError> {
         let mut changeset = ChangeSet::default();
         if let Some(c) = self.contracts.get(&contract_id) {
             return Err(CreateContractError::ContractAlreadyExist { contract_id });
-        } else {
+        }
+        let new_contract = {
+            let spk = self
+                .create_pay_to_contract_script(&payment_base, contract.clone(), None)
+                .map_err(|e| CreateContractError::InvalidPublicKey {
+                    public_key: payment_base,
+                })?;
+            self.insert_p2c_spk(spk.clone(), payment_base);
             let new_contract = Contract {
                 contract_id: contract_id.clone(),
-                contract,
+                contract: contract.clone(),
                 payment_base,
                 spendable,
             };
             changeset
                 .contract
                 .insert(contract_id.clone(), new_contract.clone());
-            self.contracts.insert(contract_id.clone(), new_contract);
+
+            self.contracts
+                .insert(contract_id.clone(), new_contract.clone());
             self.persist
                 .stage_and_commit(changeset)
-                .map_err(|e| CreateContractError::Error { e })?;
-        }
-        return Ok(());
+                .map_err(|e| CreateContractError::Error {
+                    reason: e.to_string(),
+                })?;
+            new_contract
+        };
+        Ok(new_contract)
     }
 
     /// Update pay-to-contract information to the wallet.
@@ -2782,11 +2903,13 @@ impl Wallet {
             self.contracts.insert(contract_id.clone(), new_contract);
             self.persist
                 .stage_and_commit(changeset)
-                .map_err(|e| UpdateContractError::Error { e })?;
+                .map_err(|e| UpdateContractError::Error {
+                    reason: e.to_string(),
+                })?;
         } else {
             return Err(UpdateContractError::ContractNotFound { contract_id });
         }
-        return Ok(());
+        Ok(())
     }
 }
 

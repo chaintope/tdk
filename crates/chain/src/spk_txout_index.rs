@@ -5,8 +5,8 @@ use crate::{
     indexed_tx_graph::Indexer,
 };
 use tapyrus::{
-    script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint, Script, ScriptBuf,
-    SignedAmount, Transaction, TxOut,
+    script::color_identifier::ColorIdentifier, Amount, MalFixTxid, OutPoint, PublicKey, Script,
+    ScriptBuf, SignedAmount, Transaction, TxOut,
 };
 
 /// An index storing [`TxOut`]s that have a script pubkey that matches those in a list.
@@ -41,6 +41,8 @@ pub struct SpkTxOutIndex<I> {
     txouts: BTreeMap<OutPoint, (I, TxOut)>,
     /// Lookup from spk index to outpoints that had that spk
     spk_txouts: BTreeSet<(I, OutPoint)>,
+    /// Pay-to-contract payment_base lookup by p2c spk
+    p2c_spks: HashMap<ScriptBuf, PublicKey>,
 }
 
 impl<I> Default for SpkTxOutIndex<I> {
@@ -51,6 +53,7 @@ impl<I> Default for SpkTxOutIndex<I> {
             spk_indices: Default::default(),
             spk_txouts: Default::default(),
             unused: Default::default(),
+            p2c_spks: Default::default(),
         }
     }
 }
@@ -103,12 +106,18 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// Scan a single `TxOut` for a matching script pubkey and returns the index that matches the
     /// script pubkey (if any).
     pub fn scan_txout(&mut self, op: OutPoint, txout: &TxOut) -> Option<&I> {
-        let spk_i = if txout.script_pubkey.is_colored() {
-            self.spk_indices.get(&ScriptBuf::from_bytes(
-                txout.script_pubkey.as_bytes()[35..].to_vec(),
-            ))
+        let script_pubkey = if txout.script_pubkey.is_colored() {
+            txout.script_pubkey.remove_color()
         } else {
-            self.spk_indices.get(&txout.script_pubkey)
+            txout.script_pubkey.clone()
+        };
+        let payment_base = self.p2c_spks.get(&script_pubkey);
+
+        let spk_i = if let Some(p) = payment_base {
+            self.spk_indices
+                .get(&ScriptBuf::new_p2pkh(&p.pubkey_hash()))
+        } else {
+            self.spk_indices.get(&script_pubkey)
         };
         if let Some(spk_i) = spk_i {
             self.txouts.insert(op, (spk_i.clone(), txout.clone()));
@@ -190,6 +199,16 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
     /// The script pubkeys that are being tracked by the index.
     pub fn all_spks(&self) -> &BTreeMap<I, ScriptBuf> {
         &self.spks
+    }
+
+    /// Insert payment base key for pay-to-contract script pubkey
+    pub fn insert_p2c_spk(&mut self, spk: ScriptBuf, payment_base: PublicKey) {
+        self.p2c_spks.insert(spk, payment_base);
+    }
+
+    /// Returns script pubkey of payment base for pay-to-contract script
+    pub fn p2c_spk(&self, spk: &ScriptBuf) -> Option<&PublicKey> {
+        self.p2c_spks.get(spk)
     }
 
     /// Adds a script pubkey to scan for. Returns `false` and does nothing if spk already exists in the map
@@ -304,9 +323,16 @@ impl<I: Clone + Ord> SpkTxOutIndex<I> {
         }
         for txout in &tx.output {
             let script_pubkey = if txout.script_pubkey.is_colored() {
-                ScriptBuf::from_bytes(txout.script_pubkey.as_bytes()[35..].to_vec())
+                txout.script_pubkey.remove_color()
             } else {
                 txout.script_pubkey.clone()
+            };
+            let payment_base = self.p2c_spks.get(&script_pubkey);
+            let script_pubkey = if let Some(p) = payment_base {
+                let hash = p.pubkey_hash();
+                ScriptBuf::new_p2pkh(&hash)
+            } else {
+                script_pubkey
             };
             if let Some(index) = self.index_of_spk(&script_pubkey) {
                 if range.contains(index)
