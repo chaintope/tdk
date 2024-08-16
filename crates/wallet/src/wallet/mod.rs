@@ -1821,9 +1821,7 @@ impl Wallet {
                     }
                 });
 
-                if (color_id.is_default() && outgoings.len() > 1)
-                    || (params.drain_to.is_some() && (params.drain_wallet || utxo_exists))
-                {
+                if (params.drain_to.is_some() && (params.drain_wallet || utxo_exists)) {
                     if let NoChange {
                         dust_threshold,
                         remaining_amount,
@@ -1840,6 +1838,8 @@ impl Wallet {
                             available,
                         }));
                     }
+                } else if (color_id.is_default() && outgoings.len() > 1) {
+                    // We have colored coin outputs but no TPC output
                 } else {
                     return Err(CreateTxError::NoRecipients);
                 }
