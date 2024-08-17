@@ -2921,8 +2921,21 @@ impl Wallet {
     /// [`SyncRequest`] collects all revealed script pubkeys from the wallet keychain needed to
     /// start a blockchain sync with a spk based blockchain client.
     pub fn start_sync_with_revealed_spks(&self) -> SyncRequest {
+        let contract_spks = self
+            .contracts
+            .values()
+            .map(|c| {
+                self.create_pay_to_contract_script(
+                    &c.payment_base,
+                    c.contract.clone(),
+                    None,
+                ).unwrap()
+            })
+            .collect::<Vec<ScriptBuf>>();
+
         SyncRequest::from_chain_tip(self.chain.tip())
             .populate_with_revealed_spks(&self.indexed_graph.index, ..)
+            .chain_spks(contract_spks)
     }
 
     /// Create a [`FullScanRequest] for this wallet.
