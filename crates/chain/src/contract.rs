@@ -115,8 +115,11 @@ mod signers_container_tests {
             payment_base,
             spendable: true,
         };
-        let key =
-            contract.create_pay_to_contract_private_key(&payment_base_private_key, &payment_base, Network::Dev);
+        let key = contract.create_pay_to_contract_private_key(
+            &payment_base_private_key,
+            &payment_base,
+            Network::Dev,
+        );
         assert!(key.is_ok());
         assert_eq!(
             key.unwrap(),
