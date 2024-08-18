@@ -1398,7 +1398,7 @@ fn test_create_tx_with_contract() {
         .assume_checked();
     let mut builder = wallet.build_tx();
     builder
-        .add_recipient(addr.script_pubkey(), Amount::from_tap(25_000))
+        .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
         .add_contract_utxo(OutPoint { txid, vout: 0 });
     let mut psbt = builder.finish().unwrap();
     check_fee!(wallet, psbt);
@@ -1411,7 +1411,7 @@ fn test_create_tx_with_contract() {
         sent_received,
         (
             Amount::from_tap(50_000),
-            Amount::from_tap(25_000) - psbt.fee_amount().unwrap()
+            Amount::from_tap(2_000) - psbt.fee_amount().unwrap()
         )
     );
 
@@ -1426,6 +1426,95 @@ fn test_create_tx_with_contract() {
 
     let ret = finished.unwrap();
     assert!(ret, "transaction should be signed");
+}
+
+#[test]
+fn test_create_tx_with_contract_unspendable() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let (mut wallet, txid, address, contract) =
+        get_funded_wallet_with_p2c_and_change(get_test_pkh(), change_desc);
+    let contract_id = contract.clone().contract_id;
+    let mut contracts = BTreeMap::new();
+    contracts.insert(contract_id.clone(), contract.clone());
+
+    let addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+
+    // make contract unspendable
+    wallet.update_contract(contract_id.clone(), false);
+    {
+        // Can use as contract utxo
+        let mut builder = wallet.build_tx();
+        builder
+            .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
+            .add_contract_utxo(OutPoint { txid, vout: 0 });
+
+        let mut psbt = builder.finish().unwrap();
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        let ret = finished.unwrap();
+        assert!(ret, "can spend contract utxo");
+    }
+    {
+        // Can not use as ordinal utxo
+        let mut builder = wallet.build_tx();
+        builder.add_recipient(addr.script_pubkey(), Amount::from_tap(48_000));
+
+        let ret = builder.finish();
+        assert!(ret.is_err(), "can spend as ordinal utxo");
+    }
+
+    // make contract spendable
+    wallet.update_contract(contract_id.clone(), true);
+
+    {
+        // Can use as contract utxo
+        let mut builder = wallet.build_tx();
+        builder
+            .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
+            .add_contract_utxo(OutPoint { txid, vout: 0 });
+
+        let mut psbt = builder.finish().unwrap();
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        let ret = finished.unwrap();
+        println!("test_create_tx_with_contract_unspendable: {:?}", ret);
+        assert!(ret, "can spend as contract");
+    }
+
+    {
+        // Can use as ordinal utxo
+        let mut builder = wallet.build_tx();
+        builder.add_recipient(addr.script_pubkey(), Amount::from_tap(48_000));
+
+        let mut psbt = builder.finish().unwrap();
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        let ret = finished.unwrap();
+        assert!(ret, "can spend as ordinal utxo");
+    }
 }
 
 // TODO: Fix this test
