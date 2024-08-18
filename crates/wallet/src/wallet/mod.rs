@@ -437,11 +437,6 @@ pub enum GenerateContractError {
     },
     /// Invalid address
     InvalidAddress(tapyrus::address::Error),
-    /// Payment base is invalid.
-    InvalidPublicKey {
-        /// public key(payment base).
-        public_key: PublicKey,
-    },
 }
 
 impl fmt::Display for GenerateContractError {
@@ -452,9 +447,6 @@ impl fmt::Display for GenerateContractError {
             }
             GenerateContractError::ContractTooLarge { length } => {
                 write!(f, "contract is too large (size: {})", length)
-            }
-            GenerateContractError::InvalidPublicKey { public_key } => {
-                write!(f, "invalid payment base  ({})", public_key)
             }
             GenerateContractError::InvalidAddress(e) => e.fmt(f),
         }
@@ -1048,18 +1040,6 @@ impl Wallet {
                 length: contract.len(),
             });
         }
-        let index = match self
-            .indexed_graph
-            .index
-            .index_of_spk(ScriptBuf::new_p2pkh(&payment_base.pubkey_hash()).as_script())
-        {
-            Some(i) => i,
-            None => {
-                return Err(GenerateContractError::InvalidPublicKey {
-                    public_key: payment_base.clone(),
-                })
-            }
-        };
         let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
         let pubkey = payment_base
             .inner
@@ -2817,6 +2797,14 @@ impl Wallet {
         self.persist.stage(ChangeSet::from(indexed_graph_changeset));
     }
 
+    /// Return if specified payment base is in wallet.
+    fn is_valid_payment_base(&self, payment_base: &PublicKey) -> bool {
+        self.indexed_graph
+            .index
+            .index_of_spk(ScriptBuf::new_p2pkh(&payment_base.pubkey_hash()).as_script())
+            .is_some()
+    }
+
     /// Store pay-to-contract information to the wallet.
     pub fn store_contract(
         &mut self,
@@ -2829,6 +2817,13 @@ impl Wallet {
         if let Some(c) = self.contracts.get(&contract_id) {
             return Err(CreateContractError::ContractAlreadyExist { contract_id });
         }
+
+        if !self.is_valid_payment_base(&payment_base) {
+            return Err(CreateContractError::InvalidPublicKey {
+                public_key: payment_base.clone(),
+            });
+        }
+
         let new_contract = {
             let spk = self
                 .create_pay_to_contract_script(&payment_base, contract.clone(), None)

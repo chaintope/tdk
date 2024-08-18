@@ -2953,13 +2953,7 @@ fn test_pay_to_contract_key() {
     let change_desc = get_test_pkh();
     let wallet = Wallet::new_no_persist(desc, change_desc, Network::Prod).unwrap();
 
-    let payment_base =
-        PublicKey::from_str("02046e89be90d26872e1318feb7d5ca7a6f588118e76f4906cf5b8ef262b63ab49")
-            .unwrap();
     let contract = "metadata".as_bytes().to_vec();
-
-    let key = wallet.pay_to_contract_key(&payment_base, contract.clone());
-    assert!(key.is_err());
 
     let payment_base = xprv_to_public_key("xprv9s21ZrQH143K4EXURwMHuLS469fFzZyXk7UUpdKfQwhoHcAiYTakpe8pMU2RiEdvrU9McyuE7YDoKcXkoAwEGoK53WBDnKKv2zZbb9BzttX");
     let key = wallet.pay_to_contract_key(&payment_base, contract.clone());
