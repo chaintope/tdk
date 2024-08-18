@@ -1034,15 +1034,8 @@ impl Wallet {
                 length: contract.len(),
             });
         }
-        let commitment: Scalar = self.create_pay_to_contract_commitment(payment_base, contract);
-        let pubkey = payment_base
-            .inner
-            .add_exp_tweak(&self.secp, &commitment)
-            .unwrap();
-        let key = PublicKey {
-            compressed: true,
-            inner: pubkey,
-        };
+        let key =
+            Contract::create_pay_to_contract_public_key(payment_base, contract, self.secp_ctx());
         Ok(key)
     }
 
