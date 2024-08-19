@@ -19,6 +19,7 @@ use tdk_chain::{ConfirmationTime, Contract};
 use serde::{Deserialize, Serialize};
 
 /// Types of keychains
+#[repr(u8)]
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(inttype)]
 pub enum KeychainKind {
@@ -26,9 +27,11 @@ pub enum KeychainKind {
     External = 0,
     /// Internal keychain, used for deriving change addresses.
     Internal = 1,
-    PaytoContract {
-        contract: Contract
-    } = 2,
+    /// Pay to Contract keychain, used for deriving contract addresses.
+    PayToContract {
+        /// The contract's public key
+        p2c_pk: tapyrus::PublicKey,
+    },
 }
 
 impl KeychainKind {
@@ -37,7 +40,7 @@ impl KeychainKind {
         match self {
             KeychainKind::External => b'e',
             KeychainKind::Internal => b'i',
-            KeychainKind::PaytoContract { contract } => b'c',
+            KeychainKind::PayToContract { .. } => b'c',
         }
     }
 }
@@ -47,7 +50,7 @@ impl AsRef<[u8]> for KeychainKind {
         match self {
             KeychainKind::External => b"e",
             KeychainKind::Internal => b"i",
-            KeychainKind::PaytoContract { contract } => b"c",
+            KeychainKind::PayToContract { .. } => b"c",
         }
     }
 }

@@ -207,8 +207,10 @@ macro_rules! expand_make_bipxx {
                     }
                     KeychainKind::Internal => {
                         derivation_path.push(bip32::ChildNumber::from_normal_idx(1)?)
-                    },
-                    _ => {}
+                    }
+                    KeychainKind::PayToContract { .. } => {
+                        return Err(DescriptorError::UnsupportedKeychainKind);
+                    }
                 };
 
                 let derivation_path: bip32::DerivationPath = derivation_path.into();
@@ -225,7 +227,9 @@ macro_rules! expand_make_bipxx {
                 let derivation_path: bip32::DerivationPath = match keychain {
                     KeychainKind::External => vec![bip32::ChildNumber::from_normal_idx(0)?].into(),
                     KeychainKind::Internal => vec![bip32::ChildNumber::from_normal_idx(1)?].into(),
-                    _ => vec![].into(),
+                    KeychainKind::PayToContract { .. } => {
+                        return Err(DescriptorError::UnsupportedKeychainKind);
+                    }
                 };
 
                 let source_path = bip32::DerivationPath::from(vec![

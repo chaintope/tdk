@@ -3797,10 +3797,11 @@ fn test_store_contract() {
     let mut wallet = Wallet::new(desc, change_desc, db, Network::Dev).expect("must init wallet");
     let descriptor = wallet.get_descriptor_for_keychain(KeychainKind::External);
     let payment_base = descriptor_to_public_key(descriptor).unwrap();
+    let contract = vec![0x00, 0x01, 0x02, 0x03];
 
     let result = wallet.store_contract(
         "contract_id".to_string(),
-        vec![0x00, 0x01, 0x02, 0x03],
+        contract.clone(),
         payment_base.clone(),
         true,
     );
@@ -3819,6 +3820,29 @@ fn test_store_contract() {
 
     let result = wallet.update_contract("invalid_id".to_string(), false);
     assert!(result.is_err());
+
+    // Check the descriptor for the pay to contract is exists.
+    let public_key = wallet
+        .pay_to_contract_key(&payment_base, contract.clone())
+        .unwrap();
+    let _descriptor =
+        wallet.get_descriptor_for_keychain(KeychainKind::PayToContract { p2c_pk: public_key });
+
+    // Check the sync request includes the spk for the pay to contract.
+    let mut sync_request = wallet.start_sync_with_revealed_spks();
+    let p2c_address = wallet
+        .create_pay_to_contract_address(&payment_base, contract.clone(), None)
+        .unwrap();
+    let p2c_spk = p2c_address.script_pubkey();
+    assert!(sync_request.spks.any(|spk| { spk == p2c_spk }));
+
+    // Check the full sync request includes the spk for the pay to contract
+    let mut full_sync_request = wallet.start_full_scan();
+    let mut spks = full_sync_request
+        .spks_by_keychain
+        .get_mut(&KeychainKind::PayToContract { p2c_pk: public_key });
+    assert!(spks.is_some());
+    assert!(spks.unwrap().any(|(i, spk)| { spk == p2c_spk }));
 }
 
 #[test]
