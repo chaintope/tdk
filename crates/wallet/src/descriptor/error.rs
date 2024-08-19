@@ -44,6 +44,8 @@ pub enum Error {
     Hex(tapyrus::hex::HexToBytesError),
     /// The provided wallet descriptors are identical
     ExternalAndInternalAreTheSame,
+    /// The keychain kind is not supported
+    UnsupportedKeychainKind,
 }
 
 impl From<crate::keys::KeyError> for Error {
@@ -83,6 +85,9 @@ impl fmt::Display for Error {
             Self::Hex(err) => write!(f, "Hex decoding error: {}", err),
             Self::ExternalAndInternalAreTheSame => {
                 write!(f, "External and internal descriptors are the same")
+            }
+            Error::UnsupportedKeychainKind => {
+                write!(f, "The keychain kind is not supported")
             }
         }
     }

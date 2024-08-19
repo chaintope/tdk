@@ -1474,6 +1474,7 @@ impl Wallet {
         let signers = match keychain {
             KeychainKind::External => Arc::make_mut(&mut self.signers),
             KeychainKind::Internal => Arc::make_mut(&mut self.change_signers),
+            KeychainKind::PayToContract { .. } => Arc::make_mut(&mut self.signers),
         };
 
         signers.add_external(signer.id(&self.secp), ordering, signer);
@@ -1501,6 +1502,7 @@ impl Wallet {
         match keychain {
             KeychainKind::External => Arc::clone(&self.signers),
             KeychainKind::Internal => Arc::clone(&self.change_signers),
+            KeychainKind::PayToContract { .. } => Arc::clone(&self.signers),
         }
     }
 
@@ -2187,6 +2189,7 @@ impl Wallet {
         let signers = match keychain {
             KeychainKind::External => &self.signers,
             KeychainKind::Internal => &self.change_signers,
+            KeychainKind::PayToContract { .. } => &self.signers,
         };
 
         self.public_descriptor(keychain).extract_policy(
@@ -2875,6 +2878,34 @@ impl Wallet {
 
             self.contracts
                 .insert(contract_id.clone(), new_contract.clone());
+
+            // Insert p2c public key descriptor.
+            let p2c_pk = self
+                .pay_to_contract_key(&new_contract.payment_base, new_contract.contract.clone())
+                .unwrap();
+            let keychain_kind = KeychainKind::PayToContract {
+                p2c_pk: p2c_pk.clone(),
+            };
+            let p2c_descriptor = Descriptor::new_pkh(DescriptorPublicKey::Single(SinglePub {
+                key: SinglePubKey::FullKey(p2c_pk),
+                origin: None,
+            }))
+            .unwrap();
+            let txout_index_changeset = self
+                .indexed_graph
+                .index
+                .insert_descriptor(keychain_kind, p2c_descriptor);
+            let (_, reveal_changeset) = self
+                .indexed_graph
+                .index
+                .reveal_to_target(&keychain_kind, 0)
+                .unwrap();
+            changeset
+                .indexed_tx_graph
+                .indexer
+                .append(txout_index_changeset);
+            changeset.indexed_tx_graph.indexer.append(reveal_changeset);
+
             self.persist
                 .stage_and_commit(changeset)
                 .map_err(|e| CreateContractError::Error {
