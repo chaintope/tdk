@@ -89,7 +89,6 @@ impl Contract {
 
 #[cfg(test)]
 mod signers_container_tests {
-    use core::str::FromStr;
     use std::string::ToString;
 
     use tapyrus::key::Secp256k1;
