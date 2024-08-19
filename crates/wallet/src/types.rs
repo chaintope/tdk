@@ -19,12 +19,18 @@ use tdk_chain::ConfirmationTime;
 use serde::{Deserialize, Serialize};
 
 /// Types of keychains
+#[repr(u8)]
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum KeychainKind {
     /// External keychain, used for deriving recipient addresses.
     External = 0,
     /// Internal keychain, used for deriving change addresses.
     Internal = 1,
+    /// Pay to Contract keychain, used for deriving contract addresses.
+    PayToContract {
+        /// The contract's public key
+        p2c_pk: tapyrus::PublicKey,
+    },
 }
 
 impl KeychainKind {
@@ -33,6 +39,7 @@ impl KeychainKind {
         match self {
             KeychainKind::External => b'e',
             KeychainKind::Internal => b'i',
+            KeychainKind::PayToContract { .. } => b'c',
         }
     }
 }
@@ -42,6 +49,7 @@ impl AsRef<[u8]> for KeychainKind {
         match self {
             KeychainKind::External => b"e",
             KeychainKind::Internal => b"i",
+            KeychainKind::PayToContract { .. } => b"c",
         }
     }
 }
