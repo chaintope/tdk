@@ -12,7 +12,10 @@
 //! Wallet
 //!
 //! This module defines the [`Wallet`].
-use crate::collections::{BTreeMap, HashMap};
+use crate::{
+    collections::{BTreeMap, HashMap},
+    keys::DescriptorKey,
+};
 use alloc::{
     borrow::ToOwned,
     boxed::Box,
@@ -2351,8 +2354,14 @@ impl Wallet {
                     c.contract.clone(),
                     &self.secp_ctx(),
                 );
-                if let Ok(ddk) = DefiniteDescriptorKey::from_str(&public_key.to_string()) {
-                    return Some(Descriptor::<DefiniteDescriptorKey>::new_pk(ddk));
+
+                if let Ok(ddk) = DefiniteDescriptorKey::from_str(
+                    &public_key.inner.serialize().to_lower_hex_string(),
+                ) {
+                    return Some(
+                        Descriptor::<DefiniteDescriptorKey>::new_pkh(ddk)
+                            .expect("can not create new descriptor"),
+                    );
                 }
             }
             return None;
