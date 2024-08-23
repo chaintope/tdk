@@ -14,7 +14,7 @@
 //! This module defines the [`Wallet`].
 use crate::{
     collections::{BTreeMap, HashMap},
-    keys::DescriptorKey,
+    keys::{DescriptorKey, KeyError},
 };
 use alloc::{
     borrow::ToOwned,
@@ -28,7 +28,7 @@ use core::ops::Deref;
 use core::{fmt, str::FromStr};
 use descriptor::error::Error as DescriptorError;
 use miniscript::{
-    descriptor::{SinglePub, SinglePubKey},
+    descriptor::{DescriptorSecretKey, SinglePub, SinglePubKey},
     psbt::{PsbtExt, PsbtInputExt, PsbtInputSatisfier},
     DefiniteDescriptorKey, Descriptor, DescriptorPublicKey, ToPublicKey,
 };
@@ -75,7 +75,7 @@ pub mod error;
 pub use utils::IsDust;
 
 use coin_selection::DefaultCoinSelectionAlgorithm;
-use signer::{SignOptions, SignerOrdering, SignersContainer, TransactionSigner};
+use signer::{SignOptions, SignerOrdering, SignerWrapper, SignersContainer, TransactionSigner};
 use tx_builder::{FeePolicy, TxBuilder, TxParams};
 use utils::{check_nsequence_rbf, After, Older, SecpCtx};
 
@@ -108,6 +108,7 @@ const COINBASE_MATURITY: u32 = 100;
 pub struct Wallet {
     signers: Arc<SignersContainer>,
     change_signers: Arc<SignersContainer>,
+    contract_signers: Arc<SignersContainer>,
     chain: LocalChain,
     indexed_graph: IndexedTxGraph<ConfirmationTimeHeightAnchor, KeychainTxOutIndex<KeychainKind>>,
     persist: Persist<ChangeSet>,
@@ -582,13 +583,13 @@ impl Wallet {
         let (chain, chain_changeset) = LocalChain::from_genesis_hash(genesis_hash);
         let mut index = KeychainTxOutIndex::<KeychainKind>::default();
 
-        let (signers, change_signers) =
-            create_signers(&mut index, &secp, descriptor, change_descriptor, network)
+        let contracts: BTreeMap<String, Contract> = contract::ChangeSet::new();
+
+        let (signers, change_signers, contract_signers) =
+            create_signers(&mut index, &secp, descriptor, change_descriptor, network, contracts.clone())
                 .map_err(NewError::Descriptor)?;
 
         let indexed_graph = IndexedTxGraph::new(index);
-
-        let contracts: BTreeMap<String, Contract> = contract::ChangeSet::new();
 
         let mut persist = Persist::new(db);
         persist.stage(ChangeSet {
@@ -602,6 +603,7 @@ impl Wallet {
         let wallet = Wallet {
             signers,
             change_signers,
+            contract_signers,
             network,
             chain,
             indexed_graph,
@@ -689,20 +691,23 @@ impl Wallet {
             .ok_or(LoadError::MissingDescriptor(KeychainKind::Internal))?
             .clone();
 
-        let (signers, change_signers) =
-            create_signers(&mut index, &secp, descriptor, change_descriptor, network)
+        let contracts = changeset.contract;
+
+        let (signers, change_signers, contract_signers) =
+            create_signers(&mut index, &secp, descriptor, change_descriptor, network, contracts.clone())
                 .expect("Can't fail: we passed in valid descriptors, recovered from the changeset");
 
         let mut indexed_graph = IndexedTxGraph::new(index);
         indexed_graph.apply_changeset(changeset.indexed_tx_graph);
 
-        let contracts = changeset.contract;
+        
 
         let persist = Persist::new(db);
 
         let mut wallet = Wallet {
             signers,
             change_signers,
+            contract_signers,
             chain,
             indexed_graph,
             persist,
@@ -854,6 +859,31 @@ impl Wallet {
                     });
                 }
 
+                for (_, c) in &wallet.contracts {
+                    let script = wallet.create_pay_to_contract_script(&c.payment_base, c.contract, None);
+                        if let Some(dpk) = wallet.indexed_graph.index.get_descriptor(&KeychainKind::PaytoContract { contract: c.clone() }) {
+                            match dpk {
+                                Descriptor::Bare(_) => continue,
+                                Descriptor::Pkh(pkh) => {
+                                    expected_change_descriptor_keymap.append(&mut expected_change_descriptor_keymap);
+                                    if let Some(dsk) = expected_change_descriptor_keymap.get(pkh.as_inner()) {
+                                        if let Ok(sk) = wallet.get_secret_key_from_dsk(dsk) {
+                                            if let Ok(private_key) = c.create_pay_to_contract_private_key(&PrivateKey::new( sk, wallet.network()), &c.payment_base, wallet.network()) {
+                                                println!("contract to private key {:?}, {:?}", c.payment_base, private_key);
+                                                let p2c_signer = Arc::new(SignerWrapper::new(private_key, SignerContext::Legacy));
+                                                wallet.add_signer(
+                                                    KeychainKind::External,
+                                                    SignerOrdering::default(),
+                                                    p2c_signer.clone(),
+                                                );
+                                            }
+                                        }
+                                    }
+                                },
+                                Descriptor::Sh(_) => continue,
+                            }
+                        }
+                }
                 Ok(wallet)
             }
             None => Self::new_with_genesis_hash(
@@ -870,6 +900,18 @@ impl Wallet {
                 NewError::Descriptor(e) => NewOrLoadError::Descriptor(e),
                 NewError::Persist(e) => NewOrLoadError::Persist(e),
             }),
+        }
+    }
+
+    fn get_secret_key_from_dsk(&self, dsk: &DescriptorSecretKey) -> Result<SecretKey, KeyError> {
+        match dsk {
+            DescriptorSecretKey::Single(single_priv) => Ok(single_priv.key.inner),
+            DescriptorSecretKey::XPrv(xprv) => {
+                // 派生パスを適用して秘密鍵を取り出す場合
+                Ok(xprv.xkey.private_key)
+            }
+            // 他のタイプの鍵はサポートしていないため、エラーを返す
+            _ => Err(KeyError::Message(format!("Not supported key type: {:?}", dsk))),
         }
     }
 
@@ -1471,9 +1513,11 @@ impl Wallet {
         ordering: SignerOrdering,
         signer: Arc<dyn TransactionSigner>,
     ) {
+        println!("add_signer {:?}", keychain);
         let signers = match keychain {
             KeychainKind::External => Arc::make_mut(&mut self.signers),
             KeychainKind::Internal => Arc::make_mut(&mut self.change_signers),
+            KeychainKind::PaytoContract { contract } => Arc::make_mut(&mut self.contract_signers)
         };
 
         signers.add_external(signer.id(&self.secp), ordering, signer);
@@ -1501,6 +1545,7 @@ impl Wallet {
         match keychain {
             KeychainKind::External => Arc::clone(&self.signers),
             KeychainKind::Internal => Arc::clone(&self.change_signers),
+            KeychainKind::PaytoContract { contract } => Arc::clone(&self.contract_signers),
         }
     }
 
@@ -2184,6 +2229,7 @@ impl Wallet {
         let signers = match keychain {
             KeychainKind::External => &self.signers,
             KeychainKind::Internal => &self.change_signers,
+            KeychainKind::PaytoContract { ref contract } => &self.contract_signers,
         };
 
         self.public_descriptor(keychain).extract_policy(
@@ -2995,7 +3041,9 @@ fn create_signers<E: IntoWalletDescriptor>(
     descriptor: E,
     change_descriptor: E,
     network: Network,
-) -> Result<(Arc<SignersContainer>, Arc<SignersContainer>), DescriptorError> {
+    contracts: BTreeMap<String, Contract>
+) -> Result<(Arc<SignersContainer>, Arc<SignersContainer>, Arc<SignersContainer>), DescriptorError> {
+    println!("create_signers: {:?}", contracts);
     let descriptor = into_wallet_descriptor_checked(descriptor, secp, network)?;
     let change_descriptor = into_wallet_descriptor_checked(change_descriptor, secp, network)?;
     if descriptor.0 == change_descriptor.0 {
@@ -3008,9 +3056,11 @@ fn create_signers<E: IntoWalletDescriptor>(
 
     let (descriptor, keymap) = change_descriptor;
     let change_signers = Arc::new(SignersContainer::build(keymap, &descriptor, secp));
-    let _ = index.insert_descriptor(KeychainKind::Internal, descriptor);
+    let _ = index.insert_descriptor(KeychainKind::Internal, descriptor.clone());
 
-    Ok((signers, change_signers))
+    let keymap = BTreeMap::new();
+    let contract_signers = Arc::new(SignersContainer::build(keymap, &descriptor, secp));
+    Ok((signers, change_signers, contract_signers))
 }
 
 /// Transforms a [`FeeRate`] to `f64` with unit as sat/vb.

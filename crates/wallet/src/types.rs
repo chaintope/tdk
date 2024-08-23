@@ -14,17 +14,21 @@ use core::convert::AsRef;
 
 use tapyrus::blockdata::transaction::{OutPoint, Sequence, TxOut};
 use tapyrus::psbt;
-use tdk_chain::ConfirmationTime;
+use tdk_chain::{ConfirmationTime, Contract};
 
 use serde::{Deserialize, Serialize};
 
 /// Types of keychains
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[repr(inttype)]
 pub enum KeychainKind {
     /// External keychain, used for deriving recipient addresses.
     External = 0,
     /// Internal keychain, used for deriving change addresses.
     Internal = 1,
+    PaytoContract {
+        contract: Contract
+    } = 2,
 }
 
 impl KeychainKind {
@@ -33,6 +37,7 @@ impl KeychainKind {
         match self {
             KeychainKind::External => b'e',
             KeychainKind::Internal => b'i',
+            KeychainKind::PaytoContract { contract } => b'c',
         }
     }
 }
@@ -42,6 +47,7 @@ impl AsRef<[u8]> for KeychainKind {
         match self {
             KeychainKind::External => b"e",
             KeychainKind::Internal => b"i",
+            KeychainKind::PaytoContract { contract } => b"c",
         }
     }
 }
@@ -50,6 +56,7 @@ impl AsRef<[u8]> for KeychainKind {
 ///
 /// [`Wallet`]: crate::Wallet
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+
 pub struct LocalOutput {
     /// Reference to a transaction output
     pub outpoint: OutPoint,
