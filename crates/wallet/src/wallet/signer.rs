@@ -217,12 +217,13 @@ pub enum SignerContext {
 pub struct SignerWrapper<S: Sized + fmt::Debug + Clone> {
     signer: S,
     ctx: SignerContext,
+    contracts: Vec<Contract>,
 }
 
 impl<S: Sized + fmt::Debug + Clone> SignerWrapper<S> {
     /// Create a wrapped signer from a signer and a context
-    pub fn new(signer: S, ctx: SignerContext) -> Self {
-        SignerWrapper { signer, ctx }
+    pub fn new(signer: S, ctx: SignerContext, contracts: Vec<Contract>) -> Self {
+        SignerWrapper { signer, ctx,     contracts,}
     }
 }
 
@@ -290,7 +291,9 @@ impl<T: InputSigner> TransactionSigner for T {
         secp: &SecpCtx,
     ) -> Result<(), SignerError> {
         for input_index in 0..psbt.inputs.len() {
+            println!("sign_input -- START -- {:?}", input_index);
             self.sign_input(psbt, input_index, sign_options, secp)?;
+            println!("sign_input --  END  -- {:?}", input_index);
         }
 
         Ok(())
@@ -315,6 +318,7 @@ impl InputSigner for SignerWrapper<DescriptorXKey<Xpriv>> {
         sign_options: &SignOptions,
         secp: &SecpCtx,
     ) -> Result<(), SignerError> {
+        println!("  sign_input DescriptorXKey<Xpriv> {:?}, {:?}", self, input_index);
         if input_index >= psbt.inputs.len() {
             return Err(SignerError::InputIndexOutOfRange);
         }
@@ -357,6 +361,7 @@ impl InputSigner for SignerWrapper<DescriptorXKey<Xpriv>> {
         };
 
         let computed_pk = secp256k1::PublicKey::from_secret_key(secp, &derived_key.private_key);
+        println!("  sign_input DescriptorXKey<Xpriv> computed_pk {:?}", computed_pk);
         let valid_key = match public_key {
             SinglePubKey::FullKey(pk) if pk.inner == computed_pk => true,
             SinglePubKey::XOnly(x_only) if XOnlyPublicKey::from(computed_pk) == x_only => true,
@@ -372,7 +377,7 @@ impl InputSigner for SignerWrapper<DescriptorXKey<Xpriv>> {
                 inner: derived_key.private_key,
             };
 
-            SignerWrapper::new(priv_key, self.ctx).sign_input(psbt, input_index, sign_options, secp)
+            SignerWrapper::new(priv_key, self.ctx, self.contracts.clone()).sign_input(psbt, input_index, sign_options, secp)
         }
     }
 }
@@ -411,9 +416,10 @@ impl InputSigner for SignerWrapper<DescriptorMultiXKey<Xpriv>> {
         sign_options: &SignOptions,
         secp: &SecpCtx,
     ) -> Result<(), SignerError> {
+        println!("sign_input DescriptorMultiXKey<Xpriv> {:?}, {:?}", self, input_index);
         let xkeys = multikey_to_xkeys(self.signer.clone());
         for xkey in xkeys {
-            SignerWrapper::new(xkey, self.ctx).sign_input(psbt, input_index, sign_options, secp)?
+            SignerWrapper::new(xkey, self.ctx, self.contracts.clone()).sign_input(psbt, input_index, sign_options, secp)?
         }
         Ok(())
     }
@@ -443,43 +449,44 @@ impl SignerWrapper<PrivateKey> {
         *script_pubkey == ScriptBuf::new_p2pkh(&public_key.pubkey_hash())
     }
 
-    fn find_contract_keys(
+    fn find_contract_key(
         &self,
-        sign_options: &SignOptions,
         script_pubkey: &ScriptBuf,
         pubkey: &PublicKey,
         secp: &SecpCtx,
     ) -> Option<(SecretKey, PublicKey)> {
-        sign_options.contracts.iter().find_map(|(_, contract)| {
+        for contract in self.contracts.clone() {
             let p2c_private_key = contract
-                .create_pay_to_contract_private_key(&self, pubkey, self.network)
-                .ok()?;
+            .create_pay_to_contract_private_key(&self, pubkey, self.network)
+            .ok()?;
             let p2c_public_key = p2c_private_key.public_key(secp);
             if self.same_pubkey_hash(script_pubkey, &p2c_public_key) {
-                Some((p2c_private_key.inner, p2c_public_key))
-            } else {
-                None
+                return Some((p2c_private_key.inner, p2c_public_key));
             }
-        })
+        }
+        None
     }
 
     fn get_secret_key(
         &self,
         utxo: &TxOut,
         pubkey: PublicKey,
-        sign_options: &SignOptions,
         secp: &SecpCtx,
     ) -> (SecretKey, PublicKey) {
+        if self.contracts.is_empty() {
+            return (self.inner, pubkey);
+        }
+
         if !self.is_relevant_script(&utxo.script_pubkey) {
             return (self.inner, pubkey);
         }
+
         let script_pubkey = utxo.script_pubkey.remove_color();
         if self.same_pubkey_hash(&script_pubkey, &pubkey) {
             return (self.inner, pubkey);
         }
 
-        self.find_contract_keys(sign_options, &script_pubkey, &pubkey, secp)
-            .unwrap_or((self.inner, pubkey))
+        self.find_contract_key(&script_pubkey, &pubkey, secp).unwrap_or_else(|| (self.inner, pubkey))
     }
 }
 impl InputSigner for SignerWrapper<PrivateKey> {
@@ -490,20 +497,25 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         sign_options: &SignOptions,
         secp: &SecpCtx,
     ) -> Result<(), SignerError> {
+        println!("  sign_input PrivateKey {:?}, {:?}", self, input_index);
         if input_index >= psbt.inputs.len() || input_index >= psbt.unsigned_tx.input.len() {
+            println!("  sign_input PrivateKey (InputIndexOutOfRange){:?}", input_index);
             return Err(SignerError::InputIndexOutOfRange);
         }
 
         if psbt.inputs[input_index].final_script_sig.is_some()
             || psbt.inputs[input_index].final_script_witness.is_some()
         {
+            println!("  sign_input PrivateKey (final_script_sig exists){:?}", psbt.inputs[input_index].final_script_sig);
             return Ok(());
         }
 
         let pubkey = PublicKey::from_private_key(secp, self);
         let utxo = psbt.get_utxo_for(input_index).unwrap();
 
+        println!("  sign_input PrivateKey (utxo){:?}", utxo);
         if psbt.inputs[input_index].partial_sigs.contains_key(&pubkey) {
+            println!("  sign_input PrivateKey (partial_sigs contains key){:?}", psbt.inputs[input_index].partial_sigs);
             return Ok(());
         }
 
@@ -512,10 +524,12 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         };
 
         // search for contract
-        let (secret_key, public_key) = self.get_secret_key(&utxo, pubkey, sign_options, secp);
+        println!("  sign_input PrivateKey ★★ p2c, {:?}", self.get_secret_key(&utxo, pubkey, secp));
+        // println!("  sign_input PrivateKey (secret_key){:?}", self.inner);
+        let (sk, pk) = self.get_secret_key(&utxo, pubkey, secp);
         sign_psbt_ecdsa(
-            &secret_key,
-            public_key,
+            &sk,
+            pk,
             &mut psbt.inputs[input_index],
             hash,
             hash_ty,
@@ -536,17 +550,20 @@ fn sign_psbt_ecdsa(
     secp: &SecpCtx,
     allow_grinding: bool,
 ) {
+    // println!("sign_psbt_ecdsa secret_key: {:?}", psbt_input);
     let msg = &Message::from(hash);
     let sig = if allow_grinding {
         secp.sign_ecdsa_low_r(msg, secret_key)
     } else {
         secp.sign_ecdsa(msg, secret_key)
     };
+    println!("sign_psbt_ecdsa sig: {:?}, {:?}", sig, pubkey.inner);
     secp.verify_ecdsa(msg, &sig, &pubkey.inner)
         .expect("invalid or corrupted ecdsa signature");
 
     let final_signature = ecdsa::Signature { sig, hash_ty };
     psbt_input.partial_sigs.insert(pubkey, final_signature);
+    // println!("sign_psbt_ecdsa inserted: {:?}, {:?}", pubkey, final_signature);
 }
 
 /// Defines the order in which signers are called
@@ -601,6 +618,13 @@ impl SignersContainer {
         _descriptor: &Descriptor<DescriptorPublicKey>,
         secp: &SecpCtx,
     ) -> SignersContainer {
+        Self::build_internal(keymap, Vec::new(), secp)
+    }
+    fn build_internal(
+        keymap: KeyMap,
+        contracts: Vec<Contract>,
+        secp: &SecpCtx,
+    ) -> SignersContainer {
         let mut container = SignersContainer::new();
 
         for (_pubkey, secret) in keymap {
@@ -615,22 +639,28 @@ impl SignersContainer {
                             .to_pubkeyhash(SigType::Ecdsa),
                     ),
                     SignerOrdering::default(),
-                    Arc::new(SignerWrapper::new(private_key.key, ctx)),
+                    Arc::new(SignerWrapper::new(private_key.key, ctx, contracts.clone())),
                 ),
                 DescriptorSecretKey::XPrv(xprv) => container.add_external(
                     SignerId::from(xprv.root_fingerprint(secp)),
                     SignerOrdering::default(),
-                    Arc::new(SignerWrapper::new(xprv, ctx)),
+                    Arc::new(SignerWrapper::new(xprv, ctx, contracts.clone())),
                 ),
                 DescriptorSecretKey::MultiXPrv(xprv) => container.add_external(
                     SignerId::from(xprv.root_fingerprint(secp)),
                     SignerOrdering::default(),
-                    Arc::new(SignerWrapper::new(xprv, ctx)),
+                    Arc::new(SignerWrapper::new(xprv, ctx, contracts.clone())),
                 ),
             };
         }
-
         container
+    }
+    pub fn build_with_contract(
+        keymap: KeyMap,
+        contracts: Vec<Contract>,
+        secp: &SecpCtx,
+    ) -> SignersContainer {
+        Self::build_internal(keymap, contracts, secp)
     }
 }
 
@@ -756,9 +786,6 @@ pub struct SignOptions {
     /// or not.
     /// Defaults to `true`, i.e., we always grind ECDSA signature to sign with low r.
     pub allow_grinding: bool,
-
-    /// Contracts for Pay-To-Contract transaction
-    pub contracts: BTreeMap<String, Contract>,
 }
 
 /// Customize which taproot script-path leaves the signer should sign.
@@ -788,7 +815,6 @@ impl Default for SignOptions {
             tap_leaves_options: TapLeavesOptions::default(),
             sign_with_tap_internal_key: true,
             allow_grinding: true,
-            contracts: BTreeMap::default(),
         }
     }
 }

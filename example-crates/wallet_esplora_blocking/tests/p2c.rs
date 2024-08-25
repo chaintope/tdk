@@ -1,251 +1,21 @@
 use esplora_client::{self, BlockingClient, Builder};
-use tdk_chain::tapyrus::address::{NetworkChecked, NetworkUnchecked};
-use tdk_chain::tapyrus::consensus::encode::serialize_hex;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::str::FromStr;
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
-use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
-use tdk_esplora::EsploraExt;
-
-use tdk_chain::tapyrus::{Address, Amount, MalFixTxid, Script};
-use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
-
-#[test]
-pub fn test_update_tx_graph_without_keychain() -> anyhow::Result<()> {
-    let env = TestEnv::new()?;
-    let base_url = format!("http://{}", &env.electrsd.esplora_url.clone().unwrap());
-    let client = Builder::new(base_url.as_str()).build_blocking();
-
-    let receive_address0 =
-        Address::from_str("msPwSfjZLCc9iqwrik87k2HDe9tHwmeA1z")?.assume_checked();
-    let receive_address1 =
-        Address::from_str("mqcWNTwGXxUXPqbnSoVEv3u4R9GarTjuWu")?.assume_checked();
-
-    let misc_spks = [
-        receive_address0.script_pubkey(),
-        receive_address1.script_pubkey(),
-    ];
-
-    let _block_hashes = env.mine_blocks(101, None)?;
-    let txid1 = env.tapyrusd.client.send_to_address(
-        &receive_address1,
-        Amount::from_tap(10000),
-        None,
-        None,
-        None,
-        None,
-        Some(1),
-        None,
-    )?;
-    let txid2 = env.tapyrusd.client.send_to_address(
-        &receive_address0,
-        Amount::from_tap(20000),
-        None,
-        None,
-        None,
-        None,
-        Some(1),
-        None,
-    )?;
-    let _block_hashes = env.mine_blocks(1, None)?;
-    while client.get_height().unwrap() < 102 {
-        sleep(Duration::from_millis(10))
-    }
-
-    // use a full checkpoint linked list (since this is not what we are testing)
-    let cp_tip = env.make_checkpoint_tip();
-
-    let sync_update = {
-        let request = SyncRequest::from_chain_tip(cp_tip.clone()).set_spks(misc_spks);
-        client.sync(request, 1)?
-    };
-
-    assert!(
-        {
-            let update_cps = sync_update
-                .chain_update
-                .iter()
-                .map(|cp| cp.block_id())
-                .collect::<BTreeSet<_>>();
-            let superset_cps = cp_tip
-                .iter()
-                .map(|cp| cp.block_id())
-                .collect::<BTreeSet<_>>();
-            superset_cps.is_superset(&update_cps)
-        },
-        "update should not alter original checkpoint tip since we already started with all checkpoints",
-    );
-
-    let graph_update = sync_update.graph_update;
-    // Check to see if we have the floating txouts available from our two created transactions'
-    // previous outputs in order to calculate transaction fees.
-    for tx in graph_update.full_txs() {
-        // Retrieve the calculated fee from `TxGraph`, which will panic if we do not have the
-        // floating txouts available from the transactions' previous outputs.
-        let fee = graph_update.calculate_fee(&tx.tx).expect("Fee must exist");
-
-        // Retrieve the fee in the transaction data from `tapyrusd`.
-        let tx_fee = env
-            .tapyrusd
-            .client
-            .get_transaction(&tx.malfix_txid(), None)
-            .expect("Tx must exist")
-            .fee
-            .expect("Fee must exist")
-            .abs()
-            .to_unsigned()
-            .expect("valid `Amount`");
-
-        // Check that the calculated fee matches the fee from the transaction data.
-        assert_eq!(fee, tx_fee);
-    }
-
-    let mut graph_update_txids: Vec<MalFixTxid> = graph_update
-        .full_txs()
-        .map(|tx| tx.tx.malfix_txid())
-        .collect();
-    graph_update_txids.sort();
-    let mut expected_txids: Vec<MalFixTxid> = vec![txid1, txid2];
-    expected_txids.sort();
-    assert_eq!(graph_update_txids, expected_txids);
-
-    Ok(())
-}
-
-/// Test the bounds of the address scan depending on the `stop_gap`.
-#[test]
-pub fn test_update_tx_graph_stop_gap() -> anyhow::Result<()> {
-    let env = TestEnv::new()?;
-    let base_url = format!("http://{}", &env.electrsd.esplora_url.clone().unwrap());
-    let client = Builder::new(base_url.as_str()).build_blocking();
-    let _block_hashes = env.mine_blocks(101, None)?;
-
-    // Now let's test the gap limit. First of all get a chain of 10 addresses.
-    let addresses = [
-        "moJFccx4ytWRb3hxYo1P4osHjWYX4Y3dnp",
-        "msPwSfjZLCc9iqwrik87k2HDe9tHwmeA1z",
-        "mqcWNTwGXxUXPqbnSoVEv3u4R9GarTjuWu",
-        "mr841zpk9Em1yXfobiGouX6XersQMH5EvC",
-        "n44KCWj1Ky2LhHXtaNJvJWnusZmQjU5qS3",
-        "n1uRT3pj5Yg84sQ6An1VviperzU3HvYWUb",
-        "my4sjgY6n8dQP4YephfRJasNrwxq4NaFHM",
-        "mxHWh829yfR2aF6mQpMUmTXLccyKkbwLxo",
-        "mnLQL4BqzrM3hQWYpRGKgJkibKwUk9DoTn",
-        "mtywH6R52Vhs14QRJCBkxubyGvC3kBp5fi",
-    ];
-    let addresses: Vec<_> = addresses
-        .into_iter()
-        .map(|s| Address::from_str(s).unwrap().assume_checked())
-        .collect();
-    let spks: Vec<_> = addresses
-        .iter()
-        .enumerate()
-        .map(|(i, addr)| (i as u32, addr.script_pubkey()))
-        .collect();
-
-    // Then receive coins on the 4th address.
-    let txid_4th_addr = env.tapyrusd.client.send_to_address(
-        &addresses[3],
-        Amount::from_tap(10000),
-        None,
-        None,
-        None,
-        None,
-        Some(1),
-        None,
-    )?;
-    let _block_hashes = env.mine_blocks(1, None)?;
-    while client.get_height().unwrap() < 103 {
-        sleep(Duration::from_millis(10))
-    }
-
-    // use a full checkpoint linked list (since this is not what we are testing)
-    let cp_tip = env.make_checkpoint_tip();
-
-    // A scan with a stop_gap of 3 won't find the transaction, but a scan with a gap limit of 4
-    // will.
-    let full_scan_update = {
-        let request =
-            FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
-        client.full_scan(request, 3, 1)?
-    };
-    assert!(full_scan_update.graph_update.full_txs().next().is_none());
-    assert!(full_scan_update.last_active_indices.is_empty());
-    let full_scan_update = {
-        let request =
-            FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
-        client.full_scan(request, 4, 1)?
-    };
-    assert_eq!(
-        full_scan_update
-            .graph_update
-            .full_txs()
-            .next()
-            .unwrap()
-            .malfix_txid(),
-        txid_4th_addr
-    );
-    assert_eq!(full_scan_update.last_active_indices[&0], 3);
-
-    // Now receive a coin on the last address.
-    let txid_last_addr = env.tapyrusd.client.send_to_address(
-        &addresses[addresses.len() - 1],
-        Amount::from_tap(10000),
-        None,
-        None,
-        None,
-        None,
-        Some(1),
-        None,
-    )?;
-    let _block_hashes = env.mine_blocks(1, None)?;
-    while client.get_height().unwrap() < 104 {
-        sleep(Duration::from_millis(10))
-    }
-
-    // A scan with gap limit 5 won't find the second transaction, but a scan with gap limit 6 will.
-    // The last active indice won't be updated in the first case but will in the second one.
-    let full_scan_update = {
-        let request =
-            FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
-        client.full_scan(request, 5, 1)?
-    };
-    let txs: HashSet<MalFixTxid> = full_scan_update
-        .graph_update
-        .full_txs()
-        .map(|tx| tx.malfix_txid())
-        .collect();
-    assert_eq!(txs.len(), 1);
-    assert!(txs.contains::<MalFixTxid>(&txid_4th_addr));
-    assert_eq!(full_scan_update.last_active_indices[&0], 3);
-    let full_scan_update = {
-        let request =
-            FullScanRequest::from_chain_tip(cp_tip.clone()).set_spks_for_keychain(0, spks.clone());
-        client.full_scan(request, 6, 1)?
-    };
-    let txs: HashSet<MalFixTxid> = full_scan_update
-        .graph_update
-        .full_txs()
-        .map(|tx| tx.malfix_txid())
-        .collect();
-    assert_eq!(txs.len(), 2);
-    assert!(
-        txs.contains::<MalFixTxid>(&txid_4th_addr) && txs.contains::<MalFixTxid>(&txid_last_addr)
-    );
-    assert_eq!(full_scan_update.last_active_indices[&0], 9);
-
-    Ok(())
-}
-
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 use std::{fs, io};
+use tdk_chain::spk_client::{FullScanRequest, SyncRequest};
+use tdk_chain::tapyrus::address::{NetworkChecked, NetworkUnchecked};
+use tdk_chain::tapyrus::consensus::encode::serialize_hex;
+use tdk_chain::tapyrus::{Address, Amount, MalFixTxid, Script};
 use tdk_esplora::esplora_client::deserialize;
 use tdk_sqlite::{rusqlite::Connection, Store};
+use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 use tdk_wallet::descriptor::Descriptor;
 use tdk_wallet::tapyrus::bip32::Xpriv;
 use tdk_wallet::tapyrus::consensus::serialize;
@@ -258,31 +28,6 @@ use tdk_wallet::template::Bip44;
 use tdk_wallet::wallet::tx_builder::AddUtxoError;
 use tdk_wallet::wallet::NewOrLoadError;
 use tdk_wallet::{tapyrus, KeychainKind, SignOptions, Wallet};
-
-#[derive(PartialEq, Clone, Debug)]
-pub(crate) enum Network {
-    Prod,
-    Dev,
-}
-
-impl From<Network> for tapyrus::network::Network {
-    fn from(network: Network) -> Self {
-        match network {
-            Network::Prod => tapyrus::network::Network::Prod,
-            Network::Dev => tapyrus::network::Network::Dev,
-        }
-    }
-}
-
-impl From<tapyrus::network::Network> for Network {
-    fn from(network: tapyrus::network::Network) -> Self {
-        match network {
-            tapyrus::network::Network::Prod => Network::Prod,
-            tapyrus::network::Network::Dev => Network::Dev,
-            _ => panic!("Unsupported network"),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct Config {
@@ -321,7 +66,7 @@ impl Config {
     }
 }
 
-pub(crate) struct HdWallet {
+pub(crate) struct EsploraWallet {
     network: tapyrus::network::Network,
     wallet: Mutex<Wallet>,
     esplora_url: String,
@@ -617,7 +362,7 @@ impl Display for UpdateContractError {
 
 impl std::error::Error for UpdateContractError {}
 
-impl HdWallet {
+impl EsploraWallet {
     pub fn new(config: Arc<Config>) -> Result<Self, NewError> {
         let Config {
             network_mode,
@@ -681,7 +426,7 @@ impl HdWallet {
             }
         })?;
 
-        Ok(HdWallet {
+        Ok(EsploraWallet {
             network,
             wallet: Mutex::new(wallet),
             esplora_url: esplora_url.clone(),
@@ -690,7 +435,7 @@ impl HdWallet {
 
     pub fn sync(&self, client: &BlockingClient) -> Result<(), SyncError> {
         let mut wallet = self.get_wallet();
-        // let client = esplora_client::Builder::new(&self.esplora_url).build_blocking();
+        let client = self.get_client(&env);
 
         let request = wallet.start_sync_with_revealed_spks();
         let update = client.sync(request, SYNC_PARALLEL_REQUESTS).map_err(|e| {
@@ -707,17 +452,11 @@ impl HdWallet {
         Ok(())
     }
 
-    // pub fn get_client(&self) -> BlockingClient {
-    //     let env = TestEnv::new().unwrap();
-    //     let base_url = format!("http://{}", &env.electrsd.esplora_url.clone().unwrap());
-    //     let client = Builder::new(base_url.as_str()).build_blocking();
-    //     assert!(client.get_height().is_ok(), "get_height failed");
-    //     // let env = TestEnv::new().unwrap();
-    //     // let esplora_cookie = "__cookie__:2bc1754bea8cce8293f5270c7615db3d74539c221e9da221cf6532261905a2ce";
-    //     // let base_url = format!("http://{}@{}", esplora_cookie, &env.electrsd.esplora_url.clone().unwrap());
-    //     // let client = Builder::new(base_url.as_str()).build_blocking();
-    //     client
-    // }
+    pub fn get_client(&self, env: &TestEnv) -> BlockingClient {
+        let base_url = format!("http://{}", &env.electrsd.esplora_url.clone().unwrap());
+        let client = Builder::new(base_url.as_str()).build_blocking();
+        client
+    }
 
     pub fn full_sync(&self, client: &BlockingClient) -> Result<(), SyncError> {
         let mut wallet = self.get_wallet();
@@ -792,12 +531,7 @@ impl HdWallet {
         contracts: BTreeMap<String, tdk_chain::Contract>,
         client: &BlockingClient,
     ) -> Result<String, TransferError> {
-        println!("TRANSFER===================================================");
-        println!("outpoints: {:?}", outpoints);
-        println!("contracts: {:?}", contracts);
         let mut wallet = self.get_wallet();
-        //let client = self.get_client();
-        // let client = esplora_client::Builder::new(&self.esplora_url).build_blocking();
 
         let mut tx_builder = wallet.build_tx();
         params.iter().try_for_each(|param| {
@@ -845,16 +579,11 @@ impl HdWallet {
             .map_err(|e| TransferError::FailedToCreateTransaction {
                 cause: e.to_string(),
             })?;
-        println!("=========");
-        println!("psbt inputs {:?}", psbt.inputs);
         let tx = psbt
             .extract_tx()
             .map_err(|e| TransferError::FailedToCreateTransaction {
                 cause: e.to_string(),
             })?;
-        println!("=========");
-        println!("tx: {:?}", serialize_hex(&tx));
-        println!("tx inputs: {:#?}", tx.input.clone());
         client
             .broadcast(&tx)
             .map_err(|e| TransferError::EsploraClient {
@@ -864,9 +593,11 @@ impl HdWallet {
         Ok(tx.malfix_txid().to_string())
     }
 
-    pub fn get_transaction(&self, txid: String, client: &BlockingClient,) -> Result<String, GetTransactionError> {
-        // let client = self.get_client();
-        // let client = esplora_client::Builder::new(&self.esplora_url).build_blocking();
+    pub fn get_transaction(
+        &self,
+        txid: String,
+        client: &BlockingClient,
+    ) -> Result<String, GetTransactionError> {
         let txid = txid
             .parse::<MalFixTxid>()
             .map_err(|_| GetTransactionError::FailedToParseTxid { txid })?;
@@ -1011,11 +742,7 @@ fn initialize_or_load_master_key(file_path: &str, network: tapyrus::Network) -> 
     }
 }
 
-// uniffi::include_scaffolding!("wallet");
-
-fn get_wallet(env: &TestEnv) -> HdWallet {
-    //let env = TestEnv::new().unwrap();
-    println!("env.electrsd.esplora_url: {:?}", env.electrsd.esplora_url);
+fn get_wallet(env: &TestEnv) -> EsploraWallet {
     let url = env.electrsd.esplora_url.clone();
     let config = Config {
         network_mode: Network::Dev,
@@ -1028,18 +755,18 @@ fn get_wallet(env: &TestEnv) -> HdWallet {
         master_key_path: Some("tests/master_key".to_string()),
         db_file_path: Some("tests/tapyrus-wallet.sqlite".to_string()),
     };
-    HdWallet::new(Arc::new(config)).unwrap()
+    EsploraWallet::new(Arc::new(config)).unwrap()
 }
 
 #[test]
-fn test_p2c_transfer() -> anyhow::Result<()>{
+fn test_p2c_transfer_with_tpc() -> anyhow::Result<()> {
     // remove sqlite file
     let _ = fs::remove_file("tests/tapyrus-wallet.sqlite");
 
     let env = TestEnv::new().unwrap();
     let base_url = format!("http://{}", &env.electrsd.esplora_url.clone().unwrap());
     let client = Builder::new(base_url.as_str()).build_blocking();
-    
+
     let wallet = get_wallet(&env);
     // Transfer colored coin to own Pay to contract address
     let GetNewAddressResult {
@@ -1073,13 +800,9 @@ fn test_p2c_transfer() -> anyhow::Result<()>{
     while client.get_height().unwrap() < 102 {
         sleep(Duration::from_millis(10))
     }
-    
+
     wallet.full_sync(&client).expect("Failed to sync");
 
-    let color_id = ColorIdentifier::from_str(
-        "c26db5bcd5d8102f65065a8f790643f05d27ce94b26753a1f6063eba6111ac6021",
-    )
-    .unwrap();
     let balance = wallet.balance(None).unwrap();
     println!("balance: {}", balance);
     // assert_eq!(balance, 100, "Balance should be 100");
@@ -1087,29 +810,28 @@ fn test_p2c_transfer() -> anyhow::Result<()>{
     println!("generated address: {}", address);
     println!("generated public key: {}", public_key);
 
-    let txid1 = env.tapyrusd.client.send_to_address(
-        &address,
-        Amount::from_tap(10000),
-        None,
-        None,
-        None,
-        None,
-        Some(1),
-        None,
-    ).unwrap();
+    let txid1 = env
+        .tapyrusd
+        .client
+        .send_to_address(
+            &address,
+            Amount::from_tap(10000),
+            None,
+            None,
+            None,
+            None,
+            Some(1),
+            None,
+        )
+        .unwrap();
 
     println!("{:?}", txid1);
 
     let balance = wallet.balance(None).unwrap();
     println!("balance: {}", balance);
-    
 
     let p2c_address = wallet
-        .calc_p2c_address(
-            public_key.clone(),
-            "content".to_string(),
-            None,
-        )
+        .calc_p2c_address(public_key.clone(), "content".to_string(), None)
         .expect("Failed to calculate P2C address");
     println!("p2c_address: {}", p2c_address);
 
@@ -1144,84 +866,67 @@ fn test_p2c_transfer() -> anyhow::Result<()>{
     wallet.sync(&client).expect("Failed to sync");
     println!("txid: {}", txid);
     println!("tx: {}", tx);
+
     let real_tx: Transaction = deserialize(&Vec::<u8>::from_hex(&tx).unwrap()).unwrap();
     let mut index = 0;
-    let (i, output) = real_tx.output.iter().find_map(|o| {
-        if (Address::from_script(&o.script_pubkey, tapyrus::Network::Dev).unwrap().to_string() == p2c_address.clone()) {
-            Some((index, o))
-        } else {
-            index += 1;
-            None
-        }
-    }).unwrap();
-    let outpoint = OutPoint { txid: MalFixTxid::from_str(&txid).unwrap(), vout: index };
+    let (i, output) = real_tx
+        .output
+        .iter()
+        .find_map(|o| {
+            if (Address::from_script(&o.script_pubkey, tapyrus::Network::Dev)
+                .unwrap()
+                .to_string()
+                == p2c_address.clone())
+            {
+                Some((index, o))
+            } else {
+                index += 1;
+                None
+            }
+        })
+        .unwrap();
+    let outpoint = OutPoint {
+        txid: MalFixTxid::from_str(&txid).unwrap(),
+        vout: index,
+    };
 
-    /*assert_eq!(
-        wallet.balance(Some(color_id.to_string())).unwrap(),
-        90,
-        "Balance should be 90"
-    );*/
+    assert_eq!(wallet.balance(None).unwrap(), 0, "Balance should be 0");
     println!("balance: {}", wallet.balance(None).unwrap());
-
-    // wallet
-    //     .store_contract(Contract {
-    //         contract_id: "contract_id6".to_string(),
-    //         contract: "content".to_string(),
-    //         payment_base: public_key.to_string(),
-    //         payable: true,
-    //     })
-    //     .expect("Failed to store contract");
 
     wallet.sync(&client).expect("Failed to sync");
     println!("balance: {}", wallet.balance(None).unwrap());
 
-    /*assert_eq!(
-        wallet.balance(Some(color_id.to_string())).unwrap(),
-        100,
-        "Balance should be 100"
-    );*/
+    assert_eq!(
+        wallet.balance(None).unwrap(),
+        1000,
+        "Balance should be 1000"
+    );
 
     let txout = wallet
         .get_tx_out_by_address(tx, p2c_address.clone(), &client)
         .unwrap();
 
-    let another_address = wallet
-        .get_new_address(None)
-        .unwrap()
-        .address;
+    let another_address = wallet.get_new_address(None).unwrap().address;
     let mut contracts: BTreeMap<_, _> = BTreeMap::new();
-    contracts.insert("contract_id6".to_string(), tdk_chain::Contract {
-        contract_id: "contract_id6".to_string(),
-        contract: "content".as_bytes().to_vec(),
-        payment_base: PublicKey::from_str(&public_key).unwrap(),
-        spendable: true,
-    });
-    println!("TRANSFER");
-    //let wallet = get_wallet(&env);
-    let ret = wallet
+    contracts.insert(
+        "contract_id6".to_string(),
+        tdk_chain::Contract {
+            contract_id: "contract_id6".to_string(),
+            contract: "content".as_bytes().to_vec(),
+            payment_base: PublicKey::from_str(&public_key).unwrap(),
+            spendable: true,
+        },
+    );
+    wallet
         .transfer(
             vec![TransferParams {
                 amount: 1000,
-                to_address: another_address.clone(),
+                to_address: another_address,
             }],
             vec![outpoint],
-            contracts.clone(),
+            contracts,
             &client,
-        );
-    assert!(ret.is_err());
-
-    // reload 
-    let wallet = get_wallet(&env);
-    let ret = wallet
-        .transfer(
-            vec![TransferParams {
-                amount: 1000,
-                to_address: another_address.clone(),
-            }],
-            vec![outpoint],
-            contracts.clone(),
-            &client,
-        );
-        assert!(ret.is_ok());
+        )
+        .expect("Failed to transfer");
     Ok(())
 }

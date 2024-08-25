@@ -1418,7 +1418,6 @@ fn test_create_tx_with_contract() {
     let finished = wallet.sign(
         &mut psbt,
         SignOptions {
-            contracts,
             trust_witness_utxo: true,
             ..Default::default()
         },
@@ -1454,7 +1453,6 @@ fn test_create_tx_with_contract_unspendable() {
         let finished = wallet.sign(
             &mut psbt,
             SignOptions {
-                contracts: contracts.clone(),
                 trust_witness_utxo: true,
                 ..Default::default()
             },
@@ -1486,7 +1484,6 @@ fn test_create_tx_with_contract_unspendable() {
         let finished = wallet.sign(
             &mut psbt,
             SignOptions {
-                contracts: contracts.clone(),
                 trust_witness_utxo: true,
                 ..Default::default()
             },
@@ -1506,7 +1503,6 @@ fn test_create_tx_with_contract_unspendable() {
         let finished = wallet.sign(
             &mut psbt,
             SignOptions {
-                contracts: contracts.clone(),
                 trust_witness_utxo: true,
                 ..Default::default()
             },

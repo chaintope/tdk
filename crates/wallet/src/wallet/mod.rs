@@ -14,7 +14,7 @@
 //! This module defines the [`Wallet`].
 use crate::{
     collections::{BTreeMap, HashMap},
-    keys::{DescriptorKey, KeyError},
+    keys::{DescriptorKey, KeyError}, template::P2Pkh,
 };
 use alloc::{
     borrow::ToOwned,
@@ -75,7 +75,7 @@ pub mod error;
 pub use utils::IsDust;
 
 use coin_selection::DefaultCoinSelectionAlgorithm;
-use signer::{SignOptions, SignerOrdering, SignerWrapper, SignersContainer, TransactionSigner};
+use signer::{SignOptions, SignerContext, SignerOrdering, SignerWrapper, SignersContainer, TransactionSigner};
 use tx_builder::{FeePolicy, TxBuilder, TxParams};
 use utils::{check_nsequence_rbf, After, Older, SecpCtx};
 
@@ -574,6 +574,7 @@ impl Wallet {
         network: Network,
         genesis_hash: BlockHash,
     ) -> Result<Self, NewError> {
+        println!("new_with_genesis_hash");
         if let Ok(changeset) = db.load_from_persistence() {
             if changeset.is_some() {
                 return Err(NewError::NonEmptyDatabase);
@@ -671,6 +672,7 @@ impl Wallet {
         db: impl PersistBackend<ChangeSet> + Send + Sync + 'static,
         changeset: ChangeSet,
     ) -> Result<Self, LoadError> {
+        println!("load_from_changeset");
         let secp = Secp256k1::new();
         let network = changeset.network.ok_or(LoadError::MissingNetwork)?;
         let chain =
@@ -818,14 +820,28 @@ impl Wallet {
                 }
                 // if expected descriptor has private keys add them as new signers
                 if !expected_descriptor_keymap.is_empty() {
+                    println!("expected_descriptor_keymap = {:#?}", expected_descriptor_keymap);
                     let signer_container = SignersContainer::build(
-                        expected_descriptor_keymap,
+                        expected_descriptor_keymap.clone(),
                         &expected_descriptor,
                         &wallet.secp,
                     );
                     signer_container.signers().into_iter().for_each(|signer| {
                         wallet.add_signer(
                             KeychainKind::External,
+                            SignerOrdering::default(),
+                            signer.clone(),
+                        )
+                    });
+                    let contracts = wallet.contracts.values().cloned().collect::<Vec<Contract>>();
+                    let signer_container = SignersContainer::build_with_contract(
+                        expected_descriptor_keymap.clone(),
+                        contracts,
+                        &wallet.secp,
+                    );
+                    signer_container.signers().into_iter().for_each(|signer| {
+                        wallet.add_signer(
+                            KeychainKind::External, 
                             SignerOrdering::default(),
                             signer.clone(),
                         )
@@ -846,7 +862,7 @@ impl Wallet {
                 // if expected change descriptor has private keys add them as new signers
                 if !expected_change_descriptor_keymap.is_empty() {
                     let signer_container = SignersContainer::build(
-                        expected_change_descriptor_keymap,
+                        expected_change_descriptor_keymap.clone(),
                         &expected_change_descriptor,
                         &wallet.secp,
                     );
@@ -857,33 +873,95 @@ impl Wallet {
                             signer.clone(),
                         )
                     });
+                    let contracts = wallet.contracts.values().cloned().collect::<Vec<Contract>>();
+                    let signer_container = SignersContainer::build_with_contract(
+                        expected_change_descriptor_keymap.clone(),
+                        contracts,
+                        &wallet.secp,
+                    );
+                    signer_container.signers().into_iter().for_each(|signer| {
+                        wallet.add_signer(
+                            KeychainKind::Internal, 
+                            SignerOrdering::default(),
+                            signer.clone(),
+                        )
+                    });
+                    // for (_, contract) in wallet.contracts.clone() {
+                    //     let signer_container = SignersContainer::build_with_contract(
+                    //         expected_change_descriptor_keymap.clone(),
+                    //         Some(contract.clone()),
+                    //         &wallet.secp,
+                    //     );
+                    //     if let Ok(p2c_pk) = wallet.pay_to_contract_key(&contract.payment_base, contract.contract.clone()) {
+                    //         signer_container.signers().into_iter().for_each(|signer| {
+                    //             // signer.descriptor_secret_key().unwrap().to_public(secp)
+                    //             wallet.add_signer(
+                    //                 KeychainKind::PayToContract { p2c_pk },
+                    //                 SignerOrdering::default(),
+                    //                 signer.clone(),
+                    //             )
+                    //         });
+                    //     }
+                    // }
                 }
 
-                for (_, c) in &wallet.contracts {
-                    let script = wallet.create_pay_to_contract_script(&c.payment_base, c.contract, None);
-                        if let Some(dpk) = wallet.indexed_graph.index.get_descriptor(&KeychainKind::PaytoContract { contract: c.clone() }) {
-                            match dpk {
-                                Descriptor::Bare(_) => continue,
-                                Descriptor::Pkh(pkh) => {
-                                    expected_change_descriptor_keymap.append(&mut expected_change_descriptor_keymap);
-                                    if let Some(dsk) = expected_change_descriptor_keymap.get(pkh.as_inner()) {
-                                        if let Ok(sk) = wallet.get_secret_key_from_dsk(dsk) {
-                                            if let Ok(private_key) = c.create_pay_to_contract_private_key(&PrivateKey::new( sk, wallet.network()), &c.payment_base, wallet.network()) {
-                                                println!("contract to private key {:?}, {:?}", c.payment_base, private_key);
-                                                let p2c_signer = Arc::new(SignerWrapper::new(private_key, SignerContext::Legacy));
-                                                wallet.add_signer(
-                                                    KeychainKind::External,
-                                                    SignerOrdering::default(),
-                                                    p2c_signer.clone(),
-                                                );
-                                            }
-                                        }
-                                    }
-                                },
-                                Descriptor::Sh(_) => continue,
-                            }
-                        }
-                }
+                // let mut keymap: BTreeMap<DescriptorPublicKey, DescriptorSecretKey> = expected_change_descriptor_keymap.clone();
+                // keymap.extend(expected_descriptor_keymap);
+                // if !keymap.is_empty() {
+                //     for (_, contract) in wallet.contracts.clone() {
+                //         let signer_container = SignersContainer::build_with_contract(
+                //             keymap.clone(),
+                //             Some(contract.clone()),
+                //             &wallet.secp,
+                //         );
+                //         if let Ok(p2c_pk) = wallet.pay_to_contract_key(&contract.payment_base, contract.contract.clone()) {
+                //             signer_container.signers().into_iter().for_each(|signer| {
+                //                 // signer.descriptor_secret_key().unwrap().to_public(secp)
+                //                 wallet.add_signer(
+                //                     KeychainKind::PayToContract { p2c_pk },
+                //                     SignerOrdering::default(),
+                //                     signer.clone(),
+                //                 )
+                //             });
+                //         }
+                //     }
+                // }
+                // println!("");
+                // println!("keymap: {:#?}", keymap);
+                
+                // for (_, c) in wallet.contracts.clone() {
+                //     println!("adding signer c.payment_base {:?}", c.payment_base);
+                //     if let Ok(p2c_pk) = wallet.pay_to_contract_key(&c.payment_base, c.contract.clone()) {
+                //         println!("adding signer p2c public key {:?}", p2c_pk);
+                //         let spk = ScriptBuf::new_p2pkh(&c.payment_base.pubkey_hash());
+                //         println!("adding signer payment_base script_pubkey {:?}", spk);
+                //         let (k, i) = wallet.derivation_of_spk(&spk);
+                //         if let Some(dpk) = wallet.get_descriptor_for_spk(&spk) {
+                //             println!("adding signer dpk of payment_base {:?}", dpk);
+                //             if let Some(dsk) = keymap.get(&dpk) {
+                //                 println!("adding signer dsk of payment_base {:?}", dsk);
+                //                 if let Ok(sk) = wallet.get_secret_key_from_dsk(dsk) {
+                //                     println!("adding signer sk  of payment_base {:?}", sk);
+                //                     wallet.indexed_graph.index.index_of_spk(script);
+                //                     if let Ok(p2c_private_key) = c.create_pay_to_contract_private_key(&PrivateKey::new( sk, wallet.network()), &c.payment_base, wallet.network()) {
+                //                         let expected_payment_base = PrivateKey::new( sk, wallet.network()).public_key(wallet.secp_ctx());
+                //                         println!("expected_payment_base={:?}", expected_payment_base);
+                //                         println!("actual_payment_base={:?}", c.payment_base);
+                //                         let p2c_public_key = p2c_private_key.public_key(wallet.secp_ctx());
+                //                         println!("p2c key {:?}, {:?}", p2c_private_key, p2c_public_key);
+                //                         let p2c_signer = Arc::new(SignerWrapper::new(p2c_private_key, SignerContext::Legacy));
+                //                         wallet.add_signer(
+                //                             KeychainKind::PayToContract { p2c_pk },
+                //                             SignerOrdering::default(),
+                //                             p2c_signer.clone(),
+                //                         );
+                //                     }
+                //                 }
+                //             }
+                //         }
+                //     }
+                // }
+                
                 Ok(wallet)
             }
             None => Self::new_with_genesis_hash(
@@ -925,6 +1003,16 @@ impl Wallet {
         self.indexed_graph.index.keychains()
     }
 
+    pub fn get_descriptor_for_spk(&self, spk: &ScriptBuf) -> Option<DescriptorPublicKey>{
+        if let Some((k, i)) = self.indexed_graph.index.index_of_spk(spk) {
+            match self.indexed_graph.index.get_descriptor(&k) {
+                Some(Descriptor::Pkh(pkh)) => Some(pkh.as_inner().clone()),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
     /// Peek an address of the given `keychain` at `index` without revealing it.
     ///
     /// For non-wildcard descriptors this returns the same address at every provided index.
@@ -1517,7 +1605,7 @@ impl Wallet {
         let signers = match keychain {
             KeychainKind::External => Arc::make_mut(&mut self.signers),
             KeychainKind::Internal => Arc::make_mut(&mut self.change_signers),
-            KeychainKind::PayToContract { .. } => Arc::make_mut(&mut self.signers),
+            KeychainKind::PayToContract { .. } => Arc::make_mut(&mut self.contract_signers),
         };
 
         signers.add_external(signer.id(&self.secp), ordering, signer);
@@ -1545,7 +1633,7 @@ impl Wallet {
         match keychain {
             KeychainKind::External => Arc::clone(&self.signers),
             KeychainKind::Internal => Arc::clone(&self.change_signers),
-            KeychainKind::PayToContract { .. } => Arc::clone(&self.signers),
+            KeychainKind::PayToContract { .. } => Arc::clone(&self.contract_signers),
         }
     }
 
@@ -2212,7 +2300,10 @@ impl Wallet {
             .signers()
             .iter()
             .chain(self.change_signers.signers().iter())
+            .chain(self.contract_signers.signers().iter())
         {
+            println!("");
+            println!("wallet.sign signer: {:?}", signer);
             signer.sign_transaction(psbt, &sign_options, &self.secp)?;
         }
 
@@ -2265,6 +2356,7 @@ impl Wallet {
         psbt: &mut Psbt,
         sign_options: SignOptions,
     ) -> Result<bool, SignerError> {
+        println!("finalize");
         let chain_tip = self.chain.tip().block_id();
 
         let tx = &psbt.unsigned_tx;
@@ -2304,9 +2396,10 @@ impl Wallet {
                         desc.derive_from_psbt_input(psbt_input, psbt.get_utxo_for(n), &self.secp)
                     })
                 });
-
+            println!("finalize: desc {:?}", desc);
             match desc {
                 Some(desc) => {
+                    println!("finalize: desc {:?}", desc);
                     let mut tmp_input = tapyrus::TxIn::default();
                     match desc.satisfy(
                         &mut tmp_input,
@@ -2317,6 +2410,7 @@ impl Wallet {
                         ),
                     ) {
                         Ok(_) => {
+                            println!("finalize satisfy true");
                             let psbt_input = &mut psbt.inputs[n];
                             psbt_input.final_script_sig = Some(tmp_input.script_sig);
                             psbt_input.final_script_witness = Some(tmp_input.witness);
@@ -2333,7 +2427,11 @@ impl Wallet {
                                 psbt_input.tap_merkle_root = None;
                             }
                         }
-                        Err(_) => finished = false,
+                        Err(e) => {
+                            println!("finalize satisfy false {:?}", e);
+                            println!("finalize satisfy failed {:?}", psbt_input);
+                            finished = false
+                        }
                     }
                 }
                 None => finished = false,
@@ -2392,18 +2490,23 @@ impl Wallet {
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
         let payment_base = self.spk_index().p2c_spk(&txout.script_pubkey);
         if let Some(p) = payment_base {
+            println!("get_descriptor_for_txout: payment_base = {:?}", p);
             // find pay-to-contract
             let contract = self.contracts.values().find(|c| *p == c.payment_base);
+
             if let Some(c) = contract {
+                println!("get_descriptor_for_txout: contract = {:?}", c);
                 let public_key = Contract::create_pay_to_contract_public_key(
                     &c.payment_base,
                     c.contract.clone(),
                     &self.secp_ctx(),
                 );
+                println!("get_descriptor_for_txout: p2c public key = {:?}", public_key);
 
                 if let Ok(ddk) = DefiniteDescriptorKey::from_str(
                     &public_key.inner.serialize().to_lower_hex_string(),
                 ) {
+                    println!("get_descriptor_for_txout: ddk{:?}", ddk);
                     return Some(
                         Descriptor::<DefiniteDescriptorKey>::new_pkh(ddk)
                             .expect("can not create new descriptor"),
@@ -2416,6 +2519,8 @@ impl Wallet {
             .indexed_graph
             .index
             .index_of_spk(&txout.script_pubkey)?;
+        println!("get_descriptor_for_txout: {:?}, {:?}", keychain, child);
+        
         let descriptor: &Descriptor<DescriptorPublicKey> =
             self.get_descriptor_for_keychain(keychain);
         descriptor.at_derivation_index(child).ok()
@@ -2886,6 +2991,8 @@ impl Wallet {
         payment_base: PublicKey,
         spendable: bool,
     ) -> Result<Contract, CreateContractError> {
+        println!("");
+        println!("store_contract");
         let mut changeset = ChangeSet::default();
         if let Some(c) = self.contracts.get(&contract_id) {
             return Err(CreateContractError::ContractAlreadyExist { contract_id });
@@ -2924,6 +3031,28 @@ impl Wallet {
             let keychain_kind = KeychainKind::PayToContract {
                 p2c_pk: p2c_pk.clone(),
             };
+            let descriptor = self.get_descriptor_for_keychain(KeychainKind::External);
+            println!("store_contract descriptor: {:?}", descriptor);
+            // let descriptor = self.public_descriptor(KeychainKind::External);
+            let (_, keymap) = descriptor.clone()
+                .into_wallet_descriptor(self.secp_ctx(), self.network())
+                .map_err(|e| CreateContractError::Error { reason: e.to_string() })?;
+            println!("  store_contract keymap = {:#?}", keymap);
+            let contracts = self.contracts.values().cloned().collect::<Vec<Contract>>();
+            let signer_container = SignersContainer::build_with_contract(
+                keymap,
+                contracts,
+                self.secp_ctx(),
+            );
+            signer_container.signers().into_iter().for_each(|signer| {
+                self.add_signer(
+                    KeychainKind::External,
+                    SignerOrdering::default(),
+                    signer.clone(),
+                )
+            });
+            
+
             let p2c_descriptor = Descriptor::new_pkh(DescriptorPublicKey::Single(SinglePub {
                 key: SinglePubKey::FullKey(p2c_pk),
                 origin: None,
@@ -3078,16 +3207,18 @@ fn create_signers<E: IntoWalletDescriptor>(
         return Err(DescriptorError::ExternalAndInternalAreTheSame);
     }
 
-    let (descriptor, keymap) = descriptor;
-    let signers = Arc::new(SignersContainer::build(keymap, &descriptor, secp));
+    let (descriptor, external_keymap) = descriptor;
+    let signers = Arc::new(SignersContainer::build(external_keymap.clone(), &descriptor, secp));
     let _ = index.insert_descriptor(KeychainKind::External, descriptor);
-
-    let (descriptor, keymap) = change_descriptor;
-    let change_signers = Arc::new(SignersContainer::build(keymap, &descriptor, secp));
+    let contracts = contracts.values().cloned().collect::<Vec<Contract>>();
+    
+    let (descriptor, internal_keymap) = change_descriptor;
+    let change_signers = Arc::new(SignersContainer::build(internal_keymap.clone(), &descriptor, secp));
     let _ = index.insert_descriptor(KeychainKind::Internal, descriptor.clone());
 
-    let keymap = BTreeMap::new();
-    let contract_signers = Arc::new(SignersContainer::build(keymap, &descriptor, secp));
+    let mut keymap = external_keymap;
+    keymap.extend(internal_keymap);
+    let contract_signers = Arc::new(SignersContainer::build_with_contract(keymap, contracts, secp));
     Ok((signers, change_signers, contract_signers))
 }
 
