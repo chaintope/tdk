@@ -2162,6 +2162,9 @@ impl Wallet {
             return Err(SignerError::NonStandardSighash);
         }
 
+        /// Add all contracts to sign_options
+        let mut sign_options = sign_options.clone();
+        sign_options.contracts.append(&mut self.contracts.clone());
         for signer in self
             .signers
             .signers()
