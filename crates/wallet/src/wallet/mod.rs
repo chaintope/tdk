@@ -2347,7 +2347,9 @@ impl Wallet {
     }
 
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
-        let payment_base = self.spk_index().p2c_spk(&txout.script_pubkey);
+        let payment_base = self
+            .spk_index()
+            .p2c_spk(&txout.script_pubkey.remove_color());
         if let Some(p) = payment_base {
             // find pay-to-contract
             let contract = self.contracts.values().find(|c| *p == c.payment_base);
