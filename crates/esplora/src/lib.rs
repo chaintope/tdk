@@ -31,6 +31,9 @@ mod async_ext;
 #[cfg(feature = "async")]
 pub use async_ext::*;
 
+#[cfg(feature = "serde")]
+pub extern crate serde_crate as serde;
+
 fn anchor_from_status(status: &TxStatus) -> Option<ConfirmationTimeHeightAnchor> {
     if let TxStatus {
         block_height: Some(height),
