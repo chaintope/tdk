@@ -505,7 +505,6 @@ impl HdWallet {
         let options = SignOptions::default();
         wallet.sign(&mut psbt, options)?;
         let tx = psbt.extract_tx()?;
-        println!("tx broadcat {:#?}", tx);
         client.broadcast(&tx)?;
 
         Ok(tx.malfix_txid().to_string())
@@ -612,8 +611,6 @@ fn initialize_or_load_master_key(file_path: &str, network: tapyrus::Network) -> 
     }
 }
 
-// uniffi::include_scaffolding!("wallet");
-
 fn get_wallet(env: &TestEnv) -> HdWallet {
     let url = env.electrsd.esplora_url.clone();
     let config = Config {
@@ -674,7 +671,6 @@ fn test_p2c_transfer() -> anyhow::Result<()> {
         .client
         .call("getbalance", &[false.into()])
         .unwrap();
-    // println!("getbalance(tpc): {:?}", ret);
     let balance = wallet.balance(None).unwrap();
     assert_eq!(balance, 0);
 
@@ -703,7 +699,6 @@ fn test_p2c_transfer() -> anyhow::Result<()> {
     let p2c_address = wallet
         .calc_p2c_address(public_key.clone(), "content".to_string(), None)
         .expect("Failed to calculate P2C address");
-    // println!("p2c_address: {}", p2c_address);
 
     // Transfer tpc to pay to contract address from other wallet
     let txid = env.tapyrusd.client.send_to_address(
@@ -728,9 +723,6 @@ fn test_p2c_transfer() -> anyhow::Result<()> {
 
     wait_for_confirmation(&env, &client, 1);
     wallet.sync(&client, Vec::new()).expect("Failed to sync");
-    // println!("txid: {}", txid);
-    // println!("balance: {}", wallet.balance(None).unwrap());
-    //assert_eq!(wallet.balance(None).unwrap(), 30000);
 
     let outpoint = OutPoint {
         txid: txid,
@@ -749,11 +741,9 @@ fn test_p2c_transfer() -> anyhow::Result<()> {
         &client,
     );
     assert!(ret.is_ok());
-    // println!("tx {:?}", ret.unwrap());
 
     wait_for_confirmation(&env, &client, 1);
     wallet.sync(&client, Vec::new()).expect("Failed to sync");
-    // println!("balance: {}", wallet.balance(None).unwrap());
     Ok(())
 }
 
@@ -848,9 +838,7 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
         .client
         .call("getbalance", &[false.into(), color_id.to_string().into()])
         .unwrap();
-    println!("getbalance(colored) {:?}", ret);
 
-    // println!("p2c_address {:?}", p2c_address);
     //send p2c token from tapyrus core wallet.
     let txid: MalFixTxid = env.tapyrusd.client.call(
         "transfertoken",
@@ -862,7 +850,6 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
         .client
         .call("getbalance", &[false.into(), color_id.to_string().into()])
         .unwrap();
-    println!("getbalance(colored) {:?}", ret);
 
     let contract = tdk_chain::Contract {
         contract_id: "contract_id6".to_string(),
@@ -875,30 +862,16 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
         .expect("Failed to store contract");
 
     wait_for_confirmation(&env, &client, 6);
-    println!(
-        "tx (transfertoken) {:?}, {:#?}",
-        txid,
-        wallet.get_transaction(&txid, &client)
-    );
     wallet
         .sync(&client, vec![p2c_address.script_pubkey()])
         .expect("Failed to sync");
 
-    println!(
-        "balance: {}",
-        wallet.balance(Some(color_id.clone())).unwrap()
-    );
     let ret: f64 = env
         .tapyrusd
         .client
         .call("getbalance", &[false.into(), color_id.to_string().into()])
         .unwrap();
-    println!("getbalance(colored) {:?}", ret);
-
-    // let wallet = get_wallet(&env);
-    // wallet.full_sync(&client).expect("Failed to sync");
     let balance = wallet.balance(Some(color_id.clone())).unwrap();
-    // assert_eq!(balance, 400);
 
     let outpoint = OutPoint {
         txid: txid,
@@ -909,10 +882,8 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
         .client
         .call("getnewaddress", &["".into(), color_id.to_string().into()])
         .unwrap();
-    println!("another {:?}", another_address);
 
     let mut contracts: BTreeMap<_, _> = BTreeMap::new();
-    println!("contract {:?}", contract);
     contracts.insert("contract_id6".to_string(), contract);
     let ret = wallet.transfer(
         vec![TransferParams {
@@ -923,9 +894,7 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
         contracts.clone(),
         &client,
     );
-    println!("tx {:?}", ret);
     assert!(ret.is_ok());
-    // println!("tx {:?}", ret.unwrap());
 
     wait_for_confirmation(&env, &client, 1);
     wallet.sync(&client, Vec::new()).expect("Failed to sync");

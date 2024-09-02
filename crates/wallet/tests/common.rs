@@ -426,7 +426,7 @@ pub fn descriptor_to_public_key(descriptor: &Descriptor<DescriptorPublicKey>) ->
                 _ => None,
             }
         }
-        // 他のDescriptorの場合、サポートされていない
+        // Not supported for other descriptor
         _ => None,
     }
 }
