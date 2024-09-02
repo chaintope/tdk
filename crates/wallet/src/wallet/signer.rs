@@ -87,12 +87,14 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Bound::Included, Deref};
+use tapyrus::key::Secp256k1;
+use tdk_chain::Contract;
 
 use tapyrus::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpriv};
 use tapyrus::hashes::hash160;
-use tapyrus::secp256k1::Message;
+use tapyrus::secp256k1::{Message, SecretKey};
 use tapyrus::sighash::{EcdsaSighashType, TapSighash, TapSighashType};
-use tapyrus::{ecdsa, psbt, sighash, taproot};
+use tapyrus::{ecdsa, psbt, sighash, taproot, Script, ScriptBuf, TxOut};
 use tapyrus::{key::XOnlyPublicKey, secp256k1};
 use tapyrus::{PrivateKey, Psbt, PublicKey};
 
@@ -103,6 +105,7 @@ use miniscript::descriptor::{
 use miniscript::{Legacy, Segwitv0, SigType, Tap, ToPublicKey};
 
 use super::utils::SecpCtx;
+use super::Utxo;
 use crate::descriptor::XKeyUtils;
 use crate::psbt::PsbtUtils;
 use crate::wallet::error::MiniscriptPsbtError;
@@ -429,6 +432,56 @@ impl SignerCommon for SignerWrapper<PrivateKey> {
     }
 }
 
+impl SignerWrapper<PrivateKey> {
+    /// Return if a script is related
+    fn is_relevant_script(&self, script_pubkey: &ScriptBuf) -> bool {
+        script_pubkey.is_cp2pkh() || script_pubkey.is_p2pkh()
+    }
+
+    /// Return if script_pubkey equals to p2pkh generated with specified public key
+    fn same_pubkey_hash(&self, script_pubkey: &ScriptBuf, public_key: &PublicKey) -> bool {
+        *script_pubkey == ScriptBuf::new_p2pkh(&public_key.pubkey_hash())
+    }
+
+    fn find_contract_keys(
+        &self,
+        sign_options: &SignOptions,
+        script_pubkey: &ScriptBuf,
+        pubkey: &PublicKey,
+        secp: &SecpCtx,
+    ) -> Option<(SecretKey, PublicKey)> {
+        sign_options.contracts.iter().find_map(|(_, contract)| {
+            let p2c_private_key = contract
+                .create_pay_to_contract_private_key(&self, pubkey, self.network)
+                .ok()?;
+            let p2c_public_key = p2c_private_key.public_key(secp);
+            if self.same_pubkey_hash(script_pubkey, &p2c_public_key) {
+                Some((p2c_private_key.inner, p2c_public_key))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_secret_key(
+        &self,
+        utxo: &TxOut,
+        pubkey: PublicKey,
+        sign_options: &SignOptions,
+        secp: &SecpCtx,
+    ) -> (SecretKey, PublicKey) {
+        if !self.is_relevant_script(&utxo.script_pubkey) {
+            return (self.inner, pubkey);
+        }
+        let script_pubkey = utxo.script_pubkey.remove_color();
+        if self.same_pubkey_hash(&script_pubkey, &pubkey) {
+            return (self.inner, pubkey);
+        }
+
+        self.find_contract_keys(sign_options, &script_pubkey, &pubkey, secp)
+            .unwrap_or((self.inner, pubkey))
+    }
+}
 impl InputSigner for SignerWrapper<PrivateKey> {
     fn sign_input(
         &self,
@@ -448,6 +501,7 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         }
 
         let pubkey = PublicKey::from_private_key(secp, self);
+        let utxo = psbt.get_utxo_for(input_index).unwrap();
 
         if psbt.inputs[input_index].partial_sigs.contains_key(&pubkey) {
             return Ok(());
@@ -456,9 +510,12 @@ impl InputSigner for SignerWrapper<PrivateKey> {
         let (hash, hash_ty) = match self.ctx {
             SignerContext::Legacy => Legacy::sighash(psbt, input_index, ())?,
         };
+
+        // search for contract
+        let (secret_key, public_key) = self.get_secret_key(&utxo, pubkey, sign_options, secp);
         sign_psbt_ecdsa(
-            &self.inner,
-            pubkey,
+            &secret_key,
+            public_key,
             &mut psbt.inputs[input_index],
             hash,
             hash_ty,
@@ -699,6 +756,9 @@ pub struct SignOptions {
     /// or not.
     /// Defaults to `true`, i.e., we always grind ECDSA signature to sign with low r.
     pub allow_grinding: bool,
+
+    /// Contracts for Pay-To-Contract transaction
+    pub contracts: BTreeMap<String, Contract>,
 }
 
 /// Customize which taproot script-path leaves the signer should sign.
@@ -728,6 +788,7 @@ impl Default for SignOptions {
             tap_leaves_options: TapLeavesOptions::default(),
             sign_with_tap_internal_key: true,
             allow_grinding: true,
+            contracts: BTreeMap::default(),
         }
     }
 }

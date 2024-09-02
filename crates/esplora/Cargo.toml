@@ -24,6 +24,11 @@ miniscript = { version = "11.0.0", optional = true, default-features = false }
 [dev-dependencies]
 tdk_testenv = { path = "../testenv", default-features = false }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+tdk_wallet = { path = "../wallet" }
+tdk_sqlite = { path = "../sqlite" }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_derive = "1.0"
+serde_json = "1.0"
 
 [features]
 default = ["std", "async-https", "blocking-https-rustls"]

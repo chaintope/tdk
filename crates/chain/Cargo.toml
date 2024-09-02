@@ -16,6 +16,7 @@ readme = "README.md"
 # For no-std, remember to enable the bitcoin/no-std feature
 tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", default-features = false, subdirectory = "tapyrus" }
 serde_crate = { package = "serde", version = "1", optional = true, features = ["derive", "rc"] }
+num-bigint = { version = "=0.4.4", default-features = false }
 
 # Use hashbrown as a feature flag to have HashSet and HashMap from it.
 hashbrown = { version = "0.9.1", optional = true, features = ["serde"] }
