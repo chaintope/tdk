@@ -275,6 +275,7 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
         let to_update = match keychain {
             KeychainKind::Internal => &mut self.params.internal_policy_path,
             KeychainKind::External => &mut self.params.external_policy_path,
+            KeychainKind::PayToContract { .. } => &mut self.params.external_policy_path,
         };
 
         *to_update = Some(policy_path);
