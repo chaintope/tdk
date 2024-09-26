@@ -2387,8 +2387,8 @@ impl Wallet {
         &self,
         utxo: &LocalOutput,
     ) -> Result<Option<Contract>, GenerateContractError> {
-        for (contract_id, contract) in self.contracts.iter() {
-            let color_id = utxo.txout.script_pubkey.color_id();
+        let color_id = utxo.txout.script_pubkey.color_id();
+        for (_, contract) in self.contracts.iter() {
             let p2c_script = self.create_pay_to_contract_script(
                 &contract.payment_base,
                 contract.contract.clone(),
