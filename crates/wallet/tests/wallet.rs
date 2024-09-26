@@ -1464,7 +1464,7 @@ fn test_create_tx_with_contract() {
     let mut builder = wallet.build_tx();
     builder
         .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
-        .add_contract_utxo(OutPoint { txid, vout: 0 });
+        .add_utxo(OutPoint { txid, vout: 0 });
     let mut psbt = builder.finish().unwrap();
     check_fee!(wallet, psbt);
     assert_eq!(psbt.unsigned_tx.output.len(), 2);
@@ -1513,7 +1513,7 @@ fn test_create_tx_with_contract_unspendable() {
         let mut builder = wallet.build_tx();
         builder
             .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
-            .add_contract_utxo(OutPoint { txid, vout: 0 });
+            .add_utxo(OutPoint { txid, vout: 0 });
 
         let mut psbt = builder.finish().unwrap();
         let finished = wallet.sign(
@@ -1545,7 +1545,7 @@ fn test_create_tx_with_contract_unspendable() {
         let mut builder = wallet.build_tx();
         builder
             .add_recipient(addr.script_pubkey(), Amount::from_tap(48_000))
-            .add_contract_utxo(OutPoint { txid, vout: 0 });
+            .add_utxo(OutPoint { txid, vout: 0 });
 
         let mut psbt = builder.finish().unwrap();
         let finished = wallet.sign(

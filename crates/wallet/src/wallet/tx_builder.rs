@@ -303,15 +303,6 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
             for utxo in utxos {
                 let descriptor = wallet.get_descriptor_for_keychain(utxo.keychain);
                 let satisfaction_weight = descriptor.max_weight_to_satisfy().unwrap();
-
-                let contract_opt = wallet
-                    .contract_for_utxo(&utxo)
-                    .map_err(|_| AddUtxoError::ContractError)?;
-                if let Some(contract) = contract_opt {
-                    if !contract.spendable {
-                        continue;
-                    }
-                }
                 self.params.utxos.push(WeightedUtxo {
                     satisfaction_weight,
                     utxo: Utxo::Local(utxo),
@@ -328,31 +319,6 @@ impl<'a, Cs> TxBuilder<'a, Cs> {
     /// the "utxos" and the "unspendable" list, it will be spent.
     pub fn add_utxo(&mut self, outpoint: OutPoint) -> Result<&mut Self, AddUtxoError> {
         self.add_utxos(&[outpoint])
-    }
-
-    /// Add a contract utxo to the internal list of utxos that **must** be spent
-    ///
-    /// The utxo identified with the specified outpoint should be contained as a walllet contract
-    pub fn add_contract_utxo(&mut self, outpoint: OutPoint) -> Result<&mut Self, AddUtxoError> {
-        {
-            let wallet = self.wallet.borrow();
-            let utxo = wallet
-                .get_utxo(outpoint)
-                .ok_or(AddUtxoError::UnknownUtxo(outpoint))?;
-
-            let descriptor = wallet.get_descriptor_for_keychain(utxo.keychain);
-            let satisfaction_weight = descriptor.max_weight_to_satisfy().unwrap();
-            let contract = wallet
-                .contract_for_utxo(&utxo)
-                .map_err(|_| AddUtxoError::ContractError)?;
-            if contract.is_some() {
-                self.params.utxos.push(WeightedUtxo {
-                    satisfaction_weight,
-                    utxo: Utxo::Local(utxo),
-                });
-            }
-        }
-        Ok(self)
     }
 
     /// Add a foreign UTXO i.e. a UTXO not owned by this wallet.

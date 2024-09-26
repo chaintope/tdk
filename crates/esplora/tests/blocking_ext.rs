@@ -464,7 +464,6 @@ impl HdWallet {
         &self,
         params: Vec<TransferParams>,
         outpoints: Vec<OutPoint>,
-        contracts: BTreeMap<String, Contract>,
         client: &BlockingClient,
     ) -> anyhow::Result<String> {
         let mut wallet = self.get_wallet();
@@ -490,7 +489,7 @@ impl HdWallet {
 
         if !outpoints.is_empty() {
             for op in outpoints.iter() {
-                tx_builder.add_contract_utxo(op.clone());
+                tx_builder.add_utxo(op.clone());
             }
         }
 
@@ -730,7 +729,6 @@ fn test_p2c_transfer() -> anyhow::Result<()> {
             to_address: another_address.clone(),
         }],
         vec![outpoint],
-        contracts.clone(),
         &client,
     );
     assert!(ret.is_ok());
@@ -761,7 +759,6 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
     let client = Builder::new(base_url.as_str()).build_blocking();
 
     let address: String = env.tapyrusd.client.call("getnewaddress", &[]).unwrap();
-
     let address: Address = Address::from_str(&address).unwrap().assume_checked();
     let txid1 = env.tapyrusd.client.send_to_address(
         &address,
@@ -862,7 +859,6 @@ fn test_colored_p2c_transfer() -> anyhow::Result<()> {
             to_address: another_address.clone(),
         }],
         vec![outpoint],
-        contracts.clone(),
         &client,
     );
 
