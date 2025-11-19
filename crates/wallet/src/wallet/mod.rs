@@ -2350,12 +2350,24 @@ impl Wallet {
     }
 
     fn get_descriptor_for_txout(&self, txout: &TxOut) -> Option<DerivedDescriptor> {
-        let payment_base = self
-            .spk_index()
-            .p2c_spk(&txout.script_pubkey.remove_color());
+        let script_pubkey_without_color = txout.script_pubkey.remove_color();
+
+        let payment_base = self.spk_index().p2c_spk(&script_pubkey_without_color);
         if let Some(p) = payment_base {
             // find pay-to-contract
-            let contract = self.contracts.values().find(|c| *p == c.payment_base);
+            let contract = self.contracts.values().find(|c| {
+                if *p != c.payment_base {
+                    return false;
+                }
+                let p2c_pk = Contract::create_pay_to_contract_public_key(
+                    &c.payment_base,
+                    c.contract.clone(),
+                    &self.secp_ctx(),
+                );
+                let expected_spk = ScriptBuf::new_p2pkh(&p2c_pk.pubkey_hash());
+                expected_spk == script_pubkey_without_color
+            });
+
             if let Some(c) = contract {
                 let public_key = Contract::create_pay_to_contract_public_key(
                     &c.payment_base,

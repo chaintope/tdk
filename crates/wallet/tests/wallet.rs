@@ -1451,6 +1451,7 @@ fn test_create_tx_with_reissuable_no_tpc_change() {
     assert_eq!(sent_received, (Amount::from_tap(100), Amount::from_tap(2)));
 }
 
+#[test]
 fn test_create_tx_with_contract() {
     let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
     let (mut wallet, txid, address, contract) =
@@ -4028,6 +4029,249 @@ fn test_restore_contract_from_db_wallet() {
                 untrusted_pending: Amount::ZERO,
                 confirmed: Amount::from_tap(30_000),
             }
+        );
+    }
+}
+
+#[test]
+fn test_create_tx_with_multiple_contracts_same_payment_base() {
+    let change_desc = "pkh(tprv8ZgxMBicQKsPd3EupYiPRhaMooHKUHJxNsTfYuScep13go8QFfHdtkG9nRkFGb7busX4isf6X9dURGCoKgitaApQ6MupRhZMcELAxTBRJgS/1)";
+    let mut wallet = Wallet::new_no_persist(get_test_pkh(), change_desc, Network::Dev).unwrap();
+
+    // Get payment_base from wallet
+    let payment_base = get_payment_base(&wallet);
+
+    // Create multiple contracts with the same payment_base
+    let contract1_data = "contract1_metadata".as_bytes().to_vec();
+    let contract2_data = "contract2_metadata".as_bytes().to_vec();
+    let contract3_data = "contract3_metadata".as_bytes().to_vec();
+
+    let contract1 = wallet
+        .store_contract(
+            "contract1_id".to_string(),
+            contract1_data.clone(),
+            payment_base,
+            true,
+        )
+        .unwrap();
+    let contract2 = wallet
+        .store_contract(
+            "contract2_id".to_string(),
+            contract2_data.clone(),
+            payment_base,
+            true,
+        )
+        .unwrap();
+    let contract3 = wallet
+        .store_contract(
+            "contract3_id".to_string(),
+            contract3_data.clone(),
+            payment_base,
+            true,
+        )
+        .unwrap();
+
+    // Create P2C addresses for each contract
+    let p2c_address1 = wallet
+        .create_pay_to_contract_address(&payment_base, contract1_data.clone(), None)
+        .unwrap();
+    let p2c_address2 = wallet
+        .create_pay_to_contract_address(&payment_base, contract2_data.clone(), None)
+        .unwrap();
+    let p2c_address3 = wallet
+        .create_pay_to_contract_address(&payment_base, contract3_data.clone(), None)
+        .unwrap();
+
+    // Verify all addresses are different
+    assert_ne!(p2c_address1, p2c_address2);
+    assert_ne!(p2c_address2, p2c_address3);
+    assert_ne!(p2c_address1, p2c_address3);
+
+    // Fund the wallet with initial transaction
+    let fund_address = wallet.peek_address(KeychainKind::External, 0).address;
+    let tx0 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: MalFixTxid::all_zeros(),
+                vout: 0,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![TxOut {
+            value: Amount::from_tap(200_000),
+            script_pubkey: fund_address.script_pubkey(),
+        }],
+    };
+
+    // Create transaction that sends to all three P2C addresses
+    let tx1 = Transaction {
+        version: transaction::Version::ONE,
+        lock_time: tapyrus::absolute::LockTime::ZERO,
+        input: vec![TxIn {
+            previous_output: OutPoint {
+                txid: tx0.malfix_txid(),
+                vout: 0,
+            },
+            script_sig: Default::default(),
+            sequence: Default::default(),
+            witness: Default::default(),
+        }],
+        output: vec![
+            TxOut {
+                value: Amount::from_tap(50_000),
+                script_pubkey: p2c_address1.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(60_000),
+                script_pubkey: p2c_address2.script_pubkey(),
+            },
+            TxOut {
+                value: Amount::from_tap(70_000),
+                script_pubkey: p2c_address3.script_pubkey(),
+            },
+        ],
+    };
+
+    // Insert checkpoints and transactions
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 1_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_checkpoint(BlockId {
+            height: 2_000,
+            hash: BlockHash::all_zeros(),
+        })
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx0,
+            ConfirmationTime::Confirmed {
+                height: 1_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+    wallet
+        .insert_tx(
+            tx1.clone(),
+            ConfirmationTime::Confirmed {
+                height: 2_000,
+                time: 100,
+            },
+        )
+        .unwrap();
+
+    // Verify balance
+    let balance = wallet.balance(ColorIdentifier::default());
+    assert_eq!(
+        balance.confirmed,
+        Amount::from_tap(50_000 + 60_000 + 70_000)
+    );
+
+    // Prepare contracts map for signing
+    let mut contracts = BTreeMap::new();
+    contracts.insert(contract1.contract_id.clone(), contract1);
+    contracts.insert(contract2.contract_id.clone(), contract2);
+    contracts.insert(contract3.contract_id.clone(), contract3);
+
+    let dest_addr = Address::from_str("2N1Ffz3WaNzbeLFBb51xyFMHYSEUXcbiSoX")
+        .unwrap()
+        .assume_checked();
+
+    // Test 1: Spend from the second P2C address (contract2)
+    {
+        let mut builder = wallet.build_tx();
+        builder
+            .add_recipient(dest_addr.script_pubkey(), Amount::from_tap(55_000))
+            .add_utxo(OutPoint {
+                txid: tx1.malfix_txid(),
+                vout: 1, // Second output (contract2)
+            });
+        let mut psbt = builder.finish().unwrap();
+
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        assert!(finished.unwrap(), "should sign tx using contract2 UTXO");
+
+        // Verify the signed transaction has valid script_sig
+        let signed_tx = psbt.extract_tx().unwrap();
+        assert!(
+            !signed_tx.input[0].script_sig.is_empty(),
+            "script_sig should not be empty for contract2"
+        );
+    }
+
+    // Test 2: Spend from the third P2C address (contract3)
+    {
+        let mut builder = wallet.build_tx();
+        builder
+            .add_recipient(dest_addr.script_pubkey(), Amount::from_tap(65_000))
+            .add_utxo(OutPoint {
+                txid: tx1.malfix_txid(),
+                vout: 2, // Third output (contract3)
+            });
+        let mut psbt = builder.finish().unwrap();
+
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        assert!(finished.unwrap(), "should sign tx using contract3 UTXO");
+
+        // Verify the signed transaction has valid script_sig
+        let signed_tx = psbt.extract_tx().unwrap();
+        assert!(
+            !signed_tx.input[0].script_sig.is_empty(),
+            "script_sig should not be empty for contract3"
+        );
+    }
+
+    // Test 3: Spend from the first P2C address (contract1)
+    {
+        let mut builder = wallet.build_tx();
+        builder
+            .add_recipient(dest_addr.script_pubkey(), Amount::from_tap(45_000))
+            .add_utxo(OutPoint {
+                txid: tx1.malfix_txid(),
+                vout: 0, // First output (contract1)
+            });
+        let mut psbt = builder.finish().unwrap();
+
+        let finished = wallet.sign(
+            &mut psbt,
+            SignOptions {
+                contracts: contracts.clone(),
+                trust_witness_utxo: true,
+                ..Default::default()
+            },
+        );
+
+        assert!(finished.unwrap(), "should sign tx using contract1 UTXO");
+
+        // Verify the signed transaction has valid script_sig
+        let signed_tx = psbt.extract_tx().unwrap();
+        assert!(
+            !signed_tx.input[0].script_sig.is_empty(),
+            "script_sig should not be empty for contract1"
         );
     }
 }
