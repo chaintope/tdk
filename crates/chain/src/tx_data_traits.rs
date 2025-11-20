@@ -100,7 +100,7 @@ pub trait Anchor: core::fmt::Debug + Clone + Eq + PartialOrd + Ord + core::hash:
     }
 }
 
-impl<'a, A: Anchor> Anchor for &'a A {
+impl<A: Anchor> Anchor for &A {
     fn anchor_block(&self) -> BlockId {
         <A as Anchor>::anchor_block(self)
     }

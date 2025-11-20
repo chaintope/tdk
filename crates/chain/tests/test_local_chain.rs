@@ -33,7 +33,7 @@ enum ExpectedResult<'a> {
     Err(CannotConnectError),
 }
 
-impl<'a> TestLocalChain<'a> {
+impl TestLocalChain<'_> {
     fn run(mut self) {
         println!("[TestLocalChain] test: {}", self.name);
         let got_changeset = match self.chain.apply_update(self.update) {
