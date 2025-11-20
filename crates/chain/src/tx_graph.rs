@@ -145,7 +145,7 @@ pub struct TxNode<'a, T, A> {
     pub last_seen_unconfirmed: u64,
 }
 
-impl<'a, T, A> Deref for TxNode<'a, T, A> {
+impl<T, A> Deref for TxNode<'_, T, A> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -415,7 +415,7 @@ impl<A: Clone + Ord> TxGraph<A> {
         &'g self,
         txid: MalFixTxid,
         walk_map: F,
-    ) -> TxDescendants<A, F>
+    ) -> TxDescendants<'g, A, F>
     where
         F: FnMut(usize, MalFixTxid) -> Option<O> + 'g,
     {
@@ -432,7 +432,7 @@ impl<A> TxGraph<A> {
         &'g self,
         tx: &'g Transaction,
         walk_map: F,
-    ) -> TxDescendants<A, F>
+    ) -> TxDescendants<'g, A, F>
     where
         F: FnMut(usize, MalFixTxid) -> Option<O> + 'g,
     {
@@ -450,7 +450,7 @@ impl<A> TxGraph<A> {
     pub fn direct_conflicts<'g>(
         &'g self,
         tx: &'g Transaction,
-    ) -> impl Iterator<Item = (usize, MalFixTxid)> + '_ {
+    ) -> impl Iterator<Item = (usize, MalFixTxid)> + 'g {
         let txid = tx.malfix_txid();
         tx.input
             .iter()
@@ -1455,7 +1455,7 @@ impl<'g, A, F> TxAncestors<'g, A, F> {
     }
 }
 
-impl<'g, A, F, O> Iterator for TxAncestors<'g, A, F>
+impl<A, F, O> Iterator for TxAncestors<'_, A, F>
 where
     F: FnMut(usize, Arc<Transaction>) -> Option<O>,
 {
@@ -1554,7 +1554,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
     }
 }
 
-impl<'g, A, F> TxDescendants<'g, A, F> {
+impl<A, F> TxDescendants<'_, A, F> {
     fn populate_queue(&mut self, depth: usize, txid: MalFixTxid) {
         let spend_paths = self
             .graph
@@ -1566,7 +1566,7 @@ impl<'g, A, F> TxDescendants<'g, A, F> {
     }
 }
 
-impl<'g, A, F, O> Iterator for TxDescendants<'g, A, F>
+impl<A, F, O> Iterator for TxDescendants<'_, A, F>
 where
     F: FnMut(usize, MalFixTxid) -> Option<O>,
 {

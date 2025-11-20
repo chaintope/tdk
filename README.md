@@ -15,7 +15,7 @@
     <a href="https://github.com/bitcoindevkit/bdk/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk/workflows/CI/badge.svg"></a>
     <a href="https://coveralls.io/github/bitcoindevkit/bdk?branch=master"><img src="https://coveralls.io/repos/github/bitcoindevkit/bdk/badge.svg?branch=master"/></a>
     <a href="https://docs.rs/tdk_wallet"><img alt="Wallet API Docs" src="https://img.shields.io/badge/docs.rs-tdk_wallet-green"/></a>
-    <a href="https://blog.rust-lang.org/2022/08/11/Rust-1.67.0.html"><img alt="Rustc Version 1.67.0+" src="https://img.shields.io/badge/rustc-1.67.0%2B-lightgrey.svg"/></a>
+    <a href="https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html"><img alt="Rustc Version 1.85.0+" src="https://img.shields.io/badge/rustc-1.85.0%2B-lightgrey.svg"/></a>
     <a href="https://discord.gg/d7NkDKm"><img alt="Chat on Discord" src="https://img.shields.io/discord/753336465005608961?logo=discord"></a>
   </p>
 
@@ -63,16 +63,12 @@ Fully working examples of how to use these components are in `/example-crates`:
 [`tdk_chain`]: https://docs.rs/bdk-chain/
 
 ## Minimum Supported Rust Version (MSRV)
-This library should compile with any combination of features with Rust 1.67.0.
+This library should compile with any combination of features with Rust 1.85.0.
 
 To build with the MSRV you will need to pin dependencies as follows:
 
 ```shell
-cargo update -p zstd-sys --precise "2.0.8+zstd.1.5.5"
-cargo update -p time --precise "0.3.20"
-cargo update -p home --precise "0.5.5"
-cargo update -p proptest --precise "1.2.0"
-cargo update -p url --precise "2.5.0"
+cargo update -p home --precise "0.5.11"
 ```
 
 ## License

@@ -175,11 +175,11 @@ const DEFAULT_LOOKAHEAD: u32 = 25;
 ///
 /// If multiple keychains identify the same descriptor:
 /// 1. Methods that take in a keychain (such as [`reveal_next_spk`]) will work normally when any
-/// keychain (that identifies that descriptor) is passed in.
+///    keychain (that identifies that descriptor) is passed in.
 /// 2. Methods that return data which associates with a descriptor (such as [`outpoints`],
-/// [`txouts`], [`unused_spks`], etc.) the method will return the highest-ranked keychain variant
-/// that identifies the descriptor. Rank is determined by the [`Ord`] implementation of the keychain
-/// type.
+///    [`txouts`], [`unused_spks`], etc.) the method will return the highest-ranked keychain variant
+///    that identifies the descriptor. Rank is determined by the [`Ord`] implementation of the keychain
+///    type.
 ///
 /// This arrangement is not recommended since some methods will return a single keychain variant
 /// even though multiple keychain variants identify the same descriptor.
@@ -646,7 +646,7 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
     pub fn revealed_keychain_spks<'a>(
         &'a self,
         keychain: &'a K,
-    ) -> impl DoubleEndedIterator<Item = (u32, &Script)> + 'a {
+    ) -> impl DoubleEndedIterator<Item = (u32, &'a Script)> + 'a {
         self.revealed_spks(keychain..=keychain)
             .map(|(_, i, spk)| (i, spk))
     }
@@ -967,10 +967,11 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
 
     /// Applies the derivation changeset to the [`KeychainTxOutIndex`], as specified in the
     /// [`ChangeSet::append`] documentation:
+    ///
     /// - Extends the number of derived scripts per keychain
     /// - Adds new descriptors introduced
     /// - If a descriptor is introduced for a keychain that already had a descriptor, overwrites
-    /// the old descriptor
+    ///   the old descriptor
     pub fn apply_changeset(&mut self, changeset: super::ChangeSet<K>) {
         let ChangeSet {
             keychains_added,
