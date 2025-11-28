@@ -1,13 +1,13 @@
 use bdk_electrum::BdkElectrumClient;
 use tdk_chain::{
-    bitcoin::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
+    tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     keychain::Balance,
     local_chain::LocalChain,
     spk_client::SyncRequest,
     tapyrus::script::color_identifier::ColorIdentifier,
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
-use tdk_testenv::{anyhow, bitcoincore_rpc::RpcApi, TestEnv};
+use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
 fn get_balance(
     recv_chain: &LocalChain,
@@ -31,7 +31,7 @@ fn get_balance(
 /// 4. Check [`Balance`] to ensure tx is confirmed.
 #[test]
 fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
-    const SEND_AMOUNT: Amount = Amount::from_sat(10_000);
+    const SEND_AMOUNT: Amount = Amount::from_tap(10_000);
 
     let env = TestEnv::new()?;
     let electrum_client = electrum_client::Client::new(env.electrsd.electrum_url.as_str())?;
@@ -39,15 +39,15 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
 
     // Setup addresses.
     let addr_to_mine = env
-        .bitcoind
+        .tapyrusd
         .client
-        .get_new_address(None, None)?
+        .get_new_address(None)?
         .assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
-    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::bitcoin::Network::Regtest)?;
+    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 
     // Setup receiver.
-    let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.bitcoind.client.get_block_hash(0)?);
+    let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.tapyrusd.client.get_block_hash(0)?);
     let mut recv_graph = IndexedTxGraph::<ConfirmationTimeHeightAnchor, _>::new({
         let mut recv_index = SpkTxOutIndex::default();
         recv_index.insert_spk((), spk_to_track.clone());
@@ -96,9 +96,9 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
             .calculate_fee(&tx.tx)
             .expect("fee must exist");
 
-        // Retrieve the fee in the transaction data from `bitcoind`.
+        // Retrieve the fee in the transaction data from `tapyrusd`.
         let tx_fee = env
-            .bitcoind
+            .tapyrusd
             .client
             .get_transaction(&tx.txid, None)
             .expect("Tx must exist")
@@ -124,7 +124,7 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
 #[test]
 fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
     const REORG_COUNT: usize = 8;
-    const SEND_AMOUNT: Amount = Amount::from_sat(10_000);
+    const SEND_AMOUNT: Amount = Amount::from_tap(10_000);
 
     let env = TestEnv::new()?;
     let electrum_client = electrum_client::Client::new(env.electrsd.electrum_url.as_str())?;
@@ -132,15 +132,15 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
 
     // Setup addresses.
     let addr_to_mine = env
-        .bitcoind
+        .tapyrusd
         .client
-        .get_new_address(None, None)?
+        .get_new_address(None)?
         .assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
-    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::bitcoin::Network::Regtest)?;
+    let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 
     // Setup receiver.
-    let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.bitcoind.client.get_block_hash(0)?);
+    let (mut recv_chain, _) = LocalChain::from_genesis_hash(env.tapyrusd.client.get_block_hash(0)?);
     let mut recv_graph = IndexedTxGraph::<ConfirmationTimeHeightAnchor, _>::new({
         let mut recv_index = SpkTxOutIndex::default();
         recv_index.insert_spk((), spk_to_track.clone());

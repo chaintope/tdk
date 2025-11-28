@@ -2,7 +2,7 @@ use core::str::FromStr;
 use electrum_client::{ElectrumApi, Error, HeaderNotification};
 use std::sync::{Arc, Mutex};
 use tdk_chain::{
-    bitcoin::{MalFixTxid, OutPoint, ScriptBuf, Transaction},
+    tapyrus::{MalFixTxid, OutPoint, ScriptBuf, Transaction},
     collections::{BTreeMap, HashMap, HashSet},
     local_chain::CheckPoint,
     spk_client::{FullScanRequest, FullScanResult, SyncRequest, SyncResult},
