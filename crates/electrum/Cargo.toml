@@ -1,10 +1,10 @@
 [package]
-name = "bdk_electrum"
+name = "tdk_electrum"
 version = "0.14.0"
 edition = "2021"
 homepage = "https://bitcoindevkit.org"
 repository = "https://github.com/bitcoindevkit/bdk"
-documentation = "https://docs.rs/bdk_electrum"
+documentation = "https://docs.rs/tdk_electrum"
 description = "Fetch data from electrum in the form BDK accepts"
 license = "MIT OR Apache-2.0"
 readme = "README.md"

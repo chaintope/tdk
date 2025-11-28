@@ -3,7 +3,7 @@ use std::{
     sync::Mutex,
 };
 
-use bdk_electrum::{
+use tdk_electrum::{
     electrum_client::{self, Client, ElectrumApi},
     BdkElectrumClient,
 };

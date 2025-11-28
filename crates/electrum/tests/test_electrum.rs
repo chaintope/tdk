@@ -1,4 +1,4 @@
-use bdk_electrum::BdkElectrumClient;
+use tdk_electrum::BdkElectrumClient;
 use tdk_chain::{
     tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     keychain::Balance,

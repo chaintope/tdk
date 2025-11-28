@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 tdk_wallet = { path = "../../crates/wallet" }
-bdk_electrum = { path = "../../crates/electrum" }
+tdk_electrum = { path = "../../crates/electrum" }
 tdk_file_store = { path = "../../crates/file_store" }
 anyhow = "1"

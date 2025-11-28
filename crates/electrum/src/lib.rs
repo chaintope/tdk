@@ -15,8 +15,8 @@
 
 #![warn(missing_docs)]
 
-mod bdk_electrum_client;
-pub use bdk_electrum_client::*;
+mod tdk_electrum_client;
+pub use tdk_electrum_client::*;
 
 pub use electrum_client;
 pub use tdk_chain;

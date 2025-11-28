@@ -45,7 +45,7 @@ that the `Wallet` can use to update its view of the chain.
 **Blockchain Data Sources**
 
 * [`tdk_esplora`]: Grabs blockchain data from Esplora for updating BDK structures.
-* [`bdk_electrum`]: Grabs blockchain data from Electrum for updating BDK structures.
+* [`tdk_electrum`]: Grabs blockchain data from Electrum for updating BDK structures.
 * [`bdk_bitcoind_rpc`]: Grabs blockchain data from Bitcoin Core for updating BDK structures.
 
 **Examples**
@@ -223,7 +223,7 @@ conditions.
 [`PersistBackend`]: https://docs.rs/tdk_chain/latest/tdk_chain/trait.PersistBackend.html
 [`tdk_chain`]: https://docs.rs/tdk_chain/latest
 [`tdk_file_store`]: https://docs.rs/tdk_file_store/latest
-[`bdk_electrum`]: https://docs.rs/bdk_electrum/latest
+[`tdk_electrum`]: https://docs.rs/tdk_electrum/latest
 [`bdk_esplora`]: https://docs.rs/bdk_esplora/latest
 [`bdk_bitcoind_rpc`]: https://docs.rs/bdk_bitcoind_rpc/latest
 [`rust-miniscript`]: https://docs.rs/miniscript/latest/miniscript/index.html
