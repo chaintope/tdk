@@ -1,3 +1,5 @@
+#![cfg(target_os = "linux")]
+
 pub use electrsd;
 pub use electrsd::electrum_client;
 use electrsd::electrum_client::ElectrumApi;
