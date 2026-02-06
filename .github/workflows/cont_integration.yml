@@ -15,7 +15,7 @@ jobs:
         rust:
           - version: stable
             clippy: true
-          - version: 1.85.0 # MSRV
+          - version: 1.88.0 # MSRV
         features:
           - --no-default-features --features tapyrus/no-std,miniscript/no-std,hashbrown,blocking,async
           - --all-features --features miniscript/std
@@ -31,7 +31,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.2.1
       - name: Pin dependencies for MSRV
-        if: matrix.rust.version == '1.85.0'
+        if: matrix.rust.version == '1.88.0'
         run: |
           cargo update -p home --precise "0.5.11"
       - name: Build
@@ -122,7 +122,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: 1.85.0
+            toolchain: 1.88.0
             components: clippy
             override: true
       - name: Rust Cache
