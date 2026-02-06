@@ -1,12 +1,12 @@
-use tdk_electrum::BdkElectrumClient;
 use tdk_chain::{
-    tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     keychain::Balance,
     local_chain::LocalChain,
     spk_client::SyncRequest,
     tapyrus::script::color_identifier::ColorIdentifier,
+    tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
+use tdk_electrum::BdkElectrumClient;
 use tdk_testenv::{anyhow, tapyruscore_rpc::RpcApi, TestEnv};
 
 fn get_balance(
@@ -38,11 +38,7 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
     let client = BdkElectrumClient::new(electrum_client);
 
     // Setup addresses.
-    let addr_to_mine = env
-        .tapyrusd
-        .client
-        .get_new_address(None)?
-        .assume_checked();
+    let addr_to_mine = env.tapyrusd.client.get_new_address(None)?.assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
     let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 
@@ -131,11 +127,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
     let client = BdkElectrumClient::new(electrum_client);
 
     // Setup addresses.
-    let addr_to_mine = env
-        .tapyrusd
-        .client
-        .get_new_address(None)?
-        .assume_checked();
+    let addr_to_mine = env.tapyrusd.client.get_new_address(None)?.assume_checked();
     let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
     let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 

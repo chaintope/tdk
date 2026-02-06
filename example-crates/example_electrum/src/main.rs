@@ -3,10 +3,6 @@ use std::{
     sync::Mutex,
 };
 
-use tdk_electrum::{
-    electrum_client::{self, Client, ElectrumApi},
-    BdkElectrumClient,
-};
 use example_cli::{
     anyhow::{self, Context},
     clap::{self, Parser, Subcommand},
@@ -20,6 +16,10 @@ use tdk_chain::{
     local_chain::{self, LocalChain},
     spk_client::{FullScanRequest, SyncRequest},
     Append, ConfirmationHeightAnchor,
+};
+use tdk_electrum::{
+    electrum_client::{self, Client, ElectrumApi},
+    BdkElectrumClient,
 };
 
 const DB_MAGIC: &[u8] = b"bdk_example_electrum";
