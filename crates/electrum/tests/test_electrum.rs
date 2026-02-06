@@ -3,7 +3,7 @@ use tdk_chain::{
     local_chain::LocalChain,
     spk_client::SyncRequest,
     tapyrus::script::color_identifier::ColorIdentifier,
-    tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, WScriptHash},
+    tapyrus::{hashes::Hash, Address, Amount, ScriptBuf, ScriptHash},
     ConfirmationTimeHeightAnchor, IndexedTxGraph, SpkTxOutIndex,
 };
 use tdk_electrum::BdkElectrumClient;
@@ -39,7 +39,7 @@ fn scan_detects_confirmed_tx() -> anyhow::Result<()> {
 
     // Setup addresses.
     let addr_to_mine = env.tapyrusd.client.get_new_address(None)?.assume_checked();
-    let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
+    let spk_to_track = ScriptBuf::new_p2sh(&ScriptHash::all_zeros());
     let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 
     // Setup receiver.
@@ -128,7 +128,7 @@ fn tx_can_become_unconfirmed_after_reorg() -> anyhow::Result<()> {
 
     // Setup addresses.
     let addr_to_mine = env.tapyrusd.client.get_new_address(None)?.assume_checked();
-    let spk_to_track = ScriptBuf::new_p2wsh(&WScriptHash::all_zeros());
+    let spk_to_track = ScriptBuf::new_p2sh(&ScriptHash::all_zeros());
     let addr_to_track = Address::from_script(&spk_to_track, tdk_chain::tapyrus::Network::Dev)?;
 
     // Setup receiver.
