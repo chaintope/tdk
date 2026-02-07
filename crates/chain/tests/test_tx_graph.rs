@@ -535,7 +535,7 @@ fn test_calculate_fee_on_coinbase() {
 fn test_walk_ancestors() {
     let local_chain = LocalChain::from_blocks(
         (0..=20)
-            .map(|ht| (ht, BlockHash::hash(format!("Block Hash {}", ht).as_bytes())))
+            .map(|ht| (ht, BlockHash::hash(format!("Block Hash {ht}").as_bytes())))
             .collect(),
     )
     .expect("must contain genesis hash");
@@ -872,7 +872,7 @@ fn test_descendants_no_repeat() {
 fn test_chain_spends() {
     let local_chain = LocalChain::from_blocks(
         (0..=100)
-            .map(|ht| (ht, BlockHash::hash(format!("Block Hash {}", ht).as_bytes())))
+            .map(|ht| (ht, BlockHash::hash(format!("Block Hash {ht}").as_bytes())))
             .collect(),
     )
     .expect("must have genesis hash");

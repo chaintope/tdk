@@ -6,8 +6,8 @@ const BATCH_SIZE: usize = 5;
 use std::io::Write;
 use std::str::FromStr;
 
-use bdk_electrum::electrum_client;
-use bdk_electrum::BdkElectrumClient;
+use tdk_electrum::electrum_client;
+use tdk_electrum::BdkElectrumClient;
 use tdk_file_store::Store;
 use tdk_wallet::bitcoin::{Address, Amount};
 use tdk_wallet::chain::collections::HashSet;

@@ -579,7 +579,7 @@ impl<K: Clone + Ord + Debug> KeychainTxOutIndex<K> {
                 next_store_index..next_reveal_index + lookahead,
             ) {
                 let _inserted = self.inner.insert_spk((descriptor_id, new_index), new_spk);
-                debug_assert!(_inserted, "replenish lookahead: must not have existing spk: keychain={:?}, lookahead={}, next_store_index={}, next_reveal_index={}", keychain, lookahead, next_store_index, next_reveal_index);
+                debug_assert!(_inserted, "replenish lookahead: must not have existing spk: keychain={keychain:?}, lookahead={lookahead}, next_store_index={next_store_index}, next_reveal_index={next_reveal_index}");
             }
         }
     }
