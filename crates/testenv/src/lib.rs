@@ -5,19 +5,39 @@ pub use electrsd::tapyrusd;
 pub use electrsd::tapyrusd::anyhow;
 pub use electrsd::tapyrusd::tapyruscore_rpc;
 use std::time::Duration;
-use tapyruscore_rpc::{
-    tapyruscore_rpc_json::{GetBlockTemplateModes, GetBlockTemplateRules},
-    RpcApi,
-};
+use tapyruscore_rpc::RpcApi;
 use tdk_chain::{
     local_chain::CheckPoint,
-    tapyrus::{
-        address::NetworkChecked, block::Header, block::XField, hash_types::TxMerkleNode,
-        hashes::Hash, secp256k1::rand::random, transaction, Address, Amount, Block, BlockHash,
-        MalFixTxid, ScriptBuf, ScriptHash, Transaction, TxIn, TxOut,
-    },
+    tapyrus::{address::NetworkChecked, hashes::Hash, Address, Amount, BlockHash, MalFixTxid},
     BlockId,
 };
+
+/// Compute a Schnorr signature for a Tapyrus block.
+///
+/// Uses `tapyrus::schnorr::Signature::sign()` to produce the block proof.
+/// Returns the signature as a 128-character hex string (64 bytes: r_x || sigma).
+fn schnorr_sign_block(private_key_wif: &str, block_hex: &str) -> anyhow::Result<String> {
+    use tdk_chain::tapyrus::consensus::deserialize;
+    use tdk_chain::tapyrus::hashes::hex::FromHex;
+    use tdk_chain::tapyrus::hex::DisplayHex;
+    use tdk_chain::tapyrus::{Block, PrivateKey};
+
+    let privkey = PrivateKey::from_wif(private_key_wif)
+        .map_err(|e| anyhow::anyhow!("invalid WIF key: {}", e))?;
+    let block_bytes =
+        Vec::<u8>::from_hex(block_hex).map_err(|e| anyhow::anyhow!("invalid hex: {}", e))?;
+    let block: Block = deserialize(&block_bytes)?;
+    let sig_hash = block.header.signature_hash();
+    let message: [u8; 32] = sig_hash.to_byte_array();
+
+    let sig = tdk_chain::tapyrus::schnorr::Signature::sign(&privkey, &message)
+        .map_err(|e| anyhow::anyhow!("schnorr sign failed: {}", e))?;
+
+    let mut sig_bytes = [0u8; 64];
+    sig_bytes[..32].copy_from_slice(&sig.r_x);
+    sig_bytes[32..].copy_from_slice(&sig.sigma);
+    Ok(sig_bytes.to_lower_hex_string())
+}
 
 /// Struct for running a regtest environment with a single `tapyrusd` node with an `electrs`
 /// instance connected to it.
@@ -107,48 +127,80 @@ impl TestEnv {
     }
 
     /// Mine a block that is guaranteed to be empty even with transactions in the mempool.
+    ///
+    /// Uses `getnewblock` with a large `required_age` to exclude mempool transactions,
+    /// then signs the block with a Schnorr signature and submits it.
     pub fn mine_empty_block(&self) -> anyhow::Result<(usize, BlockHash)> {
-        let bt = self.tapyrusd.client.get_block_template(
-            GetBlockTemplateModes::Template,
-            &[GetBlockTemplateRules::SegWit],
-            &[],
+        use tapyruscore_rpc::jsonrpc::serde_json;
+        use tdk_chain::tapyrus::consensus::{deserialize, serialize};
+        use tdk_chain::tapyrus::hashes::hex::FromHex;
+        use tdk_chain::tapyrus::hex::DisplayHex;
+
+        let address = self.tapyrusd.client.get_new_address(None)?.assume_checked();
+
+        // Get an unsigned block that excludes recent mempool transactions.
+        let block_hex: String = self.tapyrusd.client.call(
+            "getnewblock",
+            &[
+                serde_json::json!(address.to_string()),
+                serde_json::json!(9_999_999),
+            ],
         )?;
 
-        let txdata = vec![Transaction {
-            version: transaction::Version::ONE,
-            lock_time: tdk_chain::tapyrus::absolute::LockTime::from_height(0)?,
-            input: vec![TxIn {
-                previous_output: tdk_chain::tapyrus::OutPoint::default(),
-                script_sig: ScriptBuf::builder()
-                    .push_int(bt.height as _)
-                    // randomn number so that re-mining creates unique block
-                    .push_int(random())
-                    .into_script(),
-                sequence: tdk_chain::tapyrus::Sequence::default(),
-                witness: tdk_chain::tapyrus::Witness::new(),
-            }],
-            output: vec![TxOut {
-                value: Amount::ZERO,
-                script_pubkey: ScriptBuf::new_p2sh(&ScriptHash::all_zeros()),
-            }],
-        }];
+        // Deserialize the block, strip non-coinbase transactions, fix coinbase value,
+        // and recompute merkle roots.
+        let block_bytes = Vec::<u8>::from_hex(&block_hex)
+            .map_err(|e| anyhow::anyhow!("invalid block hex: {}", e))?;
+        let mut block: tdk_chain::tapyrus::Block = deserialize(&block_bytes)?;
 
-        let mut block = Block {
-            header: Header {
-                version: tdk_chain::tapyrus::block::Version::default(),
-                prev_blockhash: bt.previous_block_hash,
-                merkle_root: TxMerkleNode::all_zeros(),
-                im_merkle_root: TxMerkleNode::all_zeros(),
-                time: Ord::max(bt.min_time, std::time::UNIX_EPOCH.elapsed()?.as_secs()) as u32,
-                xfield: XField::None,
-                proof: None,
-            },
-            txdata,
-        };
+        if block.txdata.len() > 1 {
+            block.txdata.truncate(1); // Keep only coinbase
 
-        block.header.merkle_root = block.compute_merkle_root().expect("must compute");
-        self.tapyrusd.client.submit_block(&block)?;
-        Ok((bt.height as usize, block.block_hash()))
+            // Fix coinbase output value: remove fees from stripped transactions.
+            // Block subsidy = 50 TPC >> halvings. At test heights (<210000) it is 50 TPC.
+            let current_height = self.tapyrusd.client.get_block_count()?;
+            let next_height = current_height + 1;
+            let halvings = next_height / 210_000;
+            let subsidy = if halvings >= 64 {
+                0
+            } else {
+                50_0000_0000u64 >> halvings
+            };
+            block.txdata[0].output[0].value = Amount::from_tap(subsidy);
+
+            block.header.merkle_root = block
+                .compute_merkle_root()
+                .ok_or_else(|| anyhow::anyhow!("failed to compute merkle root"))?;
+            block.header.im_merkle_root = block
+                .immutable_merkle_root()
+                .ok_or_else(|| anyhow::anyhow!("failed to compute im_merkle_root"))?;
+        }
+
+        let modified_block_hex = serialize(&block).to_lower_hex_string();
+
+        // Sign the block with the aggregate private key.
+        let private_key = tapyrusd::get_private_key();
+        let signature_hex = schnorr_sign_block(&private_key, &modified_block_hex)?;
+
+        // Combine the signature with the block.
+        let combine_result: serde_json::Value = self.tapyrusd.client.call(
+            "combineblocksigs",
+            &[
+                serde_json::json!(modified_block_hex),
+                serde_json::json!(signature_hex),
+            ],
+        )?;
+
+        let signed_hex = combine_result["hex"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("combineblocksigs: missing hex in response"))?;
+
+        // Submit the signed block.
+        self.tapyrusd.client.submit_block_hex(signed_hex)?;
+
+        let height = self.tapyrusd.client.get_block_count()? as usize;
+        let hash = self.tapyrusd.client.get_best_block_hash()?;
+        Ok((height, hash))
     }
 
     /// This method waits for the Electrum notification indicating that a new block has been mined.
